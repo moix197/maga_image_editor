@@ -51,16 +51,16 @@ External services (GitHub, Vercel) must be configured manually. The branch-prote
 
 **Steps:**
 
-- [ ] Confirm the machine has git installed (`git --version`)
-- [ ] Confirm pnpm is available (`pnpm --version`); if not, run `corepack enable` or `npm i -g pnpm`
-- [ ] Confirm Node 20 is installed (`node --version`); install via nvm/fnm if needed
-- [ ] In `C:\proyectos\maga_image_editor`, run `git init`
-- [ ] Create `.gitignore` with standard Node/Next.js ignores (see File changes)
-- [ ] Run `git add .gitignore CLAUDE.md .claude/` then `git commit -m "chore: initial commit — empty repo with CLAUDE.md"`
+- [x] Confirm the machine has git installed (`git --version`)
+- [x] Confirm pnpm is available (`pnpm --version`); if not, run `corepack enable` or `npm i -g pnpm`
+- [x] Confirm Node 20 is installed (`node --version`); install via nvm/fnm if needed — _machine has v22.19.0, satisfies `engines: >=20`_
+- [x] In `C:\proyectos\maga_image_editor`, run `git init`
+- [x] Create `.gitignore` with standard Node/Next.js ignores (see File changes)
+- [x] Run `git add .gitignore CLAUDE.md .claude/` then `git commit -m "chore: initial commit — empty repo with CLAUDE.md"` — _committed all existing project files (incl. ROADMAP.md, plans/); commit `de8c45c`_
 - [ ] Create the GitHub repo named `maga_image_editor` (private or public — your choice) via `gh repo create maga_image_editor --source=. --remote=origin --push` **or** via the GitHub web UI then `git remote add origin https://github.com/<your-username>/maga_image_editor.git && git push -u origin main`
-- [ ] Rename local branch to `main` if needed: `git branch -M main`
+- [x] Rename local branch to `main` if needed: `git branch -M main`
 - [ ] Push `main` to origin: `git push -u origin main`
-- [ ] Create and push `dev` branch: `git checkout -b dev && git push -u origin dev`
+- [ ] Create and push `dev` branch: `git checkout -b dev && git push -u origin dev` — _`dev` created locally; push pending_
 - [ ] Verify both branches exist on GitHub (check the repository page)
 - [ ] (Optional but recommended) Set `dev` as the default branch in GitHub repo Settings → Branches
 
