@@ -1,5 +1,5 @@
-import type { EditorState, TextNode, NodeId } from "./types";
-import { DEFAULT_TEXT_NODE } from "./defaults";
+import type { EditorState, TextNode, OverlayNode, BorderOverlay, NodeId } from "./types";
+import { DEFAULT_TEXT_NODE, DEFAULT_OVERLAY_NODE, DEFAULT_BORDER_NODE } from "./defaults";
 
 let _counter = 0;
 
@@ -26,9 +26,29 @@ export function updateTextNode(
 ): EditorState {
   return {
     ...state,
-    nodes: state.nodes.map((n) =>
-      n.id === id ? { ...n, ...patch } : n,
-    ),
+    nodes: state.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+  };
+}
+
+/** Creates a new image overlay node with a unique id. */
+export function createOverlayNode(partial: Partial<Omit<OverlayNode, "id">>): OverlayNode {
+  return { ...DEFAULT_OVERLAY_NODE, ...partial, id: makeNodeId() };
+}
+
+/** Creates a new border overlay node with a unique id. */
+export function createBorderNode(partial: Partial<Omit<BorderOverlay, "id">>): BorderOverlay {
+  return { ...DEFAULT_BORDER_NODE, ...partial, id: makeNodeId() } as BorderOverlay;
+}
+
+/** Patches any overlay node field by id; returns new immutable state. */
+export function updateOverlayNode(
+  state: EditorState,
+  id: NodeId,
+  patch: Partial<Omit<OverlayNode, "id">>,
+): EditorState {
+  return {
+    ...state,
+    nodes: state.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
   };
 }
 

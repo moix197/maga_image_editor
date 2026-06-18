@@ -5,26 +5,42 @@ import {
   createEditorState,
   createTextNode,
   updateTextNode,
+  createOverlayNode,
+  createBorderNode,
+  updateOverlayNode,
   removeNode,
   reorderNode,
 } from "@maga/editor";
-import type { EditorState, NodeId, TextNode } from "@maga/editor";
+import type { EditorState, NodeId, TextNode, OverlayNode, BorderOverlay } from "@maga/editor";
+
+function nextZIndex(nodes: EditorState["nodes"]): number {
+  return nodes.length ? Math.max(...nodes.map((n) => n.zIndex)) + 1 : 0;
+}
 
 export function useEditorState(initial?: EditorState) {
-  const [state, setState] = useState<EditorState>(
-    initial ?? createEditorState(),
-  );
+  const [state, setState] = useState<EditorState>(initial ?? createEditorState());
 
   function addTextNode(partial?: Partial<Omit<TextNode, "id">>) {
-    const zIndex = state.nodes.length
-      ? Math.max(...state.nodes.map((n) => n.zIndex)) + 1
-      : 0;
-    const node = createTextNode({ zIndex, ...partial });
+    const node = createTextNode({ zIndex: nextZIndex(state.nodes), ...partial });
+    setState((s) => ({ ...s, nodes: [...s.nodes, node] }));
+  }
+
+  function addOverlayNode(partial?: Partial<Omit<OverlayNode, "id">>) {
+    const node = createOverlayNode({ zIndex: nextZIndex(state.nodes), ...partial });
+    setState((s) => ({ ...s, nodes: [...s.nodes, node] }));
+  }
+
+  function addBorderNode(partial?: Partial<Omit<BorderOverlay, "id">>) {
+    const node = createBorderNode({ zIndex: nextZIndex(state.nodes), ...partial });
     setState((s) => ({ ...s, nodes: [...s.nodes, node] }));
   }
 
   function patchTextNode(id: NodeId, patch: Partial<Omit<TextNode, "id">>) {
     setState((s) => updateTextNode(s, id, patch));
+  }
+
+  function patchOverlayNode(id: NodeId, patch: Partial<Omit<OverlayNode, "id">>) {
+    setState((s) => updateOverlayNode(s, id, patch));
   }
 
   function deleteNode(id: NodeId) {
@@ -38,7 +54,10 @@ export function useEditorState(initial?: EditorState) {
   return {
     state,
     addTextNode,
+    addOverlayNode,
+    addBorderNode,
     updateTextNode: patchTextNode,
+    updateOverlayNode: patchOverlayNode,
     removeNode: deleteNode,
     reorderNode: reorder,
   };

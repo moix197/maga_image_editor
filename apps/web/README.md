@@ -125,3 +125,29 @@ Disabling the background sets `textBackground: null` on the node, removing all b
 - Use the **Rotation** slider (−180° to 180°) to rotate the selected node clockwise or counter-clockwise.
 - Use the **Delete** button to remove the selected node from the canvas.
 - Z-order is reflected in both the canvas rendering and the exported PNG.
+
+## Overlay Controls
+
+Two types of overlay nodes can be added on top of the source image.
+
+### Image Overlay
+
+Click **Add Image Overlay** in the toolbar to open a file picker (PNG or SVG). The chosen image is converted to a data URL and placed at 10%,10% with 150×100 px default dimensions. It can be:
+
+- **Dragged** by pointer anywhere on the canvas (position stored as % of canvas size)
+- **Resized** via the blue handle in the bottom-right corner
+- **Selected** to open the `OverlayControlsPanel` in the side panel
+
+### Border Overlay
+
+Click **Add Border** to place a CSS-border rectangle (defaults: 5%,5%, 90×90 px, 4 px solid white). Controls available in the side panel:
+
+| Control | Effect |
+|---------|--------|
+| Opacity | Slider 0–100% |
+| Border Color | Native color picker |
+| Border Width | Slider 1–40 px |
+| Border Style | Select: solid / dashed / dotted / double |
+| Border Radius | Slider 0–200 px |
+
+Both overlay types share **Move Up / Move Down** (z-order) and **Delete** buttons in the side panel. Selecting an overlay shows the `OverlayControlsPanel`; selecting a text node shows the `TextStylePanel`; clicking the canvas background deselects all.

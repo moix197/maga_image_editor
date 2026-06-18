@@ -1,12 +1,14 @@
 "use client";
 
 import type { RefCallback } from "react";
-import type { EditorState, NodeId, TextNode } from "@maga/editor";
+import type { EditorState, NodeId, TextNode, OverlayNode } from "@maga/editor";
 import { TextNodeLayer } from "@/components/text-node-layer";
+import { OverlayNodeLayer } from "@/components/overlay-node-layer";
 
 interface TextOverlayCanvasProps {
   state: EditorState;
   onNodeMove: (id: string, x: number, y: number) => void;
+  onNodeResize: (id: string, width: number, height: number) => void;
   onNodeSelect: (id: string) => void;
   selectedNodeId: NodeId | null;
   canvasCallbackRef: RefCallback<HTMLDivElement>;
@@ -17,15 +19,20 @@ function isTextNode(node: EditorState["nodes"][number]): node is TextNode {
   return "content" in node;
 }
 
+function isOverlayNode(node: EditorState["nodes"][number]): node is OverlayNode {
+  return "overlayType" in node;
+}
+
 export function TextOverlayCanvas({
   state,
   onNodeMove,
+  onNodeResize,
   onNodeSelect,
   selectedNodeId,
   canvasCallbackRef,
   imageSrc,
 }: TextOverlayCanvasProps) {
-  const textNodes = state.nodes.filter(isTextNode).sort((a, b) => a.zIndex - b.zIndex);
+  const sortedNodes = [...state.nodes].sort((a, b) => a.zIndex - b.zIndex);
 
   return (
     <div
@@ -38,15 +45,32 @@ export function TextOverlayCanvas({
         alt="Editor canvas"
         style={{ display: "block", maxWidth: "100%", height: "auto" }}
       />
-      {textNodes.map((node) => (
-        <TextNodeLayer
-          key={node.id}
-          node={node}
-          onMove={(x, y) => onNodeMove(node.id, x, y)}
-          onSelect={() => onNodeSelect(node.id)}
-          isSelected={node.id === selectedNodeId}
-        />
-      ))}
+      {sortedNodes.map((node) => {
+        if (isTextNode(node)) {
+          return (
+            <TextNodeLayer
+              key={node.id}
+              node={node}
+              onMove={(x, y) => onNodeMove(node.id, x, y)}
+              onSelect={() => onNodeSelect(node.id)}
+              isSelected={node.id === selectedNodeId}
+            />
+          );
+        }
+        if (isOverlayNode(node)) {
+          return (
+            <OverlayNodeLayer
+              key={node.id}
+              node={node}
+              onMove={(x, y) => onNodeMove(node.id, x, y)}
+              onResize={(w, h) => onNodeResize(node.id, w, h)}
+              onSelect={() => onNodeSelect(node.id)}
+              isSelected={node.id === selectedNodeId}
+            />
+          );
+        }
+        return null;
+      })}
     </div>
   );
 }

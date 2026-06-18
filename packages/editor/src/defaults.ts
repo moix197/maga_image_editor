@@ -1,4 +1,4 @@
-import type { TextNode, OverlayNode } from "./types";
+import type { TextNode, OverlayNode, BorderOverlay } from "./types";
 
 export const DEFAULT_TEXT_NODE: Omit<TextNode, "id"> = {
   content: "Hello",
@@ -18,10 +18,26 @@ export const DEFAULT_TEXT_NODE: Omit<TextNode, "id"> = {
 
 export const DEFAULT_OVERLAY_NODE: Omit<OverlayNode, "id"> = {
   src: "",
-  x: 50,
-  y: 50,
+  x: 10,
+  y: 10,
   width: 100,
   height: 100,
   opacity: 1,
   zIndex: 0,
+  overlayType: "image",
+};
+
+export const DEFAULT_BORDER_NODE: Omit<BorderOverlay, "id"> = {
+  src: "",
+  x: 5,
+  y: 5,
+  width: 90,
+  height: 90,
+  opacity: 1,
+  zIndex: 0,
+  overlayType: "border",
+  borderStyle: "solid",
+  borderColor: "#ffffff",
+  borderWidth: 4,
+  borderRadius: 0,
 };
