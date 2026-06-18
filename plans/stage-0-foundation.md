@@ -57,12 +57,12 @@ External services (GitHub, Vercel) must be configured manually. The branch-prote
 - [x] In `C:\proyectos\maga_image_editor`, run `git init`
 - [x] Create `.gitignore` with standard Node/Next.js ignores (see File changes)
 - [x] Run `git add .gitignore CLAUDE.md .claude/` then `git commit -m "chore: initial commit — empty repo with CLAUDE.md"` — _committed all existing project files (incl. ROADMAP.md, plans/); commit `de8c45c`_
-- [ ] Create the GitHub repo named `maga_image_editor` (private or public — your choice) via `gh repo create maga_image_editor --source=. --remote=origin --push` **or** via the GitHub web UI then `git remote add origin https://github.com/<your-username>/maga_image_editor.git && git push -u origin main`
+- [x] Create the GitHub repo named `maga_image_editor` (private or public — your choice) via `gh repo create maga_image_editor --source=. --remote=origin --push` **or** via the GitHub web UI then `git remote add origin https://github.com/<your-username>/maga_image_editor.git && git push -u origin main` — _remote: `moix197/maga_image_editor`_
 - [x] Rename local branch to `main` if needed: `git branch -M main`
-- [ ] Push `main` to origin: `git push -u origin main`
-- [ ] Create and push `dev` branch: `git checkout -b dev && git push -u origin dev` — _`dev` created locally; push pending_
-- [ ] Verify both branches exist on GitHub (check the repository page)
-- [ ] (Optional but recommended) Set `dev` as the default branch in GitHub repo Settings → Branches
+- [x] Push `main` to origin: `git push -u origin main`
+- [x] Create and push `dev` branch: `git checkout -b dev && git push -u origin dev`
+- [x] Verify both branches exist on GitHub (check the repository page)
+- [ ] (Optional but recommended) Set `dev` as the default branch in GitHub repo Settings → Branches — _skipped; default left as `main`_
 
 **Tests:**
 
@@ -70,21 +70,21 @@ No automated tests — justified because: this phase contains no application log
 
 **Verification:**
 
-- [ ] `git branch -a` shows `remotes/origin/main` and `remotes/origin/dev`
-- [ ] GitHub repo page at `https://github.com/<username>/maga_image_editor` is accessible and shows both branches
+- [x] `git branch -a` shows `remotes/origin/main` and `remotes/origin/dev`
+- [x] GitHub repo page at `https://github.com/<username>/maga_image_editor` is accessible and shows both branches
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing — or no-tests justification accepted
-- [ ] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `chore: initial commit — empty repo with CLAUDE.md`
-- [ ] Phase marked complete
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent has verified this phase — _N/A: pure VCS/hosting setup, no code to review_
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file — _N/A_
+- [x] Tests for this phase written and passing — or no-tests justification accepted
+- [x] Documentation updated (see Documentation section)
+- [x] Orchestrator (user) has verified and approved this phase
+- [x] Changes committed: `chore: initial commit — empty repo with CLAUDE.md`
+- [x] Phase marked complete
 
 ---
 
