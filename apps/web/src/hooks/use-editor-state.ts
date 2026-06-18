@@ -16,7 +16,10 @@ export function useEditorState(initial?: EditorState) {
   );
 
   function addTextNode(partial?: Partial<Omit<TextNode, "id">>) {
-    const node = createTextNode({ zIndex: state.nodes.length, ...partial });
+    const zIndex = state.nodes.length
+      ? Math.max(...state.nodes.map((n) => n.zIndex)) + 1
+      : 0;
+    const node = createTextNode({ zIndex, ...partial });
     setState((s) => ({ ...s, nodes: [...s.nodes, node] }));
   }
 
