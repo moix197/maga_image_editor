@@ -56,7 +56,7 @@ export default function EditorPage() {
 
   async function handleOverlayFile(file: File) {
     const dataUrl = await fileToDataUrl(file);
-    addOverlayNode({ src: dataUrl, x: 10, y: 10, width: 150, height: 150 });
+    addOverlayNode({ src: dataUrl, x: 10, y: 10 });
   }
 
   const selectedNode = selectedNodeId

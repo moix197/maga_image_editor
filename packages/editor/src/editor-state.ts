@@ -37,7 +37,7 @@ export function createOverlayNode(partial: Partial<Omit<OverlayNode, "id">>): Ov
 
 /** Creates a new border overlay node with a unique id. */
 export function createBorderNode(partial: Partial<Omit<BorderOverlay, "id">>): BorderOverlay {
-  return { ...DEFAULT_BORDER_NODE, ...partial, id: makeNodeId() } as BorderOverlay;
+  return { ...DEFAULT_BORDER_NODE, ...partial, id: makeNodeId() };
 }
 
 /** Patches any overlay node field by id; returns new immutable state. */
