@@ -43,7 +43,8 @@ describe("TextNodeLayer", () => {
     );
     const span = container.querySelector("span") as HTMLElement;
     expect(span).not.toBeNull();
-    expect(span.style.backgroundColor).toBe("rgb(255, 0, 0)");
+    expect(span.style.backgroundColor).toBe("rgba(255, 0, 0, 0.7)");
+    expect(span.style.opacity).toBe("");
     expect(span.style.padding).toBe("4px 8px");
     expect(span.textContent).toBe("Hello");
   });
