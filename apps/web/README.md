@@ -100,3 +100,18 @@ When a text node is selected on the canvas, a `TextStylePanel` appears in a side
 | Shadow | `text-shadow` | Toggle + color picker + blur slider (0–40px); offsetX/offsetY fixed at 2px |
 
 All changes apply immediately to the canvas and are included in the exported PNG.
+
+### Text Background Controls
+
+When a text node is selected, a "Text Background" section appears at the bottom of the `TextStylePanel`.
+
+| Control | Effect | Notes |
+|---------|--------|-------|
+| Enable background | Toggles background on/off | Off → `textBackground: null`; On → defaults (black, 50% opacity, 0 blur, 8/4px padding) |
+| Color | Background fill color | Native color picker |
+| Opacity | Background opacity | Slider 0–1 (step 0.01) |
+| Blur | `backdrop-filter: blur()` on the text node | Slider 0–20px; 0 = no blur (sharp edge) |
+| Padding X | Horizontal padding inside the background span | Number input 0–40px |
+| Padding Y | Vertical padding inside the background span | Number input 0–40px |
+
+Disabling the background sets `textBackground: null` on the node, removing all background and blur.

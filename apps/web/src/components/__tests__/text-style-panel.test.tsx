@@ -23,6 +23,7 @@ const mockNode: TextNode = {
   fontWeight: "normal",
   fontStyle: "normal",
   shadow: null,
+  textBackground: null,
 };
 
 describe("TextStylePanel", () => {
@@ -93,7 +94,7 @@ describe("TextStylePanel", () => {
 
   it("fires onChange with default shadow when checkbox is toggled on", () => {
     render(<TextStylePanel node={{ ...mockNode, shadow: null }} onChange={onChange} />);
-    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
+    const checkbox = screen.getByRole("checkbox", { name: "Enable shadow" }) as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
     fireEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledWith({
@@ -109,7 +110,7 @@ describe("TextStylePanel", () => {
       shadow: { color: "#000000", blur: 4, offsetX: 2, offsetY: 2 },
     };
     render(<TextStylePanel node={nodeWithShadow} onChange={onChange} />);
-    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
+    const checkbox = screen.getByRole("checkbox", { name: "Enable shadow" }) as HTMLInputElement;
     expect(checkbox.checked).toBe(true);
     fireEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledWith({ shadow: null });

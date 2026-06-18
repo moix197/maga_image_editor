@@ -1,6 +1,6 @@
 "use client";
 
-import type { TextNode } from "@maga/editor";
+import type { TextNode, TextBackground } from "@maga/editor";
 import { useRef, type PointerEvent as ReactPointerEvent } from "react";
 
 interface TextNodeLayerProps {
@@ -30,6 +30,15 @@ function buildTextShadow(node: TextNode): string {
   return `${offsetX}px ${offsetY}px ${blur}px ${color}`;
 }
 
+function buildBackgroundSpanStyle(bg: TextBackground): React.CSSProperties {
+  return {
+    backgroundColor: bg.color,
+    opacity: bg.opacity,
+    padding: `${bg.paddingY}px ${bg.paddingX}px`,
+    borderRadius: "2px",
+  };
+}
+
 export function TextNodeLayer({ node, onMove, onSelect, isSelected }: TextNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
 
@@ -53,6 +62,8 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected }: TextNodeLa
   function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     e.currentTarget.releasePointerCapture(e.pointerId);
   }
+
+  const bg = node.textBackground;
 
   return (
     <div
@@ -83,9 +94,14 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected }: TextNodeLa
         // Export clears selectedNodeId before capture (see page.tsx handleExport).
         outline: isSelected ? "2px solid #2563EB" : "none",
         outlineOffset: "4px",
+        backdropFilter: bg && bg.blur > 0 ? `blur(${bg.blur}px)` : undefined,
       }}
     >
-      {node.content}
+      {bg ? (
+        <span style={buildBackgroundSpanStyle(bg)}>{node.content}</span>
+      ) : (
+        node.content
+      )}
     </div>
   );
 }

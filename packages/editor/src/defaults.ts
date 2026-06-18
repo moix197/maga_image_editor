@@ -13,6 +13,7 @@ export const DEFAULT_TEXT_NODE: Omit<TextNode, "id"> = {
   fontWeight: "normal",
   fontStyle: "normal",
   shadow: null,
+  textBackground: null,
 };
 
 export const DEFAULT_OVERLAY_NODE: Omit<OverlayNode, "id"> = {

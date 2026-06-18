@@ -1,6 +1,6 @@
 "use client";
 
-import type { TextNode, TextShadow } from "@maga/editor";
+import type { TextNode, TextShadow, TextBackground } from "@maga/editor";
 import { FONT_FAMILIES } from "@maga/editor";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ interface TextStylePanelProps {
 }
 
 const DEFAULT_SHADOW: TextShadow = { color: "#000000", blur: 4, offsetX: 2, offsetY: 2 };
+const DEFAULT_TEXT_BACKGROUND: TextBackground = { color: "#000000", opacity: 0.5, blur: 0, paddingX: 8, paddingY: 4 };
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -150,6 +151,97 @@ export function TextStylePanel({ node, onChange }: TextStylePanelProps) {
                   onChange({ shadow: { ...node.shadow!, blur: v ?? 0 } })
                 }
                 aria-label="Shadow blur"
+              />
+            </div>
+          </div>
+        )}
+      </FieldRow>
+
+      <FieldRow label="Text Background">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="bg-toggle"
+            checked={node.textBackground !== null}
+            onChange={(e) =>
+              onChange({ textBackground: e.target.checked ? DEFAULT_TEXT_BACKGROUND : null })
+            }
+            className="h-4 w-4 cursor-pointer rounded"
+          />
+          <label htmlFor="bg-toggle" className="cursor-pointer text-xs">
+            Enable background
+          </label>
+        </div>
+        {node.textBackground && (
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Label className="w-16 text-xs text-muted-foreground">Color</Label>
+              <input
+                type="color"
+                value={node.textBackground.color}
+                onChange={(e) =>
+                  onChange({ textBackground: { ...node.textBackground!, color: e.target.value } })
+                }
+                aria-label="Background color"
+                className="h-7 flex-1 cursor-pointer rounded border border-input"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs text-muted-foreground">
+                Opacity ({Math.round(node.textBackground.opacity * 100)}%)
+              </Label>
+              <Slider
+                min={0}
+                max={1}
+                step={0.01}
+                value={[node.textBackground.opacity]}
+                onValueChange={([v]) =>
+                  onChange({ textBackground: { ...node.textBackground!, opacity: v ?? 0 } })
+                }
+                aria-label="Background opacity"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs text-muted-foreground">
+                Blur ({node.textBackground.blur}px)
+              </Label>
+              <Slider
+                min={0}
+                max={20}
+                step={1}
+                value={[node.textBackground.blur]}
+                onValueChange={([v]) =>
+                  onChange({ textBackground: { ...node.textBackground!, blur: v ?? 0 } })
+                }
+                aria-label="Background blur"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="w-16 text-xs text-muted-foreground">Padding X</Label>
+              <input
+                type="number"
+                min={0}
+                max={40}
+                value={node.textBackground.paddingX}
+                onChange={(e) =>
+                  onChange({ textBackground: { ...node.textBackground!, paddingX: Number(e.target.value) } })
+                }
+                aria-label="Background padding X"
+                className="h-7 flex-1 rounded border border-input px-2 text-xs"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="w-16 text-xs text-muted-foreground">Padding Y</Label>
+              <input
+                type="number"
+                min={0}
+                max={40}
+                value={node.textBackground.paddingY}
+                onChange={(e) =>
+                  onChange({ textBackground: { ...node.textBackground!, paddingY: Number(e.target.value) } })
+                }
+                aria-label="Background padding Y"
+                className="h-7 flex-1 rounded border border-input px-2 text-xs"
               />
             </div>
           </div>

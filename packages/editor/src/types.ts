@@ -7,6 +7,14 @@ export interface TextShadow {
   offsetY: number;
 }
 
+export interface TextBackground {
+  color: string;
+  opacity: number;
+  blur: number;
+  paddingX: number;
+  paddingY: number;
+}
+
 export interface TextNode {
   id: NodeId;
   content: string;
@@ -21,6 +29,7 @@ export interface TextNode {
   fontWeight: string;
   fontStyle: string;
   shadow: TextShadow | null;
+  textBackground: TextBackground | null;
 }
 
 export interface OverlayNode {

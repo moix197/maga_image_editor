@@ -40,6 +40,11 @@ describe("createTextNode", () => {
     expect(node.fontStyle).toBe("normal");
     expect(node.shadow).toBeNull();
   });
+
+  it("sets textBackground: null by default", () => {
+    const node = createTextNode({});
+    expect(node.textBackground).toBeNull();
+  });
 });
 
 describe("updateTextNode", () => {
