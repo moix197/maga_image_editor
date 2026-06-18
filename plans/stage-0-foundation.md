@@ -116,17 +116,17 @@ No automated tests — justified because: this phase contains no application log
 
 **Steps:**
 
-- [ ] Create `pnpm-workspace.yaml` declaring `apps/*` and `packages/*`
-- [ ] Create root `package.json` with workspace config, `engines`, `packageManager`, and delegating scripts (`typecheck: pnpm -r typecheck`, `lint: pnpm -r lint`, `build: pnpm -r build`)
-- [ ] Create `.nvmrc` containing `20`
-- [ ] Create `packages/config/` directory and `packages/config/package.json` with name `@maga/config`, exports map pointing to the three public files
-- [ ] Create `packages/config/tsconfig.base.json` with strict TypeScript settings
-- [ ] Create `packages/config/tsconfig.json` that extends the base (used internally by the package)
-- [ ] Create `packages/config/eslint.config.js` exporting shared flat ESLint config
-- [ ] Create `packages/config/tailwind.preset.js` exporting the shared Tailwind preset (content globs, neutral color palette extension placeholder)
-- [ ] Run `pnpm install` from repo root to verify workspace resolves correctly
-- [ ] Add `README.md` to `packages/config/` documenting all three exported surfaces with usage examples
-- [ ] Update root `README.md` (create if absent) with monorepo layout section, Node version requirement, and `pnpm install` quickstart
+- [x] Create `pnpm-workspace.yaml` declaring `apps/*` and `packages/*`
+- [x] Create root `package.json` with workspace config, `engines`, `packageManager`, and delegating scripts (`typecheck: pnpm -r typecheck`, `lint: pnpm -r lint`, `build: pnpm -r build`)
+- [x] Create `.nvmrc` containing `20`
+- [x] Create `packages/config/` directory and `packages/config/package.json` with name `@maga/config`, exports map pointing to the three public files
+- [x] Create `packages/config/tsconfig.base.json` with strict TypeScript settings
+- [x] Create `packages/config/tsconfig.json` that extends the base (used internally by the package)
+- [x] Create `packages/config/eslint.config.js` exporting shared flat ESLint config
+- [x] Create `packages/config/tailwind.preset.js` exporting the shared Tailwind preset (content globs, neutral color palette extension placeholder)
+- [x] Run `pnpm install` from repo root to verify workspace resolves correctly
+- [x] Add `README.md` to `packages/config/` documenting all three exported surfaces with usage examples
+- [x] Update root `README.md` (create if absent) with monorepo layout section, Node version requirement, and `pnpm install` quickstart
 
 **Tests:**
 
@@ -134,23 +134,23 @@ No automated tests — justified because: `packages/config` contains no runtime 
 
 **Verification:**
 
-- [ ] `pnpm install` from repo root exits 0 with no errors
-- [ ] `ls packages/config/` shows `tsconfig.base.json`, `eslint.config.js`, `tailwind.preset.js`, `package.json`, `README.md`
-- [ ] `cat pnpm-workspace.yaml` confirms both `apps/*` and `packages/*` are declared
-- [ ] `.nvmrc` contains `20`
+- [x] `pnpm install` from repo root exits 0 with no errors
+- [x] `ls packages/config/` shows `tsconfig.base.json`, `eslint.config.js`, `tailwind.preset.js`, `package.json`, `README.md`
+- [x] `cat pnpm-workspace.yaml` confirms both `apps/*` and `packages/*` are declared
+- [x] `.nvmrc` contains `20`
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing — or no-tests justification accepted
-- [ ] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `chore: scaffold pnpm workspace root and packages/config`
-- [ ] Phase marked complete
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — _N/A: subagent dispatch flow_
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session — _N/A: subagent dispatch flow_
+- [x] Code-reviewer agent has verified this phase — _verdict: green_
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file — _green; nits only, no changes required_
+- [x] Tests for this phase written and passing — or no-tests justification accepted — _no-tests justification accepted (pure config)_
+- [x] Documentation updated (see Documentation section)
+- [x] Orchestrator (user) has verified and approved this phase
+- [x] Changes committed: `chore: scaffold pnpm workspace root and packages/config`
+- [x] Phase marked complete
 
 ---
 
