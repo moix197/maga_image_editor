@@ -1,5 +1,12 @@
 export type NodeId = string & { readonly __brand: "NodeId" };
 
+export interface TextShadow {
+  color: string;
+  blur: number;
+  offsetX: number;
+  offsetY: number;
+}
+
 export interface TextNode {
   id: NodeId;
   content: string;
@@ -10,6 +17,10 @@ export interface TextNode {
   fontSize: number;
   color: string;
   opacity: number;
+  fontFamily: string;
+  fontWeight: string;
+  fontStyle: string;
+  shadow: TextShadow | null;
 }
 
 export interface OverlayNode {

@@ -1,13 +1,14 @@
 "use client";
 
 import type { RefCallback } from "react";
-import type { EditorState, TextNode } from "@maga/editor";
+import type { EditorState, NodeId, TextNode } from "@maga/editor";
 import { TextNodeLayer } from "@/components/text-node-layer";
 
 interface TextOverlayCanvasProps {
   state: EditorState;
   onNodeMove: (id: string, x: number, y: number) => void;
-  /** Callback ref forwarded from the page so the page can pass the element to exportCanvasElement */
+  onNodeSelect: (id: string) => void;
+  selectedNodeId: NodeId | null;
   canvasCallbackRef: RefCallback<HTMLDivElement>;
   imageSrc: string;
 }
@@ -19,6 +20,8 @@ function isTextNode(node: EditorState["nodes"][number]): node is TextNode {
 export function TextOverlayCanvas({
   state,
   onNodeMove,
+  onNodeSelect,
+  selectedNodeId,
   canvasCallbackRef,
   imageSrc,
 }: TextOverlayCanvasProps) {
@@ -40,7 +43,8 @@ export function TextOverlayCanvas({
           key={node.id}
           node={node}
           onMove={(x, y) => onNodeMove(node.id, x, y)}
-          onSelect={() => {}}
+          onSelect={() => onNodeSelect(node.id)}
+          isSelected={node.id === selectedNodeId}
         />
       ))}
     </div>

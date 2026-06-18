@@ -32,6 +32,14 @@ describe("createTextNode", () => {
     expect(b.id).toBeTruthy();
     expect(a.id).not.toBe(b.id);
   });
+
+  it("sets fontFamily, fontWeight, fontStyle, and shadow defaults", () => {
+    const node = createTextNode({});
+    expect(node.fontFamily).toBe("Inter");
+    expect(node.fontWeight).toBe("normal");
+    expect(node.fontStyle).toBe("normal");
+    expect(node.shadow).toBeNull();
+  });
 });
 
 describe("updateTextNode", () => {

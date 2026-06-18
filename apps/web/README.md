@@ -82,3 +82,21 @@ Awaits `document.fonts.ready`, calls `html-to-image.toPng` at 2× pixel ratio, d
 - **Add Text** — appends a draggable "Hello" text node at 50%,50% of the canvas
 - **Export** — downloads the canvas (image + all text nodes) as a PNG via html-to-image
 - Drag any text node by pointer to reposition it
+
+## Text Styling Controls
+
+When a text node is selected on the canvas, a `TextStylePanel` appears in a side panel (`src/components/text-style-panel.tsx`).
+
+### Controls and CSS Mappings
+
+| Control | CSS Property | Notes |
+|---------|-------------|-------|
+| Font Family | `font-family` | Dropdown: Inter, Roboto, Playfair Display, Oswald, Merriweather, Dancing Script |
+| Font Weight | `font-weight` | normal / bold |
+| Font Style | `font-style` | normal / italic |
+| Font Size | `font-size` | Number input, 8–200px |
+| Color | `color` | Native color picker |
+| Opacity | `opacity` | Slider 0–1 (step 0.01) |
+| Shadow | `text-shadow` | Toggle + color picker + blur slider (0–40px); offsetX/offsetY fixed at 2px |
+
+All changes apply immediately to the canvas and are included in the exported PNG.

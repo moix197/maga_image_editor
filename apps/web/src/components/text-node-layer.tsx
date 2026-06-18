@@ -7,11 +7,16 @@ interface TextNodeLayerProps {
   node: TextNode;
   onMove: (x: number, y: number) => void;
   onSelect: () => void;
+  isSelected: boolean;
 }
 
-export function TextNodeLayer({ node, onMove, onSelect }: TextNodeLayerProps) {
-  // Offset (px) from the cursor to the node center at grab time, so dragging
-  // doesn't teleport the node center onto the cursor.
+function buildTextShadow(node: TextNode): string {
+  if (!node.shadow) return "none";
+  const { color, blur, offsetX, offsetY } = node.shadow;
+  return `${offsetX}px ${offsetY}px ${blur}px ${color}`;
+}
+
+export function TextNodeLayer({ node, onMove, onSelect, isSelected }: TextNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
@@ -55,9 +60,13 @@ export function TextNodeLayer({ node, onMove, onSelect }: TextNodeLayerProps) {
         cursor: "move",
         userSelect: "none",
         whiteSpace: "nowrap",
-        textShadow: "0 1px 3px rgba(0,0,0,0.6)",
-        fontWeight: 600,
+        fontFamily: node.fontFamily,
+        fontWeight: node.fontWeight,
+        fontStyle: node.fontStyle,
+        textShadow: buildTextShadow(node),
         letterSpacing: "0.02em",
+        outline: isSelected ? "2px solid #2563EB" : "none",
+        outlineOffset: "4px",
       }}
     >
       {node.content}

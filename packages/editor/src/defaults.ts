@@ -9,6 +9,10 @@ export const DEFAULT_TEXT_NODE: Omit<TextNode, "id"> = {
   fontSize: 24,
   color: "#ffffff",
   opacity: 1,
+  fontFamily: "Inter",
+  fontWeight: "normal",
+  fontStyle: "normal",
+  shadow: null,
 };
 
 export const DEFAULT_OVERLAY_NODE: Omit<OverlayNode, "id"> = {

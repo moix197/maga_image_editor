@@ -1,0 +1,160 @@
+"use client";
+
+import type { TextNode, TextShadow } from "@maga/editor";
+import { FONT_FAMILIES } from "@maga/editor";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface TextStylePanelProps {
+  node: TextNode;
+  onChange: (patch: Partial<TextNode>) => void;
+}
+
+const DEFAULT_SHADOW: TextShadow = { color: "#000000", blur: 4, offsetX: 2, offsetY: 2 };
+
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+export function TextStylePanel({ node, onChange }: TextStylePanelProps) {
+  return (
+    <aside
+      aria-label="Text style panel"
+      className="flex w-64 flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm"
+    >
+      <h2 className="text-sm font-semibold tracking-tight">Text Style</h2>
+
+      <FieldRow label="Font Family">
+        <Select value={node.fontFamily} onValueChange={(v) => onChange({ fontFamily: v })}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FONT_FAMILIES.map((f) => (
+              <SelectItem key={f} value={f} className="text-xs">
+                {f}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FieldRow>
+
+      <FieldRow label="Font Weight">
+        <Select value={node.fontWeight} onValueChange={(v) => onChange({ fontWeight: v })}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="normal" className="text-xs">Normal</SelectItem>
+            <SelectItem value="bold" className="text-xs">Bold</SelectItem>
+          </SelectContent>
+        </Select>
+      </FieldRow>
+
+      <FieldRow label="Font Style">
+        <Select value={node.fontStyle} onValueChange={(v) => onChange({ fontStyle: v })}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="normal" className="text-xs">Normal</SelectItem>
+            <SelectItem value="italic" className="text-xs">Italic</SelectItem>
+          </SelectContent>
+        </Select>
+      </FieldRow>
+
+      <FieldRow label="Font Size">
+        <Input
+          type="number"
+          min={8}
+          max={200}
+          value={node.fontSize}
+          onChange={(e) => onChange({ fontSize: Number(e.target.value) })}
+          className="h-8 text-xs"
+        />
+      </FieldRow>
+
+      <FieldRow label="Color">
+        <input
+          type="color"
+          value={node.color}
+          onChange={(e) => onChange({ color: e.target.value })}
+          aria-label="Text color"
+          className="h-8 w-full cursor-pointer rounded-md border border-input"
+        />
+      </FieldRow>
+
+      <FieldRow label={`Opacity (${Math.round(node.opacity * 100)}%)`}>
+        <Slider
+          min={0}
+          max={1}
+          step={0.01}
+          value={[node.opacity]}
+          onValueChange={([v]) => onChange({ opacity: v })}
+          aria-label="Opacity"
+        />
+      </FieldRow>
+
+      <FieldRow label="Shadow">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="shadow-toggle"
+            checked={node.shadow !== null}
+            onChange={(e) =>
+              onChange({ shadow: e.target.checked ? DEFAULT_SHADOW : null })
+            }
+            className="h-4 w-4 cursor-pointer rounded"
+          />
+          <label htmlFor="shadow-toggle" className="cursor-pointer text-xs">
+            Enable shadow
+          </label>
+        </div>
+        {node.shadow && (
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Label className="w-12 text-xs text-muted-foreground">Color</Label>
+              <input
+                type="color"
+                value={node.shadow.color}
+                onChange={(e) =>
+                  onChange({ shadow: { ...node.shadow!, color: e.target.value } })
+                }
+                aria-label="Shadow color"
+                className="h-7 flex-1 cursor-pointer rounded border border-input"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs text-muted-foreground">
+                Blur ({node.shadow.blur}px)
+              </Label>
+              <Slider
+                min={0}
+                max={40}
+                step={1}
+                value={[node.shadow.blur]}
+                onValueChange={([v]) =>
+                  onChange({ shadow: { ...node.shadow!, blur: v ?? 0 } })
+                }
+                aria-label="Shadow blur"
+              />
+            </div>
+          </div>
+        )}
+      </FieldRow>
+    </aside>
+  );
+}
