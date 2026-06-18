@@ -516,19 +516,19 @@ DOM-to-image export fidelity is the only genuine unknown — custom fonts and `b
 **Overall success criteria:** A local user with no auth or backend can: (1) upload a source image, (2) add multiple text nodes with full styling (font, size, color, opacity, shadow, text background + blur), drag them, rotate them, reorder them in z-order, and delete them, (3) add a border overlay and image overlays with position, scale, opacity, z-order, and delete, (4) export the composed image as a PNG that faithfully matches the on-screen composition, (5) reload the page and see all nodes, overlays, and styling restored via the project store, (6) switch projects and restore each project's independent editor state. All tests pass. No CLAUDE.md invariants are violated.
 
 **Steps:**
-- [ ] Every preceding phase's Steps / Verification / Phase review checkboxes are ticked
-- [ ] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review):
+- [x] Every preceding phase's Steps / Verification / Phase review checkboxes are ticked _(Phases 1–5 code-complete + reviewed green; live-browser smoke items carried into this phase's manual checklist below)_
+- [x] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review):
   ```
   End-to-end review of stage-2-text-overlay-editor (Stage 2 — Text & Overlay Editor). Scope: all new and modified files under packages/editor/ and apps/web/ on this branch. Check: (1) packages/editor has a deliberate exports map — only index.ts is public; (2) all editor-state functions are pure (no side effects, no imports from apps/web); (3) apps/web components accept callbacks only, no business logic; (4) thin entry points — page.tsx ≤80 lines, no business logic; (5) use-editor-state.ts encapsulates all state mutations; (6) export-helpers.ts calls html-to-image and triggers download, ≤30 lines; (7) no circular deps (packages/editor must not import from apps/web); (8) html-to-image installed in apps/web not packages/editor; (9) text-node-layer.tsx and overlay-node-layer.tsx use pointer events for drag/resize, no external DnD library; (10) backdrop-filter used for text background blur; (11) all nodes sorted by zIndex before rendering; (12) pnpm --filter @maga/editor test exits 0; (13) pnpm --filter @maga/web test exits 0; (14) pnpm typecheck exits 0; (15) no dead code, no commented-out blocks; (16) CLAUDE.md invariants: pnpm, thin entry points, small focused functions (≤30 lines), reuse before reinvent, no speculative abstractions, separation of concerns, minimize deps, build own before installing.
   ```
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt
-- [ ] Code-reviewer agent reviews the entire change end-to-end
-- [ ] Any changes made in response to the final code-reviewer review have been reflected back into this plan file
-- [ ] `pnpm --filter @maga/editor test` exits 0
-- [ ] `pnpm --filter @maga/web test` exits 0
-- [ ] `pnpm typecheck` from root exits 0
-- [ ] No CLAUDE.md invariants violated
-- [ ] Export fidelity checklist (manual):
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt — _N/A: subagent dispatch flow_
+- [x] Code-reviewer agent reviews the entire change end-to-end — _verdict: green; all 14 plan invariants PASS_
+- [x] Any changes made in response to the final code-reviewer review have been reflected back into this plan file — _cross-phase nit cleanup `676cb4a`: centralized node type guards (`isTextNode`/`isOverlayNode`/`isBorderOverlay` in `@maga/editor`), hardened export ref capture-after-await, fixed zIndex stale-closure_
+- [x] `pnpm --filter @maga/editor test` exits 0 _(27/27)_
+- [x] `pnpm --filter @maga/web test` exits 0 _(53/53)_
+- [x] `pnpm typecheck` from root exits 0
+- [x] No CLAUDE.md invariants violated — _confirmed by end-to-end review_
+- [ ] Export fidelity checklist (manual) — _ORCHESTRATOR: requires running the app in a browser_:
   - [ ] Text nodes: content, font family, font weight/style, size, color render correctly in exported PNG
   - [ ] Opacity applied correctly in export (semi-transparent text visible)
   - [ ] Shadow renders in export
