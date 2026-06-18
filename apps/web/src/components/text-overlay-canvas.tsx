@@ -1,7 +1,8 @@
 "use client";
 
 import type { RefCallback } from "react";
-import type { EditorState, NodeId, TextNode, OverlayNode } from "@maga/editor";
+import { isTextNode, isOverlayNode } from "@maga/editor";
+import type { EditorState, NodeId } from "@maga/editor";
 import { TextNodeLayer } from "@/components/text-node-layer";
 import { OverlayNodeLayer } from "@/components/overlay-node-layer";
 
@@ -13,14 +14,6 @@ interface TextOverlayCanvasProps {
   selectedNodeId: NodeId | null;
   canvasCallbackRef: RefCallback<HTMLDivElement>;
   imageSrc: string;
-}
-
-function isTextNode(node: EditorState["nodes"][number]): node is TextNode {
-  return "content" in node;
-}
-
-function isOverlayNode(node: EditorState["nodes"][number]): node is OverlayNode {
-  return "overlayType" in node;
 }
 
 export function TextOverlayCanvas({

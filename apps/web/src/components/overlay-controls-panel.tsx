@@ -1,5 +1,6 @@
 "use client";
 
+import { isBorderOverlay } from "@maga/editor";
 import type { OverlayNode, BorderOverlay } from "@maga/editor";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -29,8 +30,7 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 }
 
 export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: OverlayControlsPanelProps) {
-  const isBorder = node.overlayType === "border";
-  const b = isBorder ? (node as BorderOverlay) : null;
+  const border: BorderOverlay | null = isBorderOverlay(node) ? node : null;
 
   return (
     <aside
@@ -38,7 +38,7 @@ export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: Ov
       className="flex w-64 flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm"
     >
       <h2 className="text-sm font-semibold tracking-tight">
-        {isBorder ? "Border" : "Image Overlay"}
+        {border ? "Border" : "Image Overlay"}
       </h2>
 
       <div className="flex flex-col gap-2">
@@ -66,24 +66,24 @@ export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: Ov
         />
       </FieldRow>
 
-      {isBorder && b && (
+      {border && (
         <>
           <FieldRow label="Border Color">
             <input
               type="color"
-              value={b.borderColor}
+              value={border.borderColor}
               onChange={(e) => onChange({ borderColor: e.target.value } as Partial<BorderOverlay>)}
               aria-label="Border color"
               className="h-8 w-full cursor-pointer rounded-md border border-input"
             />
           </FieldRow>
 
-          <FieldRow label={`Border Width (${b.borderWidth}px)`}>
+          <FieldRow label={`Border Width (${border.borderWidth}px)`}>
             <Slider
               min={1}
               max={40}
               step={1}
-              value={[b.borderWidth]}
+              value={[border.borderWidth]}
               onValueChange={([v]) => onChange({ borderWidth: v } as Partial<BorderOverlay>)}
               aria-label="Border width"
             />
@@ -91,7 +91,7 @@ export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: Ov
 
           <FieldRow label="Border Style">
             <Select
-              value={b.borderStyle}
+              value={border.borderStyle}
               onValueChange={(v) => onChange({ borderStyle: v } as Partial<BorderOverlay>)}
             >
               <SelectTrigger className="h-8 text-xs">
@@ -106,12 +106,12 @@ export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: Ov
             </Select>
           </FieldRow>
 
-          <FieldRow label={`Border Radius (${b.borderRadius}px)`}>
+          <FieldRow label={`Border Radius (${border.borderRadius}px)`}>
             <Slider
               min={0}
               max={200}
               step={1}
-              value={[b.borderRadius]}
+              value={[border.borderRadius]}
               onValueChange={([v]) => onChange({ borderRadius: v } as Partial<BorderOverlay>)}
               aria-label="Border radius"
             />

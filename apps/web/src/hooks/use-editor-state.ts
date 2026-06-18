@@ -21,18 +21,24 @@ export function useEditorState(initial?: EditorState) {
   const [state, setState] = useState<EditorState>(initial ?? createEditorState());
 
   function addTextNode(partial?: Partial<Omit<TextNode, "id">>) {
-    const node = createTextNode({ zIndex: nextZIndex(state.nodes), ...partial });
-    setState((s) => ({ ...s, nodes: [...s.nodes, node] }));
+    setState((s) => {
+      const node = createTextNode({ zIndex: nextZIndex(s.nodes), ...partial });
+      return { ...s, nodes: [...s.nodes, node] };
+    });
   }
 
   function addOverlayNode(partial?: Partial<Omit<OverlayNode, "id">>) {
-    const node = createOverlayNode({ zIndex: nextZIndex(state.nodes), ...partial });
-    setState((s) => ({ ...s, nodes: [...s.nodes, node] }));
+    setState((s) => {
+      const node = createOverlayNode({ zIndex: nextZIndex(s.nodes), ...partial });
+      return { ...s, nodes: [...s.nodes, node] };
+    });
   }
 
   function addBorderNode(partial?: Partial<Omit<BorderOverlay, "id">>) {
-    const node = createBorderNode({ zIndex: nextZIndex(state.nodes), ...partial });
-    setState((s) => ({ ...s, nodes: [...s.nodes, node] }));
+    setState((s) => {
+      const node = createBorderNode({ zIndex: nextZIndex(s.nodes), ...partial });
+      return { ...s, nodes: [...s.nodes, node] };
+    });
   }
 
   function patchTextNode(id: NodeId, patch: Partial<Omit<TextNode, "id">>) {

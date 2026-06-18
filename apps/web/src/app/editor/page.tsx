@@ -10,6 +10,7 @@ import { useEditorState } from "@/hooks/use-editor-state";
 import { exportCanvasElement } from "@/lib/export-helpers";
 import { fileToDataUrl, downscaleIfNeeded, downloadDataUrl } from "@/lib/image-helpers";
 import { Button } from "@/components/ui/button";
+import { isTextNode, isOverlayNode } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
 
 export default function EditorPage() {
@@ -37,10 +38,11 @@ export default function EditorPage() {
 
   async function handleExport() {
     if (!canvasElRef.current) return;
+    const canvasEl = canvasElRef.current;
     const prev = selectedNodeId;
     setSelectedNodeId(null);
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-    await exportCanvasElement(canvasElRef.current, "export.png");
+    await exportCanvasElement(canvasEl, "export.png");
     setSelectedNodeId(prev);
   }
 
@@ -63,8 +65,8 @@ export default function EditorPage() {
     ? (state.nodes.find((n) => n.id === selectedNodeId) ?? null)
     : null;
 
-  const isSelectedText = selectedNode !== null && "content" in selectedNode;
-  const isSelectedOverlay = selectedNode !== null && "overlayType" in selectedNode;
+  const isSelectedText = selectedNode !== null && isTextNode(selectedNode);
+  const isSelectedOverlay = selectedNode !== null && isOverlayNode(selectedNode);
 
   const sourcePanel = sourceDataUrl ? (
     <div onPointerDown={() => setSelectedNodeId(null)}>
@@ -73,7 +75,7 @@ export default function EditorPage() {
         onNodeMove={(id, x, y) => {
           const node = state.nodes.find((n) => n.id === id);
           if (!node) return;
-          if ("content" in node) updateTextNode(id as NodeId, { x, y });
+          if (isTextNode(node)) updateTextNode(id as NodeId, { x, y });
           else updateOverlayNode(id as NodeId, { x, y });
         }}
         onNodeResize={(id, width, height) => updateOverlayNode(id as NodeId, { width, height })}

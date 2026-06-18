@@ -11,3 +11,4 @@ export {
   removeNode,
   reorderNode,
 } from "./editor-state";
+export { isTextNode, isOverlayNode, isBorderOverlay } from "./guards";
