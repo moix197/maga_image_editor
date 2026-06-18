@@ -59,3 +59,26 @@ pnpm test:coverage     # run with v8 coverage report
 ```
 
 Tests live in `src/__tests__/` and `src/components/__tests__/`. Uses Vitest + jsdom + Testing Library.
+
+## Hooks
+
+### `useEditorState(initial?)`
+
+Wraps `@maga/editor` state mutations. Returns:
+- `state: EditorState` — current editor state
+- `addTextNode(partial?)` — creates and appends a new TextNode with defaults
+- `updateTextNode(id, patch)` — immutably patches a TextNode
+- `removeNode(id)` — removes any node by id
+- `reorderNode(id, direction)` — swaps zIndex with adjacent node ('up'|'down')
+
+## Lib
+
+### `exportCanvasElement(el, filename)`
+
+Awaits `document.fonts.ready`, calls `html-to-image.toPng` at 2× pixel ratio, downloads the result as a PNG.
+
+## Editor Controls
+
+- **Add Text** — appends a draggable "Hello" text node at 50%,50% of the canvas
+- **Export** — downloads the canvas (image + all text nodes) as a PNG via html-to-image
+- Drag any text node by pointer to reposition it
