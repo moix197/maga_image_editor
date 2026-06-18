@@ -267,7 +267,7 @@ DOM-to-image export fidelity is the only genuine unknown — custom fonts and `b
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file — _3 blocking fixes (static react-dom import, all 6 fonts loaded, selection ring excluded from export) committed in `0d1fe20` and reflected in steps above_
 - [x] Tests for this phase written and passing (see Tests subsection above) — _editor 11/11, web 38/38_
 - [x] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase — _PENDING: smoke test_
+- [x] Orchestrator (user) has verified and approved this phase — _approved 2026-06-18_
 - [x] Changes committed: `feat(editor): full text styling — font, size, color, opacity, shadow` _(impl `145ee2ff`; review fixes `0d1fe20`)_
 - [x] Phase marked complete _(code-complete; awaiting orchestrator smoke-test sign-off)_
 
@@ -296,21 +296,21 @@ DOM-to-image export fidelity is the only genuine unknown — custom fonts and `b
 | edit | `apps/web/README.md` | Document text background controls |
 
 **Steps:**
-- [ ] Add `TextBackground` type and `textBackground` field to `packages/editor/src/types.ts`
-- [ ] Update `packages/editor/src/defaults.ts` with `textBackground: null`
-- [ ] Update `packages/editor/src/index.ts` to export `TextBackground`
-- [ ] Update `packages/editor/__tests__/editor-state.test.ts` — verify `createTextNode` includes `textBackground: null`
-- [ ] Update `apps/web/components/text-node-layer.tsx`:
-  - When `textBackground` is non-null: render text in a `<span>` with `backgroundColor: textBackground.color`, `opacity: textBackground.opacity`, `padding: ${paddingY}px ${paddingX}px`
+- [x] Add `TextBackground` type and `textBackground` field to `packages/editor/src/types.ts`
+- [x] Update `packages/editor/src/defaults.ts` with `textBackground: null`
+- [x] Update `packages/editor/src/index.ts` to export `TextBackground`
+- [x] Update `packages/editor/__tests__/editor-state.test.ts` — verify `createTextNode` includes `textBackground: null`
+- [x] Update `apps/web/src/components/text-node-layer.tsx`:
+  - When `textBackground` is non-null: render text in a `<span>` with `backgroundColor` (color + opacity encoded as rgba — fill fades, text stays opaque; review fix `0ff82f8`), `padding: ${paddingY}px ${paddingX}px`
   - Outer `<div>` gets `backdropFilter: blur(${textBackground.blur}px)` (0 means no blur)
-  - Keep component ≤50 lines; extract `buildTextNodeStyle(node)` helper if needed
-- [ ] Add "Text Background" section to `apps/web/components/text-style-panel.tsx` (use `ui-ux-pro-max --stack nextjs`):
-  - Toggle to enable/disable (`onChange({ textBackground: null })` when disabled)
+  - Keep component ≤50 lines; extracted `buildBackgroundSpanStyle(node)` + `hexToRgba` helpers
+- [x] Add "Text Background" section to `apps/web/src/components/text-style-panel.tsx` (use `ui-ux-pro-max --stack nextjs`):
+  - Toggle to enable/disable (`onChange({ textBackground: null })` when disabled; defaults on enable)
   - Color picker, opacity slider, blur slider (0–20px), padding X/Y inputs
-- [ ] Create `apps/web/components/__tests__/text-node-layer.test.tsx`
-- [ ] Run `pnpm --filter @maga/editor test` — all pass
-- [ ] Run `pnpm --filter @maga/web test` — all pass
-- [ ] Update `apps/web/README.md`
+- [x] Create `apps/web/src/components/__tests__/text-node-layer.test.tsx`
+- [x] Run `pnpm --filter @maga/editor test` — all pass _(12/12)_
+- [x] Run `pnpm --filter @maga/web test` — all pass _(42/42)_
+- [x] Update `apps/web/README.md`
 
 **Tests:**
 | Action | File | What it covers |
@@ -319,27 +319,27 @@ DOM-to-image export fidelity is the only genuine unknown — custom fonts and `b
 | create | `apps/web/components/__tests__/text-node-layer.test.tsx` | No background element when `textBackground` is null; background span present with correct inline styles when `textBackground` set; `backdropFilter` applied on outer div when `blur > 0` |
 
 **Verification:**
-- [ ] Select a text node; "Text Background" section is visible in the style panel
-- [ ] Enable background → colored box appears behind text on canvas
-- [ ] Change background color → updates in real time
-- [ ] Adjust opacity → background fades
-- [ ] Enable blur (set >0) → background edge is blurred ("fuzzy" effect) visible on canvas
-- [ ] Export → PNG shows background + blur correctly
-- [ ] Disable background → background disappears, text remains
-- [ ] `pnpm --filter @maga/web test` exits 0
+- [~] Select a text node; "Text Background" section is visible in the style panel — _orchestrator smoke test_
+- [~] Enable background → colored box appears behind text on canvas — _orchestrator smoke test_
+- [~] Change background color → updates in real time — _orchestrator smoke test_
+- [~] Adjust opacity → background fades — _orchestrator smoke test (fill-only fade via rgba — review fix)_
+- [~] Enable blur (set >0) → background edge is blurred ("fuzzy" effect) visible on canvas — _orchestrator smoke test_
+- [~] Export → PNG shows background + blur correctly — _orchestrator smoke test_
+- [~] Disable background → background disappears, text remains — _orchestrator smoke test_
+- [x] `pnpm --filter @maga/web test` exits 0 _(42/42)_
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file (mark implementation-done _before_ handing off to reviewer — reviewer should see an up-to-date plan)
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — see `write-prd` SKILL.md "Reviewer Handoff Prompt" section
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file (steps, file table, success criteria, tests table, or assumptions updated as needed — do this in the same turn as the code change, not deferred)
-- [ ] Tests for this phase written and passing (see Tests subsection above) — or no-tests justification accepted
-- [ ] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(editor): text background with optional blur backdrop`
-- [ ] Phase marked complete
+- [x] All Steps and Verification checkboxes above ticked in the plan file (live-browser checks deferred to orchestrator smoke test)
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — _N/A: subagent dispatch flow_
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session — _N/A: subagent dispatch flow_
+- [x] Code-reviewer agent has verified this phase — _verdict: green; opacity-on-text nit fixed_
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file — _bg opacity now fill-only (rgba), `0ff82f8`; reflected in steps above_
+- [x] Tests for this phase written and passing (see Tests subsection above) — _editor 12/12, web 42/42_
+- [x] Documentation updated (see Documentation section)
+- [ ] Orchestrator (user) has verified and approved this phase — _PENDING: smoke test_
+- [x] Changes committed: `feat(editor): text background with optional blur backdrop` _(impl `941d1499`; opacity fix `0ff82f8`)_
+- [x] Phase marked complete _(code-complete; awaiting orchestrator smoke-test sign-off)_
 
 ---
 
