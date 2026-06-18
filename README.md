@@ -43,6 +43,14 @@ All TypeScript, ESLint, and Tailwind configuration lives in
 protocol (`"@maga/config": "workspace:*"`). See its
 [README](./packages/config/README.md) for the public API.
 
+## Local development
+
+```bash
+pnpm --filter web dev
+```
+
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
+
 ## Scripts
 
 Run from the repo root; each delegates across every workspace package via
