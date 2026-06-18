@@ -20,6 +20,37 @@ downloadDataUrl(dataUrl: string, filename: string): void
 // Triggers a browser download of the given data URL.
 ```
 
+## Components
+
+### `CompareLayout` (`src/components/compare-layout.tsx`)
+
+Pure layout shell — no hooks, no events, no `"use client"`.
+
+```tsx
+<CompareLayout left={<LeftPanel />} right={<RightPanel />} />
+```
+
+Renders a two-column responsive grid (`grid-cols-1 md:grid-cols-2`). Each child is wrapped in a plain `<div>`.
+
+### `ImagePanel` (`src/components/image-panel.tsx`)
+
+`"use client"` wrapper that composes `ImageUploader` and `ImageDisplay` into a labeled card.
+
+```tsx
+<ImagePanel
+  label="Source"
+  dataUrl={dataUrl}           // string | null
+  onFile={handleFile}         // (file: File) => void
+  onError={handleError}       // (msg: string) => void
+  onDownload={handleDownload} // optional — passed through to ImageDisplay
+  emptyLabel="No image yet"   // optional caption shown above the uploader
+/>
+```
+
+- `dataUrl` is `null`: renders `ImageUploader`; shows `emptyLabel` caption if provided.
+- `dataUrl` is set: renders `ImageDisplay`; `onDownload` forwarded only when provided.
+- No business logic — pure prop forwarding.
+
 ## Tests
 
 ```bash
