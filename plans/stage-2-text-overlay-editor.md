@@ -212,14 +212,15 @@ DOM-to-image export fidelity is the only genuine unknown — custom fonts and `b
 | edit | `apps/web/README.md` | Document text styling controls and which CSS properties they map to |
 
 **Steps:**
-- [ ] Extend `packages/editor/src/types.ts` with `fontFamily`, `fontWeight`, `fontStyle`, `shadow: TextShadow | null`
-- [ ] Add `TextShadow` type to `packages/editor/src/types.ts`
-- [ ] Update `packages/editor/src/defaults.ts` with new field defaults
-- [ ] Create `packages/editor/src/constants.ts` with `FONT_FAMILIES` array; load fonts via `next/font` or Google Fonts CSS import in `apps/web`
-- [ ] Update `packages/editor/src/index.ts` to export new types and constants
-- [ ] Update `packages/editor/__tests__/editor-state.test.ts` — verify `createTextNode` sets new defaults correctly
-- [ ] Update `apps/web/components/text-node-layer.tsx` to apply new style fields as inline CSS (`fontFamily`, `fontWeight`, `fontStyle`, `textShadow`)
-- [ ] Create `apps/web/components/text-style-panel.tsx` (use `ui-ux-pro-max --stack nextjs`):
+> **Path note:** App files live under `apps/web/src/` (not `apps/web/`). New shadcn primitives (`input`, `label`, `select`, `slider`) added as lightweight stubs under `apps/web/src/components/ui/` — no Radix deps in project. Fonts loaded via `next/font/google` in `layout.tsx` (all 6 families) + `FONT_FAMILY_VAR` map in `text-node-layer.tsx`.
+- [x] Extend `packages/editor/src/types.ts` with `fontFamily`, `fontWeight`, `fontStyle`, `shadow: TextShadow | null`
+- [x] Add `TextShadow` type to `packages/editor/src/types.ts`
+- [x] Update `packages/editor/src/defaults.ts` with new field defaults
+- [x] Create `packages/editor/src/constants.ts` with `FONT_FAMILIES` array; load fonts via `next/font` or Google Fonts CSS import in `apps/web` _(all 6 loaded via next/font/google as CSS vars — review fix)_
+- [x] Update `packages/editor/src/index.ts` to export new types and constants
+- [x] Update `packages/editor/__tests__/editor-state.test.ts` — verify `createTextNode` sets new defaults correctly
+- [x] Update `apps/web/src/components/text-node-layer.tsx` to apply new style fields as inline CSS (`fontFamily`, `fontWeight`, `fontStyle`, `textShadow`)
+- [x] Create `apps/web/src/components/text-style-panel.tsx` (use `ui-ux-pro-max --stack nextjs`):
   - Font family: shadcn `<Select>` populated from `FONT_FAMILIES`
   - Font weight: shadcn `<Select>` with normal/bold
   - Font style: shadcn `<Select>` with normal/italic
@@ -228,15 +229,15 @@ DOM-to-image export fidelity is the only genuine unknown — custom fonts and `b
   - Opacity: shadcn `<Slider>` 0–1 step=0.01
   - Shadow: toggle + color picker + blur slider
   - Each control calls `onChange({ fieldName: value })` — no mutations inside
-- [ ] Wire selection into `apps/web/app/editor/page.tsx`:
+- [x] Wire selection into `apps/web/src/app/editor/page.tsx`:
   - `selectedNodeId` state
   - `TextNodeLayer` receives `onSelect: () => setSelectedNodeId(node.id)`
-  - Selected node gets a visible selection ring (CSS outline)
+  - Selected node gets a visible selection ring (CSS outline) — _excluded from export via deselect-before-capture in `handleExport` (review fix)_
   - `TextStylePanel` renders in a side panel when `selectedNodeId !== null`
-- [ ] Write `apps/web/components/__tests__/text-style-panel.test.tsx`
-- [ ] Run `pnpm --filter @maga/editor test` — all pass
-- [ ] Run `pnpm --filter @maga/web test` — all pass
-- [ ] Update `apps/web/README.md`
+- [x] Write `apps/web/src/components/__tests__/text-style-panel.test.tsx`
+- [x] Run `pnpm --filter @maga/editor test` — all pass _(11/11)_
+- [x] Run `pnpm --filter @maga/web test` — all pass _(38/38)_
+- [x] Update `apps/web/README.md`
 
 **Tests:**
 | Action | File | What it covers |
@@ -245,30 +246,30 @@ DOM-to-image export fidelity is the only genuine unknown — custom fonts and `b
 | create | `apps/web/components/__tests__/text-style-panel.test.tsx` | Changing font family fires `onChange({ fontFamily })`; changing size fires `onChange({ fontSize })`; changing color fires `onChange({ color })`; changing opacity fires `onChange({ opacity })`; toggling shadow fires `onChange({ shadow: {...} })` |
 
 **Verification:**
-- [ ] Add a text node; click it to select (selection ring appears)
-- [ ] Change font family — text on canvas updates immediately
-- [ ] Toggle bold — text renders bold
-- [ ] Toggle italic — text renders italic
-- [ ] Change size — text resizes
-- [ ] Change color — text color updates
-- [ ] Drag opacity to 0.5 — text is semi-transparent on canvas
-- [ ] Enable shadow, set blur 4 — shadow visible on canvas
-- [ ] Export — PNG reflects all styling including shadow and opacity
-- [ ] `pnpm --filter @maga/web test` exits 0
-- [ ] `pnpm --filter @maga/editor test` exits 0
+- [~] Add a text node; click it to select (selection ring appears) — _orchestrator smoke test_
+- [~] Change font family — text on canvas updates immediately — _orchestrator smoke test_
+- [~] Toggle bold — text renders bold — _orchestrator smoke test_
+- [~] Toggle italic — text renders italic — _orchestrator smoke test_
+- [~] Change size — text resizes — _orchestrator smoke test_
+- [~] Change color — text color updates — _orchestrator smoke test_
+- [~] Drag opacity to 0.5 — text is semi-transparent on canvas — _orchestrator smoke test_
+- [~] Enable shadow, set blur 4 — shadow visible on canvas — _orchestrator smoke test_
+- [~] Export — PNG reflects all styling including shadow and opacity — _orchestrator smoke test (export wiring + font/outline fixes verified by review + unit tests)_
+- [x] `pnpm --filter @maga/web test` exits 0 _(38/38)_
+- [x] `pnpm --filter @maga/editor test` exits 0 _(11/11)_
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file (mark implementation-done _before_ handing off to reviewer — reviewer should see an up-to-date plan)
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — see `write-prd` SKILL.md "Reviewer Handoff Prompt" section
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file (steps, file table, success criteria, tests table, or assumptions updated as needed — do this in the same turn as the code change, not deferred)
-- [ ] Tests for this phase written and passing (see Tests subsection above) — or no-tests justification accepted
-- [ ] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(editor): full text styling — font, size, color, opacity, shadow`
-- [ ] Phase marked complete
+- [x] All Steps and Verification checkboxes above ticked in the plan file (live-browser checks deferred to orchestrator smoke test)
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — _N/A: subagent dispatch flow_
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session — _N/A: subagent dispatch flow_
+- [x] Code-reviewer agent has verified this phase — _verdict: red → fixed → re-review green_
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file — _3 blocking fixes (static react-dom import, all 6 fonts loaded, selection ring excluded from export) committed in `0d1fe20` and reflected in steps above_
+- [x] Tests for this phase written and passing (see Tests subsection above) — _editor 11/11, web 38/38_
+- [x] Documentation updated (see Documentation section)
+- [ ] Orchestrator (user) has verified and approved this phase — _PENDING: smoke test_
+- [x] Changes committed: `feat(editor): full text styling — font, size, color, opacity, shadow` _(impl `145ee2ff`; review fixes `0d1fe20`)_
+- [x] Phase marked complete _(code-complete; awaiting orchestrator smoke-test sign-off)_
 
 ---
 
