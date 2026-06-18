@@ -1,0 +1,27 @@
+{
+  "name": "@maga/config",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint.config": "./eslint.config.js",
+    "./eslint.config.js": "./eslint.config.js",
+    "./tailwind.preset": "./tailwind.preset.js",
+    "./tailwind.preset.js": "./tailwind.preset.js"
+  },
+  "files": [
+    "tsconfig.base.json",
+    "eslint.config.js",
+    "tailwind.preset.js"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.0",
+    "eslint-config-next": "^16.2.9",
+    "typescript-eslint": "^8.61.1",
+    "typescript": "^5.9.0"
+  }
+}
