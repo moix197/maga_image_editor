@@ -10,6 +10,20 @@ interface TextNodeLayerProps {
   isSelected: boolean;
 }
 
+/** Maps FONT_FAMILIES names to their CSS variable so next/font loads them. */
+const FONT_FAMILY_VAR: Record<string, string> = {
+  Inter: "var(--font-inter)",
+  Roboto: "var(--font-roboto)",
+  "Playfair Display": "var(--font-playfair-display)",
+  Oswald: "var(--font-oswald)",
+  Merriweather: "var(--font-merriweather)",
+  "Dancing Script": "var(--font-dancing-script)",
+};
+
+function resolveFontFamily(name: string): string {
+  return FONT_FAMILY_VAR[name] ?? name;
+}
+
 function buildTextShadow(node: TextNode): string {
   if (!node.shadow) return "none";
   const { color, blur, offsetX, offsetY } = node.shadow;
@@ -60,11 +74,13 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected }: TextNodeLa
         cursor: "move",
         userSelect: "none",
         whiteSpace: "nowrap",
-        fontFamily: node.fontFamily,
+        fontFamily: resolveFontFamily(node.fontFamily),
         fontWeight: node.fontWeight,
         fontStyle: node.fontStyle,
         textShadow: buildTextShadow(node),
         letterSpacing: "0.02em",
+        // Selection outline is applied only for interactive display, not during export.
+        // Export clears selectedNodeId before capture (see page.tsx handleExport).
         outline: isSelected ? "2px solid #2563EB" : "none",
         outlineOffset: "4px",
       }}

@@ -3,6 +3,7 @@
 // Replace with the full Radix-based shadcn component once
 // @radix-ui/react-select is added to the project.
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 interface SelectContextValue {
@@ -77,7 +78,6 @@ function SelectContent({ children }: { children?: React.ReactNode }) {
   if (!mounted || !selectRef.current) return null;
 
   // Render options directly inside the <select> using a React portal
-  const { createPortal } = require("react-dom");
   return createPortal(children, selectRef.current);
 }
 

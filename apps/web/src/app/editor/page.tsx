@@ -24,6 +24,18 @@ export default function EditorPage() {
     canvasElRef.current = el;
   }, []);
 
+  // Clear the selection outline before export so it never appears in the PNG,
+  // then restore the selected node id after capture completes.
+  async function handleExport() {
+    if (!canvasElRef.current) return;
+    const prev = selectedNodeId;
+    setSelectedNodeId(null);
+    // Allow React to flush the deselect before html-to-image captures the DOM.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    await exportCanvasElement(canvasElRef.current, "export.png");
+    setSelectedNodeId(prev);
+  }
+
   async function handleSourceFile(file: File) {
     setSourceError(null);
     setSourceDataUrl(await downscaleIfNeeded(await fileToDataUrl(file)));
@@ -65,7 +77,7 @@ export default function EditorPage() {
           variant="default"
           size="sm"
           disabled={!sourceDataUrl}
-          onClick={() => canvasElRef.current && exportCanvasElement(canvasElRef.current, "export.png")}
+          onClick={handleExport}
         >
           Export
         </Button>
