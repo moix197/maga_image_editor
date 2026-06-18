@@ -20,6 +20,7 @@ export interface TextNode {
   content: string;
   x: number;
   y: number;
+  /** Clockwise rotation in degrees applied via CSS transform. */
   rotation: number;
   zIndex: number;
   fontSize: number;

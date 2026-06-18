@@ -25,7 +25,7 @@ export function TextOverlayCanvas({
   canvasCallbackRef,
   imageSrc,
 }: TextOverlayCanvasProps) {
-  const textNodes = state.nodes.filter(isTextNode);
+  const textNodes = state.nodes.filter(isTextNode).sort((a, b) => a.zIndex - b.zIndex);
 
   return (
     <div

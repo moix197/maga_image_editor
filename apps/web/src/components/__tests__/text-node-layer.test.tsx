@@ -72,4 +72,28 @@ describe("TextNodeLayer", () => {
     const div = container.firstElementChild as HTMLElement;
     expect(div.style.backdropFilter).toBeFalsy();
   });
+
+  it("applies selection outline when isSelected is true", () => {
+    const { container } = render(
+      <TextNodeLayer node={baseNode} onMove={noop} onSelect={noop} isSelected={true} />
+    );
+    const div = container.firstElementChild as HTMLElement;
+    expect(div.style.outline).toContain("2px solid");
+  });
+
+  it("does not apply outline when isSelected is false", () => {
+    const { container } = render(
+      <TextNodeLayer node={baseNode} onMove={noop} onSelect={noop} isSelected={false} />
+    );
+    const div = container.firstElementChild as HTMLElement;
+    expect(div.style.outline).toBe("none");
+  });
+
+  it("includes rotation in transform style", () => {
+    const { container } = render(
+      <TextNodeLayer node={{ ...baseNode, rotation: 45 }} onMove={noop} onSelect={noop} isSelected={false} />
+    );
+    const div = container.firstElementChild as HTMLElement;
+    expect(div.style.transform).toContain("rotate(45deg)");
+  });
 });

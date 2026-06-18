@@ -51,6 +51,7 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected }: TextNodeLa
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
+    e.stopPropagation();
     const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
     const centerX = rect.left + (node.x / 100) * rect.width;
     const centerY = rect.top + (node.y / 100) * rect.height;

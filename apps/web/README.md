@@ -115,3 +115,13 @@ When a text node is selected, a "Text Background" section appears at the bottom 
 | Padding Y | Vertical padding inside the background span | Number input 0–40px |
 
 Disabling the background sets `textBackground: null` on the node, removing all background and blur.
+
+## Multi-Node Workflow
+
+- Multiple text nodes can be added; each is independent and draggable.
+- Click a node to select it — a blue outline appears around the selected node.
+- Click a blank area of the canvas to deselect the current node.
+- Use **Move Up** / **Move Down** buttons in the style panel to adjust z-order (layer stack).
+- Use the **Rotation** slider (−180° to 180°) to rotate the selected node clockwise or counter-clockwise.
+- Use the **Delete** button to remove the selected node from the canvas.
+- Z-order is reflected in both the canvas rendering and the exported PNG.

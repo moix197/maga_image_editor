@@ -18,7 +18,7 @@ export default function EditorPage() {
   const [resultError, setResultError] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
   const canvasElRef = useRef<HTMLDivElement | null>(null);
-  const { state, addTextNode, updateTextNode } = useEditorState();
+  const { state, addTextNode, updateTextNode, removeNode, reorderNode } = useEditorState();
 
   const canvasCallbackRef = useCallback((el: HTMLDivElement | null) => {
     canvasElRef.current = el;
@@ -51,14 +51,16 @@ export default function EditorPage() {
     : null;
 
   const sourcePanel = sourceDataUrl ? (
-    <TextOverlayCanvas
-      state={state}
-      onNodeMove={(id, x, y) => updateTextNode(id as NodeId, { x, y })}
-      onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
-      selectedNodeId={selectedNodeId}
-      canvasCallbackRef={canvasCallbackRef}
-      imageSrc={sourceDataUrl}
-    />
+    <div onPointerDown={() => setSelectedNodeId(null)}>
+      <TextOverlayCanvas
+        state={state}
+        onNodeMove={(id, x, y) => updateTextNode(id as NodeId, { x, y })}
+        onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
+        selectedNodeId={selectedNodeId}
+        canvasCallbackRef={canvasCallbackRef}
+        imageSrc={sourceDataUrl}
+      />
+    </div>
   ) : (
     <ImagePanel label="Source" dataUrl={null} onFile={handleSourceFile} onError={setSourceError} />
   );
@@ -102,6 +104,8 @@ export default function EditorPage() {
           <TextStylePanel
             node={selectedNode}
             onChange={(patch) => updateTextNode(selectedNodeId!, patch)}
+            onDelete={() => { removeNode(selectedNodeId!); setSelectedNodeId(null); }}
+            onReorder={(dir) => reorderNode(selectedNodeId!, dir)}
           />
         )}
       </div>

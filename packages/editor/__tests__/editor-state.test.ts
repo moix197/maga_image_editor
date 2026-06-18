@@ -86,6 +86,19 @@ describe("removeNode", () => {
     const s2 = removeNode(s1, "nonexistent" as NodeId);
     expect(s2.nodes).toHaveLength(1);
   });
+
+  it("removes the middle node and leaves the outer two", () => {
+    const state = createEditorState();
+    const a = createTextNode({ content: "A" });
+    const b = createTextNode({ content: "B" });
+    const c = createTextNode({ content: "C" });
+    const s1 = { ...state, nodes: [a, b, c] };
+    const s2 = removeNode(s1, b.id);
+    expect(s2.nodes).toHaveLength(2);
+    const ids = s2.nodes.map((n) => n.id);
+    expect(ids).toContain(a.id);
+    expect(ids).toContain(c.id);
+  });
 });
 
 describe("reorderNode", () => {
@@ -120,5 +133,14 @@ describe("reorderNode", () => {
     const s1 = { ...state, nodes: [a, b] };
     const s2 = reorderNode(s1, b.id, "up");
     expect(s2.nodes.find((n) => n.id === b.id)!.zIndex).toBe(1);
+  });
+
+  it("3 nodes get distinct zIndex values when added sequentially", () => {
+    const a = createTextNode({ zIndex: 0 });
+    const b = createTextNode({ zIndex: 1 });
+    const c = createTextNode({ zIndex: 2 });
+    expect(a.zIndex).not.toBe(b.zIndex);
+    expect(b.zIndex).not.toBe(c.zIndex);
+    expect(a.zIndex).not.toBe(c.zIndex);
   });
 });
