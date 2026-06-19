@@ -28,18 +28,33 @@ describe("toCanvasPx", () => {
   });
 });
 
+/** A mock 2D context plus the call log it appends to. */
+type MockCtx = Record<string, unknown>;
+
+/** Mock canvas element exposing its own ctx, recorded as it is created. */
+interface MockCanvas {
+  width: number;
+  height: number;
+  getContext: () => MockCtx;
+  toDataURL: () => string;
+}
+
 describe("applyImageOverlayPostPass", () => {
-  let ctx: Record<string, unknown>;
+  // The post-pass creates the MAIN canvas first, then (only when featherRadius > 0)
+  // an offscreen canvas inside applyFeatherMask. We hand each a DISTINCT ctx so the
+  // tests can verify the real offscreen→main compositing, not just call counts.
+  let canvases: MockCanvas[];
+  let mainCtx: MockCtx;
   let calls: string[];
   // Snapshot of shadow props captured at the moment the silhouette is filled,
   // since the shadow is intentionally cleared again before drawImage.
   let shadowAtFill: { x: number; y: number; blur: number; color: string } | null;
 
-  beforeEach(() => {
-    calls = [];
-    shadowAtFill = null;
-    const track = (name: string) => vi.fn(() => calls.push(name));
-    ctx = {
+  // Builds a fresh ctx whose mutating ops append to its own scoped call log,
+  // prefixed so we can tell the main ctx apart from the offscreen one.
+  const makeCtx = (label: string, log: string[]): MockCtx => {
+    const track = (name: string) => vi.fn(() => log.push(`${label}:${name}`));
+    const ctx: MockCtx = {
       drawImage: track("drawImage"),
       save: track("save"),
       restore: track("restore"),
@@ -48,7 +63,7 @@ describe("applyImageOverlayPostPass", () => {
       beginPath: track("beginPath"),
       roundRect: track("roundRect"),
       fill: vi.fn(() => {
-        calls.push("fill");
+        log.push(`${label}:fill`);
         shadowAtFill = {
           x: ctx.shadowOffsetX as number,
           y: ctx.shadowOffsetY as number,
@@ -59,7 +74,7 @@ describe("applyImageOverlayPostPass", () => {
       clip: track("clip"),
       fillRect: track("fillRect"),
       createLinearGradient: vi.fn(() => {
-        calls.push("createLinearGradient");
+        log.push(`${label}:createLinearGradient`);
         return { addColorStop: vi.fn() };
       }),
       globalAlpha: 1,
@@ -69,15 +84,29 @@ describe("applyImageOverlayPostPass", () => {
       shadowBlur: 0,
       shadowColor: "",
     };
+    return ctx;
+  };
+
+  beforeEach(() => {
+    calls = [];
+    canvases = [];
+    shadowAtFill = null;
+    // The first canvas created is the main one; reuse its ctx so tests can
+    // reference it directly. Later canvases (offscreen feather) each get their own.
+    mainCtx = makeCtx("main", calls);
 
     vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
       if (tag === "canvas") {
-        return {
+        const isFirst = canvases.length === 0;
+        const ctx = isFirst ? mainCtx : makeCtx("off", calls);
+        const canvas: MockCanvas = {
           width: 0,
           height: 0,
           getContext: () => ctx,
           toDataURL: () => "data:image/png;base64,result",
-        } as unknown as HTMLElement;
+        };
+        canvases.push(canvas);
+        return canvas as unknown as HTMLElement;
       }
       return {} as HTMLElement;
     });
@@ -138,10 +167,10 @@ describe("applyImageOverlayPostPass", () => {
 
     // The shadow silhouette is filled, then the clip is applied, then the image
     // is drawn under the clip — so the shadow can never be clipped away.
-    const fillIdx = calls.indexOf("fill");
-    const clipIdx = calls.indexOf("clip");
+    const fillIdx = calls.indexOf("main:fill");
+    const clipIdx = calls.indexOf("main:clip");
     // The first drawImage is the base PNG; the overlay's draw is the last one.
-    const drawIdx = calls.lastIndexOf("drawImage");
+    const drawIdx = calls.lastIndexOf("main:drawImage");
     expect(fillIdx).toBeGreaterThanOrEqual(0);
     expect(clipIdx).toBeGreaterThanOrEqual(0);
     expect(fillIdx).toBeLessThan(clipIdx); // shadow cast before the clip
@@ -153,8 +182,8 @@ describe("applyImageOverlayPostPass", () => {
 
     // After the unclipped shadow fill, the shadow is disabled before drawImage
     // so the image itself does not re-cast a (clipped) shadow.
-    expect(ctx.shadowColor).toBe("transparent");
-    expect(ctx.shadowBlur).toBe(0);
+    expect(mainCtx.shadowColor).toBe("transparent");
+    expect(mainCtx.shadowBlur).toBe(0);
   });
 
   it("applies node opacity via globalAlpha", async () => {
@@ -165,10 +194,10 @@ describe("applyImageOverlayPostPass", () => {
       600,
       2,
     );
-    expect(ctx.globalAlpha).toBe(0.7);
+    expect(mainCtx.globalAlpha).toBe(0.7);
   });
 
-  it("invokes the feather alpha-gradient pass when featherRadius > 0", async () => {
+  it("feathers on the OFFSCREEN ctx then composites it back onto the main ctx", async () => {
     await applyImageOverlayPostPass(
       "data:image/png;base64,base",
       [makeNode({ featherRadius: 30 })],
@@ -176,12 +205,30 @@ describe("applyImageOverlayPostPass", () => {
       600,
       2,
     );
-    // Four edge gradients carved via createLinearGradient + fillRect.
-    expect(calls.filter((c) => c === "createLinearGradient")).toHaveLength(4);
-    expect(calls).toContain("fillRect");
+
+    // A second (offscreen) canvas was created inside applyFeatherMask.
+    expect(canvases).toHaveLength(2);
+    const offCanvas = canvases[1]!;
+    const offCtx = offCanvas.getContext();
+
+    // The four edge gradients are carved on the OFFSCREEN ctx, not the main one,
+    // under a destination-in composite so only the feathered intersection remains.
+    expect(calls.filter((c) => c === "off:createLinearGradient")).toHaveLength(4);
+    expect(calls).toContain("off:fillRect");
+    expect(calls).not.toContain("main:createLinearGradient");
+    // After the four destination-in fills, the offscreen ctx is reset to source-over.
+    expect(offCtx.globalCompositeOperation).toBe("source-over");
+    // The offscreen ctx was actually driven into destination-in mode at some point.
+    expect(offCtx.createLinearGradient).toHaveBeenCalledTimes(4);
+
+    // The MAIN ctx composites the feathered offscreen canvas back via drawImage(off, x, y).
+    // x = toCanvasPx(10, 800, 2) = 160, y = toCanvasPx(10, 600, 2) = 120.
+    expect(mainCtx.drawImage).toHaveBeenCalledWith(offCanvas, 160, 120);
+    // The offscreen ctx draws the source image into itself before feathering.
+    expect(offCtx.drawImage).toHaveBeenCalled();
   });
 
-  it("does NOT run the feather pass when featherRadius is 0 or undefined", async () => {
+  it("does NOT create an offscreen canvas when featherRadius is 0 or undefined", async () => {
     await applyImageOverlayPostPass(
       "data:image/png;base64,base",
       [makeNode({ featherRadius: 0 }), makeNode({})],
@@ -189,7 +236,12 @@ describe("applyImageOverlayPostPass", () => {
       600,
       2,
     );
-    expect(calls).not.toContain("createLinearGradient");
-    expect(calls).not.toContain("fillRect");
+    // Only the main canvas is created; the offscreen feather path is never taken.
+    expect(canvases).toHaveLength(1);
+    expect(calls).not.toContain("off:createLinearGradient");
+    expect(calls).not.toContain("main:createLinearGradient");
+    expect(calls).not.toContain("off:fillRect");
+    // The main ctx draws the image directly (base draw + one per node, no offscreen).
+    expect(mainCtx.drawImage).toHaveBeenCalled();
   });
 });
