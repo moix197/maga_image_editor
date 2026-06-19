@@ -66,6 +66,21 @@ describe("OverlayNodeLayer — image overlay", () => {
     );
     expect(getByLabelText("Resize handle")).toBeTruthy();
   });
+
+  it("clips corner radius on the img, not the outer container (so the handle isn't clipped)", () => {
+    const node = { ...baseImageNode, cornerRadius: 12 };
+    const { container } = render(
+      <OverlayNodeLayer node={node} onMove={noop} onResize={noop} onSelect={noop} isSelected={true} />
+    );
+    const div = container.firstElementChild as HTMLElement;
+    const img = container.querySelector("img") as HTMLImageElement;
+    // Outer div must NOT clip — otherwise the resize handle (outside the box) is hidden.
+    expect(div.style.overflow).not.toBe("hidden");
+    expect(div.style.borderRadius).toBe("");
+    // The clip + radius live on the image instead.
+    expect(img.style.overflow).toBe("hidden");
+    expect(img.style.borderRadius).toBe("12px");
+  });
 });
 
 describe("OverlayNodeLayer — border overlay", () => {

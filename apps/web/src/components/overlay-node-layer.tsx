@@ -51,12 +51,25 @@ function buildOverlayStyle(node: OverlayNode): React.CSSProperties {
           background: "transparent",
         }
       : {
+          // Corner-radius clip + feather mask live on the <img>, NOT here, so the
+          // resize handle (positioned outside the box) is never clipped away.
           transform: `rotate(${node.rotation ?? 0}deg)`,
-          borderRadius: `${node.cornerRadius ?? 0}px`,
-          overflow: "hidden",
           filter: buildDropShadowFilter(node),
-          ...buildFeatherMaskStyle(node),
         }),
+  };
+}
+
+/** Style for the overlay <img>: fills the box, with corner-radius clip + feather mask. */
+function buildOverlayImageStyle(node: OverlayNode): React.CSSProperties {
+  return {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+    display: "block",
+    pointerEvents: "none",
+    borderRadius: `${node.cornerRadius ?? 0}px`,
+    overflow: "hidden",
+    ...buildFeatherMaskStyle(node),
   };
 }
 
@@ -135,7 +148,7 @@ export function OverlayNodeLayer({
         <img
           src={node.src}
           alt="Image overlay"
-          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
+          style={buildOverlayImageStyle(node)}
         />
       )}
       {isSelected && (
