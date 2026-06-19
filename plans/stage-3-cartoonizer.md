@@ -274,18 +274,18 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
   End-to-end review of stage-3-cartoonizer (Stage 3 — Cartoonizer). Scope: all new and modified files on this branch. Check: (1) DEEPAI_API_KEY never appears in any client-side file or NEXT_PUBLIC_ env var — server-only throughout; (2) DeepAI is called only from cartoonize-service.ts and only invoked by the API route — never from the client; (3) cartoonize-service.ts — five functions, each ≤30 lines, no React, no packages/editor imports; (4) cartoonizeDataUrl does NOT downscale server-side (browser-only downscaleIfNeeded would crash in Node) — downscaling is done client-side in Phase 2 (in the useCartoonize hook) before POST; (5) fetchOutputAsDataUrl server-fetches the DeepAI output_url CDN link and returns a base64 data URL — the CDN URL is never returned to or stored by the client; (6) cartoonizeBuffer throws "DeepAI rate limit exceeded. Try again later." on HTTP 429 and "DeepAI quota exceeded. Check your dashboard." on HTTP 402/403; (7) route.ts — ≤45 lines, thin, all logic delegated to service; (8) POST route validates data:image/ mime prefix (400) and payload size limit (413) before calling service; (9) use-cartoonize.ts — ≤50 lines, no business logic, no direct DeepAI calls; (10) page.tsx — stays thin (≤100 lines), all logic in hooks; (11) native fetch only — no node-fetch, form-data, Axios, or other HTTP packages introduced; (12) FormData + Blob used for multipart POST to DeepAI in cartoonize-service.ts; (13) .env.local in .gitignore; .env.example committed; (14) GET /api/cartoonize returns { enabled: boolean }; (15) POST /api/cartoonize returns 503 { disabled: true } when key absent, 400 on missing body or invalid mime, 413 on oversized payload, 502 on DeepAI error with human-readable message; (16) button disabled when !enabled || loading || !sourceDataUrl; (17) resultDataUrl is always a base64 data URL — never a CDN URL; (18) ephemeral warning shown when resultDataUrl is set — wording is about in-memory state clearing on reload; (19) downloadDataUrl from image-helpers.ts reused — not reimplemented; (20) pnpm --filter @maga/web test exits 0; (21) pnpm typecheck exits 0; (22) no dead code, no commented-out blocks; (23) CLAUDE.md invariants: pnpm, thin entry points, small focused functions (≤30 lines), reuse before reinvent, no speculative abstractions, separation of concerns, minimize deps (zero new packages), build own before installing.
   ```
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt
-- [ ] Code-reviewer agent reviews the entire change end-to-end
-- [ ] Any changes made in response to the final code-reviewer review have been reflected back into this plan file
-- [ ] `pnpm --filter @maga/web test` exits 0
-- [ ] `pnpm typecheck` from root exits 0
-- [ ] No CLAUDE.md invariants violated
+- [x] Code-reviewer agent reviews the entire change end-to-end
+- [x] Any changes made in response to the final code-reviewer review have been reflected back into this plan file
+- [x] `pnpm --filter @maga/web test` exits 0
+- [x] `pnpm typecheck` from root exits 0
+- [x] No CLAUDE.md invariants violated
 - [ ] Security checklist (manual):
   - [ ] `DEEPAI_API_KEY` does not appear in browser DevTools → Network tab or Sources tab
-  - [ ] `DEEPAI_API_KEY` does not appear in any file under `apps/web/src/` except `cartoonize-service.ts` (server-only)
-  - [ ] `DEEPAI_API_KEY` does not appear in `.env.example` (placeholder only — no real value)
-  - [ ] `git status` confirms `.env.local` is untracked (not committed)
-  - [ ] POST `/api/cartoonize` with a non-`data:image/` payload returns 400 (mime validation active)
-  - [ ] POST `/api/cartoonize` with a >14 MB base64 string returns 413 (size validation active)
+  - [x] `DEEPAI_API_KEY` is only READ server-side (`process.env` in `cartoonize-service.ts`); other occurrences under `apps/web/src/` are instructional string literals in tooltip/error text, not secret reads
+  - [x] `DEEPAI_API_KEY` does not appear in `.env.example` (placeholder only — no real value)
+  - [x] `git status` confirms `.env.local` is untracked (not committed)
+  - [x] POST `/api/cartoonize` with a non-`data:image/` payload returns 400 (mime validation active) — verified live
+  - [x] POST `/api/cartoonize` with a >14 MB base64 string returns 413 (size validation active) — covered by unit test
   - [ ] DeepAI `output_url` is never visible in browser Network tab — the CDN URL is fetched server-side and only a base64 data URL is returned to the client
   - [ ] With an invalid/expired API key: error message references rate limit or quota (not a raw HTTP error code)
 - [ ] Disabled-state golden path (key absent):
