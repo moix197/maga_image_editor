@@ -90,7 +90,7 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 **File changes:**
 | Action | File | What changes |
 |---|---|---|
-| create | `apps/web/src/lib/cartoonize-service.ts` | Five focused functions: `isCartoonizeEnabled(): boolean` checks `process.env.DEEPAI_API_KEY`; `dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mimeType: string }` decodes base64 data URL to Buffer; `cartoonizeBuffer(buffer: Buffer, mimeType: string): Promise<string>` POSTs to DeepAI as multipart, returns the raw `output_url` CDN string; throws with "DeepAI rate limit exceeded. Try again later." on HTTP 429, "DeepAI quota exceeded. Check your dashboard." on HTTP 402/403, generic error on other non-ok; `fetchOutputAsDataUrl(outputUrl: string): Promise<string>` server-fetches the CDN URL and converts to a base64 data URL; `cartoonizeDataUrl(dataUrl: string): Promise<string>` calls `downscaleIfNeeded(dataUrl)` (imported from `apps/web/src/lib/image-helpers.ts`), then `dataUrlToBuffer`, then `cartoonizeBuffer`, then `fetchOutputAsDataUrl` — returns a base64 data URL to the caller. Each function ≤30 lines. No React, no imports from `packages/editor`. |
+| create | `apps/web/src/lib/cartoonize-service.ts` | Five focused functions: `isCartoonizeEnabled(): boolean` checks `process.env.DEEPAI_API_KEY`; `dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mimeType: string }` decodes base64 data URL to Buffer; `cartoonizeBuffer(buffer: Buffer, mimeType: string): Promise<string>` POSTs to DeepAI as multipart, returns the raw `output_url` CDN string; throws with "DeepAI rate limit exceeded. Try again later." on HTTP 429, "DeepAI quota exceeded. Check your dashboard." on HTTP 402/403, generic error on other non-ok; `fetchOutputAsDataUrl(outputUrl: string): Promise<string>` server-fetches the CDN URL and converts to a base64 data URL; `cartoonizeDataUrl(dataUrl: string): Promise<string>` calls `dataUrlToBuffer`, then `cartoonizeBuffer`, then `fetchOutputAsDataUrl` — returns a base64 data URL to the caller. Downscaling is done CLIENT-SIDE in Phase 2 before POST; the service must NOT call browser-only `downscaleIfNeeded` (it would crash in the Node runtime). Each function ≤30 lines. No React, no imports from `packages/editor` or `image-helpers`. |
 | create | `apps/web/src/app/api/cartoonize/route.ts` | Thin route handler. `GET`: returns `{ enabled: isCartoonizeEnabled() }`. `POST`: reads JSON body `{ imageDataUrl }`; validates presence (400 if missing); validates `data:image/` mime prefix (400 if invalid); checks payload size against limit of 10 MB base64 string length (413 if exceeded); returns 503 `{ disabled: true, error: "..." }` if `!isCartoonizeEnabled()`; calls `cartoonizeDataUrl`, returns `{ outputUrl }` (a base64 data URL) on success or `{ error }` with 502 on DeepAI failure. ≤45 lines total; all logic delegated to service. |
 | create | `.env.example` | Entry: `DEEPAI_API_KEY=` with comment explaining where to get the key and that this file is safe to commit |
 | edit | `.gitignore` | Add `.env.local` if not already present; verify and document |
@@ -98,19 +98,19 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 | create | `apps/web/src/__tests__/api/cartoonize.test.ts` | Unit tests for route handler: GET enabled/disabled; POST 400 missing field; POST 400 non-image mime; POST 413 oversized payload; POST 503 key absent |
 
 **Steps:**
-- [ ] Check whether `.env.local` is already in `.gitignore` at repo root: `grep -n ".env.local" .gitignore` — if missing, add it
-- [ ] Create `.env.example` at repo root with `DEEPAI_API_KEY=` entry and comment: `# Get your free key at https://deepai.org — never commit .env.local`
-- [ ] Create `apps/web/src/lib/cartoonize-service.ts`:
+- [x] Check whether `.env.local` is already in `.gitignore` at repo root: `grep -n ".env.local" .gitignore` — if missing, add it
+- [x] Create `.env.example` at repo root with `DEEPAI_API_KEY=` entry and comment: `# Get your free key at https://deepai.org — never commit .env.local`
+- [x] Create `apps/web/src/lib/cartoonize-service.ts`:
   - `isCartoonizeEnabled(): boolean` — `return !!process.env.DEEPAI_API_KEY`; one line body
   - `dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mimeType: string }` — split on `,`, extract mimeType from header, decode base64 to `Buffer.from(base64, 'base64')`; ≤15 lines
   - `cartoonizeBuffer(buffer: Buffer, mimeType: string): Promise<string>` — build `FormData`, append `Buffer` as a `Blob` with correct mimeType under field name `'image'`; `fetch('https://api.deepai.org/api/toonify', { method: 'POST', headers: { 'api-key': process.env.DEEPAI_API_KEY! }, body: formData })`; parse JSON; check `response.status === 429` → throw `"DeepAI rate limit exceeded. Try again later."`; check `response.status === 402 || 403` → throw `"DeepAI quota exceeded. Check your dashboard."`; throw generic on other non-ok; return `data.output_url` on success; throw if `output_url` missing; ≤30 lines
   - `fetchOutputAsDataUrl(outputUrl: string): Promise<string>` — `fetch(outputUrl)`, read as `arrayBuffer`, convert to base64 via `Buffer.from(arrayBuffer).toString('base64')`, prepend `data:<contentType>;base64,`; ≤20 lines
-  - `cartoonizeDataUrl(dataUrl: string): Promise<string>` — calls `downscaleIfNeeded(dataUrl)` (import from `./image-helpers`), then `dataUrlToBuffer`, then `cartoonizeBuffer`, then `fetchOutputAsDataUrl`; returns the base64 data URL; ≤15 lines
-- [ ] Create `apps/web/src/app/api/cartoonize/route.ts`:
+  - `cartoonizeDataUrl(dataUrl: string): Promise<string>` — `dataUrlToBuffer`, then `cartoonizeBuffer`, then `fetchOutputAsDataUrl`; returns the base64 data URL; ≤15 lines. Does NOT downscale — browser-only `downscaleIfNeeded` would crash server-side; downscaling moved to the client in Phase 2
+- [x] Create `apps/web/src/app/api/cartoonize/route.ts`:
   - `export async function GET()` — returns `NextResponse.json({ enabled: isCartoonizeEnabled() })`
   - `export async function POST(request: Request)` — reads `request.json()`, validates `imageDataUrl` present (400), validates it starts with `data:image/` (400 `{ error: "Invalid image format" }`), checks `imageDataUrl.length > 10 * 1024 * 1024 * 1.37` (≈10 MB decoded → ~13.7 MB base64, use a 14_000_000 char limit) → 413 `{ error: "Image too large" }`; guards on `!isCartoonizeEnabled()` → 503; calls `cartoonizeDataUrl`, returns `{ outputUrl }` (a base64 data URL) or `{ error }` on catch → 502
   - Import only from `cartoonize-service` and `next/server`; ≤45 lines total
-- [ ] Write `apps/web/src/__tests__/lib/cartoonize-service.test.ts`:
+- [x] Write `apps/web/src/__tests__/lib/cartoonize-service.test.ts`:
   - Mock `fetch` globally; mock `process.env.DEEPAI_API_KEY`
   - `isCartoonizeEnabled` returns false when key absent, true when present
   - `dataUrlToBuffer` correctly decodes a small known base64 string, returns correct mimeType
@@ -120,34 +120,33 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
   - `cartoonizeBuffer` throws when response is non-ok (generic case, e.g. 500)
   - `cartoonizeBuffer` throws when `output_url` is missing from response
   - `fetchOutputAsDataUrl` fetches a CDN URL, reads response as ArrayBuffer, and returns a `data:image/...;base64,...` string
-  - `cartoonizeDataUrl` calls `downscaleIfNeeded` before `dataUrlToBuffer`
-  - `cartoonizeDataUrl` end-to-end with mocked fetch returns a base64 data URL (not a CDN URL)
-- [ ] Write `apps/web/src/__tests__/api/cartoonize.test.ts`:
+  - `cartoonizeDataUrl` end-to-end with mocked fetch returns a base64 data URL (not a CDN URL) — no browser-API stubs needed (service does not downscale)
+- [x] Write `apps/web/src/__tests__/api/cartoonize.test.ts`:
   - `GET` returns `{ enabled: false }` when `DEEPAI_API_KEY` not set
   - `GET` returns `{ enabled: true }` when `DEEPAI_API_KEY` is set
   - `POST` without `imageDataUrl` returns 400
   - `POST` with `imageDataUrl` that does not start with `data:image/` returns 400 `{ error: "Invalid image format" }`
   - `POST` with `imageDataUrl` exceeding the character limit returns 413 `{ error: "Image too large" }`
   - `POST` without key returns 503 `{ disabled: true }`
-- [ ] Run `pnpm --filter @maga/web test` — all pass
-- [ ] Run `pnpm typecheck` from root — exits 0
+- [x] Run `pnpm --filter @maga/web test` — all pass
+- [x] Run `pnpm typecheck` from root — exits 0
 
 **Tests:**
 | Action | File | What it covers |
 |---|---|---|
-| create | `apps/web/src/__tests__/lib/cartoonize-service.test.ts` | `isCartoonizeEnabled` key presence/absence; `dataUrlToBuffer` base64 decode and mimeType extraction; `cartoonizeBuffer` fetch call shape, `api-key` header, `output_url` extraction, HTTP 429 → "rate limit" error, HTTP 402 → "quota exceeded" error, error on generic non-ok, error on missing `output_url`; `fetchOutputAsDataUrl` fetches CDN URL and returns base64 data URL; `cartoonizeDataUrl` calls `downscaleIfNeeded` first, end-to-end returns data URL |
+| create | `apps/web/src/__tests__/lib/cartoonize-service.test.ts` | `isCartoonizeEnabled` key presence/absence; `dataUrlToBuffer` base64 decode and mimeType extraction; `cartoonizeBuffer` fetch call shape, `api-key` header, `output_url` extraction, HTTP 429 → "rate limit" error, HTTP 402 → "quota exceeded" error, error on generic non-ok, error on missing `output_url`; `fetchOutputAsDataUrl` fetches CDN URL and returns base64 data URL; `cartoonizeDataUrl` end-to-end returns base64 data URL (service does not downscale) |
 | create | `apps/web/src/__tests__/api/cartoonize.test.ts` | GET returns `{ enabled }` correctly; POST 400 on missing body field; POST 400 on non-`data:image/` mime prefix; POST 413 on oversized payload; POST 503 `{ disabled: true }` when key absent |
 
 **Verification:**
-- [ ] `pnpm --filter @maga/web test` exits 0
-- [ ] `pnpm typecheck` from root exits 0
-- [ ] `.env.local` is in `.gitignore` (verify with `git check-ignore -v .env.local`)
-- [ ] `.env.example` exists at repo root with `DEEPAI_API_KEY=` entry
-- [ ] `cartoonize-service.ts` has no React imports, no imports from `packages/editor`
-- [ ] `route.ts` is ≤45 lines; imports only from `cartoonize-service` and `next/server`
-- [ ] Each service function is ≤30 lines
-- [ ] `cartoonize-service.ts` has five functions; each ≤30 lines; `fetchOutputAsDataUrl` returns a `data:image/...;base64,...` string
-- [ ] `cartoonizeDataUrl` calls `downscaleIfNeeded` (verify import from `image-helpers.ts`)
+- [x] `pnpm --filter @maga/web test` exits 0
+- [x] `pnpm typecheck` from root exits 0
+- [x] `.env.local` is in `.gitignore` (verify with `git check-ignore -v .env.local`)
+- [x] `.env.example` exists at repo root with `DEEPAI_API_KEY=` entry
+- [x] `cartoonize-service.ts` has no React imports, no imports from `packages/editor`
+- [x] `route.ts` is ≤45 lines; imports only from `cartoonize-service` and `next/server`
+- [x] Each service function is ≤30 lines
+- [x] `cartoonize-service.ts` has five functions; each ≤30 lines; `fetchOutputAsDataUrl` returns a `data:image/...;base64,...` string
+- [x] `cartoonizeDataUrl` does NOT call browser-only `downscaleIfNeeded` (downscaling is client-side in Phase 2); service has no `image-helpers` import
 - [ ] Manual smoke (with key set): `curl -X GET http://localhost:3000/api/cartoonize` returns `{"enabled":true}`
 - [ ] Manual smoke (key absent): `curl -X POST http://localhost:3000/api/cartoonize -H "Content-Type: application/json" -d '{"imageDataUrl":"data:image/jpeg;base64,/9j/..."}' ` returns 503 `{ "disabled": true, "error": "..." }`
 - [ ] Manual smoke (mime validation): POST with `{ "imageDataUrl": "data:text/plain;base64,..." }` returns 400 `{ "error": "Invalid image format" }`
@@ -158,15 +157,15 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 - [ ] All Steps and Verification checkboxes above ticked in the plan file
 - [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
   ```
-  Code review — Stage 3 Cartoonizer, Phase 1 (service + API route). Branch: stage-3-cartoonizer. Files to review: apps/web/src/lib/cartoonize-service.ts, apps/web/src/app/api/cartoonize/route.ts, apps/web/src/__tests__/lib/cartoonize-service.test.ts, apps/web/src/__tests__/api/cartoonize.test.ts, .env.example, .gitignore. Check: (1) DEEPAI_API_KEY is never referenced in any file under apps/web/src/app/ except the route handler (server-only); (2) no NEXT_PUBLIC_ prefix anywhere near the key; (3) cartoonize-service.ts has five functions each ≤30 lines, no React imports, no imports from packages/editor; (4) cartoonizeDataUrl calls downscaleIfNeeded (from image-helpers.ts) before dataUrlToBuffer — reuse before reinvent; (5) cartoonizeBuffer returns the raw DeepAI output_url; fetchOutputAsDataUrl server-fetches that URL and returns a base64 data URL; the CDN URL never reaches the client; (6) cartoonizeBuffer throws "DeepAI rate limit exceeded. Try again later." on HTTP 429 and "DeepAI quota exceeded. Check your dashboard." on HTTP 402/403; (7) route.ts ≤45 lines, thin — all logic delegated to service; (8) POST route validates data:image/ mime prefix (400 "Invalid image format") and payload size limit (413 "Image too large") before calling service; (9) FormData + native fetch used (no node-fetch, no form-data package, no Axios); (10) GET route returns { enabled: boolean }; POST route returns 503 { disabled: true } when key absent, 400 when imageDataUrl missing or invalid mime, 413 on oversized payload, 502 on DeepAI error; (11) .env.local in .gitignore; (12) .env.example committed with DEEPAI_API_KEY= entry; (13) unit tests mock fetch and process.env correctly; tests cover 429, 402, mime validation, size validation, fetchOutputAsDataUrl data URL output, downscaleIfNeeded call; (14) pnpm --filter @maga/web test exits 0; (15) pnpm typecheck exits 0; (16) CLAUDE.md invariants: pnpm, thin entry points, small focused functions ≤30 lines, native fetch only, no new packages introduced.
+  Code review — Stage 3 Cartoonizer, Phase 1 (service + API route). Branch: stage-3-cartoonizer. Files to review: apps/web/src/lib/cartoonize-service.ts, apps/web/src/app/api/cartoonize/route.ts, apps/web/src/__tests__/lib/cartoonize-service.test.ts, apps/web/src/__tests__/api/cartoonize.test.ts, .env.example, .gitignore. Check: (1) DEEPAI_API_KEY is never referenced in any file under apps/web/src/app/ except the route handler (server-only); (2) no NEXT_PUBLIC_ prefix anywhere near the key; (3) cartoonize-service.ts has five functions each ≤30 lines, no React imports, no imports from packages/editor; (4) cartoonizeDataUrl does NOT downscale server-side (browser-only downscaleIfNeeded would crash in Node) — downscaling is done client-side in Phase 2 (in the useCartoonize hook) before POST; (5) cartoonizeBuffer returns the raw DeepAI output_url; fetchOutputAsDataUrl server-fetches that URL and returns a base64 data URL; the CDN URL never reaches the client; (6) cartoonizeBuffer throws "DeepAI rate limit exceeded. Try again later." on HTTP 429 and "DeepAI quota exceeded. Check your dashboard." on HTTP 402/403; (7) route.ts ≤45 lines, thin — all logic delegated to service; (8) POST route validates data:image/ mime prefix (400 "Invalid image format") and payload size limit (413 "Image too large") before calling service; (9) FormData + native fetch used (no node-fetch, no form-data package, no Axios); (10) GET route returns { enabled: boolean }; POST route returns 503 { disabled: true } when key absent, 400 when imageDataUrl missing or invalid mime, 413 on oversized payload, 502 on DeepAI error; (11) .env.local in .gitignore; (12) .env.example committed with DEEPAI_API_KEY= entry; (13) unit tests mock fetch and process.env correctly; tests cover 429, 402, mime validation, size validation, fetchOutputAsDataUrl data URL output, downscaleIfNeeded call; (14) pnpm --filter @maga/web test exits 0; (15) pnpm typecheck exits 0; (16) CLAUDE.md invariants: pnpm, thin entry points, small focused functions ≤30 lines, native fetch only, no new packages introduced.
   ```
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing (see Tests subsection above) — or no-tests justification accepted
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing (see Tests subsection above) — or no-tests justification accepted
 - [ ] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(cartoonizer): cartoonize-service + API route with enabled-check`
+- [x] Changes committed: `feat(cartoonizer): cartoonize-service + API route with enabled-check`
 - [ ] Phase marked complete
 
 ---
@@ -185,7 +184,7 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 **File changes:**
 | Action | File | What changes |
 |---|---|---|
-| create | `apps/web/src/hooks/use-cartoonize.ts` | Client hook. State: `loading: boolean`, `error: string \| null`, `enabled: boolean`. On mount: `GET /api/cartoonize` → sets `enabled`. `cartoonize(dataUrl: string): Promise<string \| null>` — sets `loading: true`, POSTs to `/api/cartoonize`, returns `outputUrl` on success or sets `error` and returns `null` on failure; always sets `loading: false`. ≤50 lines. No business logic — pure fetch orchestration. |
+| create | `apps/web/src/hooks/use-cartoonize.ts` | Client hook. State: `loading: boolean`, `error: string \| null`, `enabled: boolean`. On mount: `GET /api/cartoonize` → sets `enabled`. `cartoonize(dataUrl: string): Promise<string \| null>` — sets `loading: true`, calls `downscaleIfNeeded(dataUrl)` (from `lib/image-helpers.ts`, client-side — reuse before reinvent) to shrink oversized images before upload, POSTs the scaled data URL to `/api/cartoonize`, returns `outputUrl` on success or sets `error` and returns `null` on failure; always sets `loading: false`. ≤50 lines. Pure fetch orchestration plus the reused client-side downscale. |
 | edit | `apps/web/src/app/editor/page.tsx` | Add "Cartoonize" button to toolbar: disabled + tooltip when `!enabled`; spinner when `loading`; on click calls `cartoonize(sourceDataUrl)` → on non-null result sets `resultDataUrl`. Add ephemeral-URL warning below result panel when `resultDataUrl` is set (inline note: "This result is temporary — download it before closing or reloading."). Page stays thin: all cartoonize logic via `useCartoonize` hook. |
 | create | `apps/web/src/__tests__/hooks/use-cartoonize.test.ts` | Unit tests for hook: `enabled` starts false, set to true after GET returns `{ enabled: true }`; `cartoonize` sets loading during fetch, clears on resolve; returns `outputUrl` on success; sets `error` on failure; returns null on 503 disabled response. |
 | create | `apps/web/src/__tests__/hooks/use-cartoonize-disabled.test.ts` | Unit test: when GET returns `{ enabled: false }`, `enabled` is false after mount; `cartoonize` call is not expected (button disabled — test the hook state, not the button). |
@@ -196,7 +195,8 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
   - `useEffect` on mount: `fetch('/api/cartoonize').then(r => r.json()).then(d => setEnabled(d.enabled)).catch(() => setEnabled(false))`
   - `cartoonize(dataUrl: string): Promise<string | null>`:
     - Set `loading: true`, `error: null`
-    - `fetch('/api/cartoonize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageDataUrl: dataUrl }) })`
+    - `const scaled = await downscaleIfNeeded(dataUrl)` (import from `@/lib/image-helpers` — client-side; oversized images are shrunk here so the server never runs browser-only canvas code)
+    - `fetch('/api/cartoonize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageDataUrl: scaled }) })`
     - Parse JSON; if `data.disabled` → set `error: "Cartoonize is disabled. Add DEEPAI_API_KEY to .env.local."` → return null
     - If `data.error` → set `error: data.error` → return null
     - Return `data.outputUrl`
@@ -215,6 +215,7 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
   - Page component stays ≤100 lines; all hook calls at top; no inline business logic
 - [ ] Write `apps/web/src/__tests__/hooks/use-cartoonize.test.ts`:
   - Mock `fetch` globally with `vi.fn()`
+  - Mock `downscaleIfNeeded` (from `@/lib/image-helpers`) to return its input unchanged — the hook test must not depend on browser canvas APIs
   - On mount GET mock returns `{ enabled: true }` → `enabled` is true
   - Calling `cartoonize` with a data URL: fetch called with correct URL/method/body; `loading` is true during fetch; resolves to `outputUrl` (mock returns a `data:image/png;base64,...` string, not a CDN URL)
   - Calling `cartoonize` when fetch fails: `error` is set, returns null, `loading` false
@@ -270,7 +271,7 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 - [ ] Every preceding phase's Steps / Verification / Phase review checkboxes are ticked
 - [ ] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review):
   ```
-  End-to-end review of stage-3-cartoonizer (Stage 3 — Cartoonizer). Scope: all new and modified files on this branch. Check: (1) DEEPAI_API_KEY never appears in any client-side file or NEXT_PUBLIC_ env var — server-only throughout; (2) DeepAI is called only from cartoonize-service.ts and only invoked by the API route — never from the client; (3) cartoonize-service.ts — five functions, each ≤30 lines, no React, no packages/editor imports; (4) cartoonizeDataUrl calls downscaleIfNeeded (from image-helpers.ts) before dataUrlToBuffer — reuse before reinvent; (5) fetchOutputAsDataUrl server-fetches the DeepAI output_url CDN link and returns a base64 data URL — the CDN URL is never returned to or stored by the client; (6) cartoonizeBuffer throws "DeepAI rate limit exceeded. Try again later." on HTTP 429 and "DeepAI quota exceeded. Check your dashboard." on HTTP 402/403; (7) route.ts — ≤45 lines, thin, all logic delegated to service; (8) POST route validates data:image/ mime prefix (400) and payload size limit (413) before calling service; (9) use-cartoonize.ts — ≤50 lines, no business logic, no direct DeepAI calls; (10) page.tsx — stays thin (≤100 lines), all logic in hooks; (11) native fetch only — no node-fetch, form-data, Axios, or other HTTP packages introduced; (12) FormData + Blob used for multipart POST to DeepAI in cartoonize-service.ts; (13) .env.local in .gitignore; .env.example committed; (14) GET /api/cartoonize returns { enabled: boolean }; (15) POST /api/cartoonize returns 503 { disabled: true } when key absent, 400 on missing body or invalid mime, 413 on oversized payload, 502 on DeepAI error with human-readable message; (16) button disabled when !enabled || loading || !sourceDataUrl; (17) resultDataUrl is always a base64 data URL — never a CDN URL; (18) ephemeral warning shown when resultDataUrl is set — wording is about in-memory state clearing on reload; (19) downloadDataUrl from image-helpers.ts reused — not reimplemented; (20) pnpm --filter @maga/web test exits 0; (21) pnpm typecheck exits 0; (22) no dead code, no commented-out blocks; (23) CLAUDE.md invariants: pnpm, thin entry points, small focused functions (≤30 lines), reuse before reinvent, no speculative abstractions, separation of concerns, minimize deps (zero new packages), build own before installing.
+  End-to-end review of stage-3-cartoonizer (Stage 3 — Cartoonizer). Scope: all new and modified files on this branch. Check: (1) DEEPAI_API_KEY never appears in any client-side file or NEXT_PUBLIC_ env var — server-only throughout; (2) DeepAI is called only from cartoonize-service.ts and only invoked by the API route — never from the client; (3) cartoonize-service.ts — five functions, each ≤30 lines, no React, no packages/editor imports; (4) cartoonizeDataUrl does NOT downscale server-side (browser-only downscaleIfNeeded would crash in Node) — downscaling is done client-side in Phase 2 (in the useCartoonize hook) before POST; (5) fetchOutputAsDataUrl server-fetches the DeepAI output_url CDN link and returns a base64 data URL — the CDN URL is never returned to or stored by the client; (6) cartoonizeBuffer throws "DeepAI rate limit exceeded. Try again later." on HTTP 429 and "DeepAI quota exceeded. Check your dashboard." on HTTP 402/403; (7) route.ts — ≤45 lines, thin, all logic delegated to service; (8) POST route validates data:image/ mime prefix (400) and payload size limit (413) before calling service; (9) use-cartoonize.ts — ≤50 lines, no business logic, no direct DeepAI calls; (10) page.tsx — stays thin (≤100 lines), all logic in hooks; (11) native fetch only — no node-fetch, form-data, Axios, or other HTTP packages introduced; (12) FormData + Blob used for multipart POST to DeepAI in cartoonize-service.ts; (13) .env.local in .gitignore; .env.example committed; (14) GET /api/cartoonize returns { enabled: boolean }; (15) POST /api/cartoonize returns 503 { disabled: true } when key absent, 400 on missing body or invalid mime, 413 on oversized payload, 502 on DeepAI error with human-readable message; (16) button disabled when !enabled || loading || !sourceDataUrl; (17) resultDataUrl is always a base64 data URL — never a CDN URL; (18) ephemeral warning shown when resultDataUrl is set — wording is about in-memory state clearing on reload; (19) downloadDataUrl from image-helpers.ts reused — not reimplemented; (20) pnpm --filter @maga/web test exits 0; (21) pnpm typecheck exits 0; (22) no dead code, no commented-out blocks; (23) CLAUDE.md invariants: pnpm, thin entry points, small focused functions (≤30 lines), reuse before reinvent, no speculative abstractions, separation of concerns, minimize deps (zero new packages), build own before installing.
   ```
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt
 - [ ] Code-reviewer agent reviews the entire change end-to-end
