@@ -3,8 +3,8 @@
 import { useState, useCallback } from "react";
 import { coverCropDataUrl } from "@/lib/cover-crop";
 import { compositeFromElement } from "@/lib/export-helpers";
-import { isOverlayNode } from "@maga/editor";
-import type { EditorState, NodeId, OverlayNode } from "@maga/editor";
+import { patchOverlays } from "@/lib/overlay-patch";
+import type { EditorState } from "@maga/editor";
 import type { VariableSlot } from "@maga/projects";
 
 interface UseSingleCompositeResult {
@@ -43,7 +43,7 @@ export function useSingleComposite(): UseSingleCompositeResult {
     setError(null);
     try {
       const croppedSrc = await coverCropDataUrl(overlaySrc, slot.width, slot.height);
-      const patchedOverlays = buildPatchedOverlays(template, slot.overlayNodeId, croppedSrc);
+      const patchedOverlays = patchOverlays(template, slot.overlayNodeId, croppedSrc);
       const dataUrl = await compositeFromElement(canvasEl, patchedOverlays);
       setCompositeDataUrl(dataUrl);
     } catch (err) {
@@ -54,18 +54,4 @@ export function useSingleComposite(): UseSingleCompositeResult {
   }, []);
 
   return { compositeDataUrl, isRendering, error, generate };
-}
-
-/**
- * Extracts image overlay nodes from the template, replacing the variable node's
- * src with croppedSrc. Returns nodes ready to pass to compositeFromElement.
- */
-function buildPatchedOverlays(
-  state: EditorState,
-  overlayNodeId: NodeId,
-  croppedSrc: string,
-): OverlayNode[] {
-  return state.nodes
-    .filter((n): n is OverlayNode => isOverlayNode(n) && n.overlayType === "image")
-    .map((n) => (n.id === overlayNodeId ? { ...n, src: croppedSrc } : n));
 }
