@@ -8,7 +8,12 @@ function collectImageOverlayNodes(el: HTMLElement): OverlayNode[] {
   const nodes: OverlayNode[] = [];
   els.forEach((node) => {
     const raw = node.dataset.overlay;
-    if (raw) nodes.push(JSON.parse(raw) as OverlayNode);
+    if (!raw) return;
+    try {
+      nodes.push(JSON.parse(raw) as OverlayNode);
+    } catch {
+      // Skip elements with malformed data-overlay rather than aborting the export.
+    }
   });
   return nodes;
 }

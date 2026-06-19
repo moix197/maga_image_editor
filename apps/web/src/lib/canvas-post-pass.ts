@@ -17,8 +17,8 @@ function buildRotationTransform(
   ctx.translate(-cx, -cy);
 }
 
-/** Clips the current path to a rounded rectangle. */
-function clipRoundedRect(
+/** Traces a rounded-rect path (clamped radius); radius 0 yields a plain rect. */
+function traceRoundedRect(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -29,7 +29,55 @@ function clipRoundedRect(
   const radius = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, radius);
+}
+
+/** Clips the current path to a rounded rectangle. */
+function clipRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  traceRoundedRect(ctx, x, y, w, h, r);
   ctx.clip();
+}
+
+/** Sets drop-shadow ctx props from a node's dropShadow config. */
+function configureShadow(ctx: CanvasRenderingContext2D, shadow: NonNullable<OverlayNode["dropShadow"]>, pr: number): void {
+  ctx.shadowOffsetX = shadow.x * pr;
+  ctx.shadowOffsetY = shadow.y * pr;
+  ctx.shadowBlur = shadow.blur * pr;
+  ctx.shadowColor = withAlpha(shadow.color, shadow.opacity);
+}
+
+/** Clears all shadow ctx props so subsequent draws cast no shadow. */
+function clearShadow(ctx: CanvasRenderingContext2D): void {
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = "transparent";
+}
+
+/**
+ * Casts the drop shadow off the image's rounded silhouette OUTSIDE any clip,
+ * then disables the shadow. The silhouette is a plain rect when radius is 0.
+ */
+function paintShadowSilhouette(
+  ctx: CanvasRenderingContext2D,
+  shadow: NonNullable<OverlayNode["dropShadow"]>,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+  pr: number,
+): void {
+  configureShadow(ctx, shadow, pr);
+  traceRoundedRect(ctx, x, y, w, h, r);
+  ctx.fill();
+  clearShadow(ctx);
 }
 
 /** STUB (Phase 3): edge-feather alpha mask. No-op this phase. */
@@ -71,16 +119,15 @@ function drawOverlayImage(
   ctx.save();
   ctx.globalAlpha = node.opacity;
   buildRotationTransform(ctx, x + w / 2, y + h / 2, ((node.rotation ?? 0) * Math.PI) / 180);
-  if (node.dropShadow) {
-    ctx.shadowOffsetX = node.dropShadow.x * pr;
-    ctx.shadowOffsetY = node.dropShadow.y * pr;
-    ctx.shadowBlur = node.dropShadow.blur * pr;
-    ctx.shadowColor = withAlpha(node.dropShadow.color, node.dropShadow.opacity);
-  }
+  // Cast the shadow off the rounded silhouette first, OUTSIDE the clip, so the
+  // corner-radius clip never truncates the (offset) drop shadow.
+  if (node.dropShadow) paintShadowSilhouette(ctx, node.dropShadow, x, y, w, h, radius, pr);
+  ctx.save();
   if (radius > 0) clipRoundedRect(ctx, x, y, w, h, radius);
   ctx.drawImage(img, x, y, w, h);
   applyFeatherMask(ctx, node, pr);
   buildEdgeGradients(ctx, w, h, 0);
+  ctx.restore();
   ctx.restore();
 }
 
