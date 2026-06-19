@@ -3,6 +3,7 @@
 import { isBorderOverlay } from "@maga/editor";
 import type { OverlayNode, BorderOverlay } from "@maga/editor";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,22 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
       {children}
     </div>
   );
+}
+
+type OverlayPatch = Partial<Omit<OverlayNode, "id">>;
+
+/** When the lock is on, scales the unedited dimension to preserve the current W:H ratio. */
+export function applyAspectRatioLock(patch: OverlayPatch, currentNode: OverlayNode): OverlayPatch {
+  if (!currentNode.aspectRatioLocked) return patch;
+  const { width: w, height: h } = currentNode;
+  if (w <= 0 || h <= 0) return patch;
+  if (patch.width !== undefined && patch.height === undefined) {
+    return { ...patch, height: Math.round((patch.width * h) / w) };
+  }
+  if (patch.height !== undefined && patch.width === undefined) {
+    return { ...patch, width: Math.round((patch.height * w) / h) };
+  }
+  return patch;
 }
 
 export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: OverlayControlsPanelProps) {
@@ -65,6 +82,82 @@ export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: Ov
           aria-label="Overlay opacity"
         />
       </FieldRow>
+
+      {!border && (
+        <>
+          <FieldRow label="Position">
+            <div className="flex gap-2">
+              <div className="flex flex-1 items-center gap-2">
+                <Label htmlFor="overlay-x" className="text-xs text-muted-foreground">X %</Label>
+                <Input
+                  id="overlay-x"
+                  type="number"
+                  value={node.x}
+                  onChange={(e) => onChange({ x: Number(e.target.value) })}
+                  aria-label="Position X"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="flex flex-1 items-center gap-2">
+                <Label htmlFor="overlay-y" className="text-xs text-muted-foreground">Y %</Label>
+                <Input
+                  id="overlay-y"
+                  type="number"
+                  value={node.y}
+                  onChange={(e) => onChange({ y: Number(e.target.value) })}
+                  aria-label="Position Y"
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+          </FieldRow>
+
+          <FieldRow label="Size">
+            <div className="flex gap-2">
+              <div className="flex flex-1 items-center gap-2">
+                <Label htmlFor="overlay-w" className="text-xs text-muted-foreground">W</Label>
+                <Input
+                  id="overlay-w"
+                  type="number"
+                  min={1}
+                  value={node.width}
+                  onChange={(e) =>
+                    onChange(applyAspectRatioLock({ width: Number(e.target.value) }, node))
+                  }
+                  aria-label="Width"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="flex flex-1 items-center gap-2">
+                <Label htmlFor="overlay-h" className="text-xs text-muted-foreground">H</Label>
+                <Input
+                  id="overlay-h"
+                  type="number"
+                  min={1}
+                  value={node.height}
+                  onChange={(e) =>
+                    onChange(applyAspectRatioLock({ height: Number(e.target.value) }, node))
+                  }
+                  aria-label="Height"
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="aspect-lock-toggle"
+                checked={node.aspectRatioLocked ?? true}
+                onChange={(e) => onChange({ aspectRatioLocked: e.target.checked })}
+                className="h-4 w-4 cursor-pointer rounded"
+              />
+              <label htmlFor="aspect-lock-toggle" className="cursor-pointer text-xs">
+                Lock aspect ratio
+              </label>
+            </div>
+          </FieldRow>
+        </>
+      )}
 
       {border && (
         <>

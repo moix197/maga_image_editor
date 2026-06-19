@@ -46,6 +46,8 @@ export interface OverlayNode {
   zIndex: number;
   /** Discriminates image vs border overlays. */
   overlayType: "image" | "border";
+  /** When true, editing width or height preserves the current W:H ratio. */
+  aspectRatioLocked?: boolean;
 }
 
 /** Border overlay — a CSS-border div with configurable style. */
