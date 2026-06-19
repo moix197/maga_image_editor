@@ -29,6 +29,33 @@ function suppressPostPassNodes(el: HTMLElement): () => void {
   return () => els.forEach((node, i) => (node.style.opacity = previous[i] ?? ""));
 }
 
+/**
+ * Composites an element + explicit overlay nodes into a data URL without
+ * triggering a file download. Used by use-single-composite to generate a
+ * preview: the caller supplies the already-patched overlay nodes (with
+ * cover-cropped src) so no DOM re-render is required before calling.
+ */
+export async function compositeFromElement(
+  el: HTMLElement,
+  overlayNodes: OverlayNode[],
+): Promise<string> {
+  await document.fonts.ready;
+  const restore = suppressPostPassNodes(el);
+  let baseDataUrl: string;
+  try {
+    baseDataUrl = await htmlToImage.toPng(el, { pixelRatio: 2 });
+  } finally {
+    restore();
+  }
+  return applyImageOverlayPostPass(
+    baseDataUrl,
+    overlayNodes,
+    el.offsetWidth,
+    el.offsetHeight,
+    2,
+  );
+}
+
 export async function exportCanvasElement(
   el: HTMLElement,
   filename: string,

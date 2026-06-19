@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { SCHEMA_VERSION } from "../src/index";
 import type { BatchProject } from "../src/index";
+import type { NodeId } from "@maga/editor";
 
 /** A minimal, valid v1 project used to assert the schema shape at compile + runtime. */
 function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
@@ -13,7 +14,7 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     background: { id: "bg", filename: "bg.png", blobKey: "blob-bg" },
     overlays: [],
     template: { nodes: [] },
-    variableSlotId: "slot-node-id",
+    variableSlot: { overlayNodeId: "slot-node-id" as NodeId, width: 800, height: 600 },
     outputs: [],
     ...overrides,
   };
@@ -31,9 +32,12 @@ describe("BatchProject schema", () => {
       background: { id: "bg", filename: "bg.png", blobKey: "blob-bg" },
       overlays: [],
       template: { nodes: [] },
-      variableSlotId: "slot-node-id",
+      variableSlot: { overlayNodeId: "slot-node-id", width: 800, height: 600 },
       outputs: [],
     });
+    expect(project.variableSlot.overlayNodeId).toBe("slot-node-id");
+    expect(project.variableSlot.width).toBe(800);
+    expect(project.variableSlot.height).toBe(600);
   });
 
   it("schemaVersion equals 1", () => {

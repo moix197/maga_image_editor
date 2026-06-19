@@ -62,7 +62,7 @@ export interface GeneratedOutput {
  *   background: { id: "bg", filename: "bg.png", blobKey: "blob-bg" },
  *   overlays: [],
  *   template: { nodes: [] },
- *   variableSlotId: "slot-node-id",
+ *   variableSlot: { overlayNodeId: "slot-node-id", width: 800, height: 600 },
  *   outputs: [],
  * };
  */
@@ -83,8 +83,8 @@ export interface BatchProject {
   overlays: ProjectAsset[];
   /** Editor template the variable slot is composited into. */
   template: EditorState;
-  /** Id of the template node that is the variable slot ({@link VariableSlot.overlayNodeId}). */
-  variableSlotId: string;
+  /** The variable slot descriptor: node id + cover-fit dimensions. */
+  variableSlot: VariableSlot;
   /** Generated composites; defaults to `[]` before any render. */
   outputs: GeneratedOutput[];
 }
