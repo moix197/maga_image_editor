@@ -298,14 +298,14 @@ outputs/
 
 **Steps:**
 
-- [ ] Install `jszip` and `@types/jszip` in `packages/projects` via `pnpm add jszip` / `pnpm add -D @types/jszip`
-- [ ] Implement `exportProjectZip` in `packages/projects/src/zip-export.ts`: create `JSZip`, add `project.json` (stringify with relative path refs), add background file (data URL → blob via `dataUrlToBlob` helper), add overlay files under `overlays/`, add output files under `outputs/`, return `zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })`
-- [ ] Add `dataUrlToBlob` private helper in the same file (converts `data:<mime>;base64,<data>` to `Blob`) — no external dependency, straightforward atob + Uint8Array
-- [ ] Build `use-zip-export` hook in `apps/web`; download via `URL.createObjectURL` + click + `URL.revokeObjectURL`
-- [ ] Wire "Export ZIP" button into `BatchWorkspace`
-- [ ] Write unit tests for `exportProjectZip`
-- [ ] Handle duplicate output filenames: if two overlays share the same filename, prefix with index (`0-filename.png`, `1-filename.png`) — the ZIP layout already index-prefixes overlays, apply the same pattern to outputs explicitly
-- [ ] Output format: use PNG for transparent outputs, JPEG (quality 0.92) for opaque outputs — detect by checking whether the overlay's source image has an alpha channel; document this decision in a comment in `zip-export.ts`
+- [x] Install `jszip` and `@types/jszip` in `packages/projects` via `pnpm add jszip` / `pnpm add -D @types/jszip`
+- [x] Implement `exportProjectZip` in `packages/projects/src/zip-export.ts`: create `JSZip`, add `project.json` (stringify with relative path refs), add background file (data URL → blob via `dataUrlToBlob` helper), add overlay files under `overlays/`, add output files under `outputs/`, return `zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })`
+- [x] Add `dataUrlToBlob` private helper in the same file (converts `data:<mime>;base64,<data>` to `Blob`) — no external dependency, straightforward atob + Uint8Array
+- [x] Build `use-zip-export` hook in `apps/web`; download via `URL.createObjectURL` + click + `URL.revokeObjectURL` (revoke deferred a tick to avoid download race)
+- [x] Wire "Export ZIP" button into `BatchWorkspace`
+- [x] Write unit tests for `exportProjectZip`
+- [x] Handle duplicate output filenames: if two overlays share the same filename, prefix with index (`0-filename.png`, `1-filename.png`) — the ZIP layout already index-prefixes overlays, apply the same pattern to outputs explicitly
+- [x] Output format: ~~PNG-for-transparent / JPEG-for-opaque by alpha detection~~ — **deviation (documented in `zip-export.ts` + README):** outputs arrive pre-encoded and `packages/projects` has no DOM/canvas to decode+re-encode, so extension is derived from each data URL's own MIME (no re-encode); alpha-based format selection belongs upstream at render time if ever needed
 
 **Tests:**
 
@@ -316,24 +316,24 @@ outputs/
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `packages/projects`
-- [ ] Generate a batch with 3 overlays → click "Export ZIP" → ZIP downloads
-- [ ] Unzip manually: `project.json` is valid JSON with `schemaVersion: 1`; background file present; 3 overlay files under `overlays/`; 3 output files under `outputs/`
-- [ ] No TypeScript errors
-- [ ] Two overlays with identical filenames → ZIP contains two distinct output files without collision
+- [x] Automated tests pass: `pnpm test` in `packages/projects` (9 tests)
+- [ ] Generate a batch with 3 overlays → click "Export ZIP" → ZIP downloads _(deferred → final manual pass)_
+- [ ] Unzip manually: `project.json` is valid JSON with `schemaVersion: 1`; background file present; 3 overlay files under `overlays/`; 3 output files under `outputs/` _(deferred → final manual pass)_
+- [x] No TypeScript errors (@maga/projects + @maga/web tsc exit 0)
+- [x] Two overlays with identical filenames → ZIP contains two distinct output files without collision (covered by test; manual confirm in final pass)
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted
-- [ ] Orchestrator cleared context
-- [ ] Code-reviewer verified
-- [ ] Reviewer changes reflected back
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator approved
-- [ ] Changes committed: `feat: portable project ZIP export`
-- [ ] Phase marked complete
+- [ ] All Steps and Verification checkboxes above ticked _(browser-manual verification deferred to final pass)_
+- [ ] Reviewer handoff prompt emitted _(n/a — subagent-driven flow)_
+- [ ] Orchestrator cleared context _(n/a)_
+- [x] Code-reviewer verified
+- [x] Reviewer changes reflected back _(deferred revoke; removed dead disabled clause)_
+- [x] Tests written and passing
+- [x] Documentation updated _(packages/projects/README: exportProjectZip API + JSZip rationale)_
+- [ ] Orchestrator approved _(pending final manual pass)_
+- [x] Changes committed: `feat: portable project ZIP export`
+- [ ] Phase marked complete _(pending final manual pass)_
 
 ---
 
