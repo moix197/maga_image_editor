@@ -57,7 +57,13 @@ describe("applyImageOverlayPostPass", () => {
         };
       }),
       clip: track("clip"),
+      fillRect: track("fillRect"),
+      createLinearGradient: vi.fn(() => {
+        calls.push("createLinearGradient");
+        return { addColorStop: vi.fn() };
+      }),
       globalAlpha: 1,
+      globalCompositeOperation: "source-over",
       shadowOffsetX: 0,
       shadowOffsetY: 0,
       shadowBlur: 0,
@@ -160,5 +166,30 @@ describe("applyImageOverlayPostPass", () => {
       2,
     );
     expect(ctx.globalAlpha).toBe(0.7);
+  });
+
+  it("invokes the feather alpha-gradient pass when featherRadius > 0", async () => {
+    await applyImageOverlayPostPass(
+      "data:image/png;base64,base",
+      [makeNode({ featherRadius: 30 })],
+      800,
+      600,
+      2,
+    );
+    // Four edge gradients carved via createLinearGradient + fillRect.
+    expect(calls.filter((c) => c === "createLinearGradient")).toHaveLength(4);
+    expect(calls).toContain("fillRect");
+  });
+
+  it("does NOT run the feather pass when featherRadius is 0 or undefined", async () => {
+    await applyImageOverlayPostPass(
+      "data:image/png;base64,base",
+      [makeNode({ featherRadius: 0 }), makeNode({})],
+      800,
+      600,
+      2,
+    );
+    expect(calls).not.toContain("createLinearGradient");
+    expect(calls).not.toContain("fillRect");
   });
 });

@@ -100,6 +100,14 @@ describe("OverlayControlsPanel (image overlay)", () => {
     });
   });
 
+  it("edge feather slider fires onChange with featherRadius patch", () => {
+    render(<OverlayControlsPanel node={mockNode} onChange={onChange} onDelete={noop} onReorder={noop} />);
+    const slider = screen.getByRole("slider", { name: "Edge feather" });
+    const range = slider.querySelector('input[type="range"]') as HTMLInputElement;
+    fireEvent.change(range, { target: { value: "30" } });
+    expect(onChange).toHaveBeenCalledWith({ featherRadius: 30 });
+  });
+
   it("drop shadow toggle off clears the shadow", () => {
     const shadowNode: OverlayNode = {
       ...mockNode,

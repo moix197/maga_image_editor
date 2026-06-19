@@ -1,4 +1,5 @@
 import type { OverlayNode } from "@maga/editor";
+import { withAlpha } from "./css-helpers";
 
 /** Converts a percentage-based coordinate to canvas pixels at the given pixelRatio. */
 export function toCanvasPx(percent: number, dimension: number, pixelRatio: number): number {
@@ -80,26 +81,68 @@ function paintShadowSilhouette(
   clearShadow(ctx);
 }
 
-/** STUB (Phase 3): edge-feather alpha mask. No-op this phase. */
-function applyFeatherMask(ctx: CanvasRenderingContext2D, node: OverlayNode, pr: number): void {
-  void ctx;
-  void node;
-  void pr;
-  // Implemented in Phase 3.
-}
-
-/** STUB (Phase 3): builds the four inset edge gradients for feather. No-op this phase. */
+/**
+ * Carves an inset alpha fade into the offscreen ctx via four edge gradients.
+ * Each edge fades from transparent at the border to opaque `featherPx` inward;
+ * `destination-in` keeps only the intersection, so all four edges soften.
+ * featherPx is clamped so it never exceeds half the smaller dimension.
+ */
 function buildEdgeGradients(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   featherPx: number,
 ): void {
-  void ctx;
-  void w;
-  void h;
-  void featherPx;
-  // Implemented in Phase 3.
+  const f = Math.min(featherPx, w / 2, h / 2);
+  if (f <= 0) return;
+  const edges: [number, number, number, number][] = [
+    [0, 0, 0, f],
+    [0, h - f, 0, h],
+    [0, 0, f, 0],
+    [w - f, 0, w, 0],
+  ];
+  ctx.globalCompositeOperation = "destination-in";
+  for (const [x0, y0, x1, y1] of edges) {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,1)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  }
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/**
+ * Draws the image into an offscreen canvas, feathers all four edges there, then
+ * draws the feathered result back onto the main ctx at (x, y). No-op (plain draw)
+ * when featherRadius is 0/undefined.
+ */
+function applyFeatherMask(
+  ctx: CanvasRenderingContext2D,
+  img: CanvasImageSource,
+  node: OverlayNode,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  pr: number,
+): void {
+  const featherPx = (node.featherRadius ?? 0) * pr;
+  if (featherPx <= 0) {
+    ctx.drawImage(img, x, y, w, h);
+    return;
+  }
+  const off = document.createElement("canvas");
+  off.width = w;
+  off.height = h;
+  const offCtx = off.getContext("2d");
+  if (!offCtx) {
+    ctx.drawImage(img, x, y, w, h);
+    return;
+  }
+  offCtx.drawImage(img, 0, 0, w, h);
+  buildEdgeGradients(offCtx, w, h, featherPx);
+  ctx.drawImage(off, x, y);
 }
 
 /** Draws one overlay image with opacity, cornerRadius, rotation, and dropShadow applied. */
@@ -124,20 +167,9 @@ function drawOverlayImage(
   if (node.dropShadow) paintShadowSilhouette(ctx, node.dropShadow, x, y, w, h, radius, pr);
   ctx.save();
   if (radius > 0) clipRoundedRect(ctx, x, y, w, h, radius);
-  ctx.drawImage(img, x, y, w, h);
-  applyFeatherMask(ctx, node, pr);
-  buildEdgeGradients(ctx, w, h, 0);
+  applyFeatherMask(ctx, img, node, x, y, w, h, pr);
   ctx.restore();
   ctx.restore();
-}
-
-/** Converts a #rrggbb color + alpha (0..1) to an rgba() string. */
-function withAlpha(color: string, alpha: number): string {
-  const hex = color.replace("#", "");
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {

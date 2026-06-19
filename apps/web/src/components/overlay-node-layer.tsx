@@ -2,6 +2,7 @@
 
 import type { OverlayNode, BorderOverlay } from "@maga/editor";
 import { useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { buildFeatherMaskCss, withAlpha } from "@/lib/css-helpers";
 
 interface OverlayNodeLayerProps {
   node: OverlayNode;
@@ -17,12 +18,16 @@ function buildDropShadowFilter(node: OverlayNode): string | undefined {
   return `drop-shadow(${s.x}px ${s.y}px ${s.blur}px ${withAlpha(s.color, s.opacity)})`;
 }
 
-function withAlpha(color: string, alpha: number): string {
-  const hex = color.replace("#", "");
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+/** CSS feather-mask props (all four edges fade inward) when featherRadius > 0. */
+function buildFeatherMaskStyle(node: OverlayNode): React.CSSProperties {
+  const mask = buildFeatherMaskCss(node.featherRadius ?? 0, node.width, node.height);
+  if (!mask) return {};
+  return {
+    maskImage: mask,
+    WebkitMaskImage: mask,
+    maskComposite: "intersect",
+    WebkitMaskComposite: "source-in",
+  };
 }
 
 function buildOverlayStyle(node: OverlayNode): React.CSSProperties {
@@ -50,6 +55,7 @@ function buildOverlayStyle(node: OverlayNode): React.CSSProperties {
           borderRadius: `${node.cornerRadius ?? 0}px`,
           overflow: "hidden",
           filter: buildDropShadowFilter(node),
+          ...buildFeatherMaskStyle(node),
         }),
   };
 }

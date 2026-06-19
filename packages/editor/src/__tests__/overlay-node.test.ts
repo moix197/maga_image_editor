@@ -35,4 +35,12 @@ describe("overlay node effects (rotation, cornerRadius, dropShadow)", () => {
     expect(updated.cornerRadius).toBe(20);
     expect(updated.dropShadow).toEqual(dropShadow);
   });
+
+  it("updateOverlayNode persists featherRadius patch", () => {
+    const node = createOverlayNode({ src: "data:," });
+    const state = { ...createEditorState(), nodes: [node] };
+    const next = updateOverlayNode(state, node.id, { featherRadius: 30 });
+    const updated = next.nodes.find((n) => n.id === node.id) as typeof node;
+    expect(updated.featherRadius).toBe(30);
+  });
 });

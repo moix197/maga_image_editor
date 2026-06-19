@@ -63,6 +63,8 @@ export interface OverlayNode {
   cornerRadius?: number;
   /** Drop shadow; undefined = no shadow. */
   dropShadow?: DropShadow;
+  /** Edge feather radius in px; 0 or undefined = no feather. */
+  featherRadius?: number;
 }
 
 /** Border overlay — a CSS-border div with configurable style. */

@@ -192,6 +192,17 @@ export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: Ov
             />
           </FieldRow>
 
+          <FieldRow label={`Edge Feather (${node.featherRadius ?? 0}px)`}>
+            <Slider
+              min={0}
+              max={100}
+              step={1}
+              value={[node.featherRadius ?? 0]}
+              onValueChange={([v]) => onChange({ featherRadius: v ?? 0 })}
+              aria-label="Edge feather"
+            />
+          </FieldRow>
+
           <FieldRow label="Drop Shadow">
             <div className="flex items-center gap-2">
               <input
