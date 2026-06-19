@@ -56,10 +56,10 @@ Create a new package `packages/projects` that owns: the versioned project JSON s
 
 **Steps:**
 
-- [ ] Create `packages/projects` with `package.json`, `tsconfig.json`, `src/schema.ts`, `src/index.ts`; add to pnpm workspace
-- [ ] Define `BatchProject` schema v1 in `schema.ts` with `schemaVersion: 1` literal type; include `id`, `name`, `createdAt`, `updatedAt`, `background: ProjectAsset`, `overlays: ProjectAsset[]`, `template: EditorState`, `variableSlotId: string`, `outputs: GeneratedOutput[]`
-- [ ] Write `packages/projects` schema unit tests
-- [ ] Update `packages/projects/README.md`
+- [x] Create `packages/projects` with `package.json`, `tsconfig.json`, `src/schema.ts`, `src/index.ts`; add to pnpm workspace
+- [x] Define `BatchProject` schema v1 in `schema.ts` with `schemaVersion: 1` literal type; include `id`, `name`, `createdAt`, `updatedAt`, `background: ProjectAsset`, `overlays: ProjectAsset[]`, `template: EditorState`, `variableSlotId: string`, `outputs: GeneratedOutput[]`
+- [x] Write `packages/projects` schema unit tests
+- [x] Update `packages/projects/README.md`
 
 **Tests:**
 
@@ -69,22 +69,22 @@ Create a new package `packages/projects` that owns: the versioned project JSON s
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `packages/projects`
-- [ ] No TypeScript errors (`pnpm tsc --noEmit` in `packages/projects`)
-- [ ] No imports from `apps/web` in `packages/projects`
+- [x] Automated tests pass: `pnpm test` in `packages/projects`
+- [x] No TypeScript errors (`pnpm tsc --noEmit` in `packages/projects`)
+- [x] No imports from `apps/web` in `packages/projects`
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes from reviewer reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator has verified and approved this phase
-- [ ] Changes committed: `feat: packages/projects scaffold with versioned BatchProject schema`
-- [ ] Phase marked complete
+- [x] All Steps and Verification checkboxes above ticked
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes from reviewer reflected back into this plan file
+- [x] Tests written and passing
+- [x] Documentation updated
+- [x] Orchestrator has verified and approved this phase
+- [x] Changes committed: `feat: packages/projects scaffold with versioned BatchProject schema`
+- [x] Phase marked complete
 
 ---
 
