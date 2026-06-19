@@ -109,12 +109,12 @@ Create a new package `packages/projects` that owns: the versioned project JSON s
 
 **Steps:**
 
-- [ ] Create `/batch` route: thin `page.tsx` + `layout.tsx` with metadata
-- [ ] Build `AssetUploadZone` (generic, callback-only) accepting `onFiles: (files: File[]) => void`, `accept`, `multiple` props; use shadcn/ui `Card` for drop-target styling
-- [ ] Build `useBatchProject` hook: convert uploaded `File` objects to data URLs via existing `fileToDataUrl`; store as `ProjectAsset` with a uuid key; hold full `BatchProject` in `useState`
-- [ ] Build `AssetList` to render background thumbnail + overlay thumbnails grid
-- [ ] Build `BatchWorkspace` composing the above; wire background zone (single) and overlays zone (multiple)
-- [ ] Add nav link on home page
+- [x] Create `/batch` route: thin `page.tsx` + `layout.tsx` with metadata
+- [x] Build `AssetUploadZone` (generic, callback-only) accepting `onFiles: (files: File[]) => void`, `accept`, `multiple` props; use shadcn/ui `Card` for drop-target styling
+- [x] Build `useBatchProject` hook: convert uploaded `File` objects to data URLs via existing `fileToDataUrl`; store as `ProjectAsset` with a uuid key; hold full `BatchProject` in `useState`
+- [x] Build `AssetList` to render background thumbnail + overlay thumbnails grid
+- [x] Build `BatchWorkspace` composing the above; wire background zone (single) and overlays zone (multiple)
+- [x] Add nav link on home page
 
 **Tests:**
 
@@ -124,23 +124,23 @@ Create a new package `packages/projects` that owns: the versioned project JSON s
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `apps/web`
-- [ ] Navigate to `/batch`, drag-drop a background image → thumbnail appears labeled "Background"
-- [ ] Upload 3 overlay images → 3 thumbnails appear in overlay list
-- [ ] No console errors; no TypeScript errors (`pnpm tsc --noEmit` in `apps/web`)
+- [x] Automated tests pass: `pnpm test` in `apps/web`
+- [ ] Navigate to `/batch`, drag-drop a background image → thumbnail appears labeled "Background" _(deferred → final manual pass)_
+- [ ] Upload 3 overlay images → 3 thumbnails appear in overlay list _(deferred → final manual pass)_
+- [x] No console errors; no TypeScript errors (`pnpm tsc --noEmit` in `apps/web`) — tsc clean; console pending manual pass
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes from reviewer reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator has verified and approved this phase
-- [ ] Changes committed: `feat: batch project scaffold with asset upload UI`
-- [ ] Phase marked complete
+- [ ] All Steps and Verification checkboxes above ticked _(browser-manual verification deferred to final pass)_
+- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn _(n/a — subagent-driven execute-prd flow)_
+- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session _(n/a)_
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes from reviewer reflected back into this plan file
+- [x] Tests written and passing
+- [ ] Documentation updated _(batched to final docs pass)_
+- [ ] Orchestrator has verified and approved this phase _(pending final manual pass)_
+- [x] Changes committed: `feat: batch project scaffold with asset upload UI`
+- [ ] Phase marked complete _(pending final manual pass)_
 
 ---
 
