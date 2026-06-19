@@ -11,6 +11,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "pnpm --filter @maga/web dev",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "build": "pnpm -r build"
