@@ -6,3 +6,4 @@ export type {
   SchemaVersion,
 } from "./schema";
 export { SCHEMA_VERSION } from "./schema";
+export { exportProjectZip } from "./zip-export";

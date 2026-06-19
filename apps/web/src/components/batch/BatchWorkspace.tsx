@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useBatchProject } from "@/hooks/use-batch-project";
 import { useSingleComposite } from "@/hooks/use-single-composite";
 import { useBatchRender } from "@/hooks/use-batch-render";
+import { useZipExport } from "@/hooks/use-zip-export";
 import { AssetUploadZone } from "./AssetUploadZone";
 import { AssetList } from "./AssetList";
 import { TemplateEditor } from "./TemplateEditor";
@@ -16,6 +17,7 @@ export function BatchWorkspace() {
   const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, setBackground, addOverlays, setTemplate } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite();
+  const { isExporting, error: exportError, exportZip } = useZipExport();
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [bgDimensions, setBgDimensions] = useState<{ w: number; h: number } | null>(null);
   const canvasElRef = useRef<HTMLDivElement | null>(null);
@@ -52,6 +54,10 @@ export function BatchWorkspace() {
   async function handleGenerateAll() {
     if (!canvasElRef.current || !template || !variableSlot) return;
     await batchRender.run(addOutput, clearOutputs);
+  }
+
+  async function handleExportZip() {
+    await exportZip({ background, overlays, template, variableSlot, outputs });
   }
 
   const canGeneratePreview =
@@ -160,6 +166,25 @@ export function BatchWorkspace() {
       )}
 
       {compositeDataUrl && <PreviewCard dataUrl={compositeDataUrl} />}
+
+      {outputs.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            disabled={isExporting}
+            onClick={handleExportZip}
+          >
+            {isExporting ? "Exporting..." : "Export ZIP"}
+          </Button>
+        </div>
+      )}
+
+      {exportError && (
+        <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {exportError}
+        </div>
+      )}
 
       <BatchResultsGallery
         outputs={outputs}
