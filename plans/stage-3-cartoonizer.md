@@ -2,7 +2,7 @@
 
 **Created:** 2026-06-18
 **Branch:** `stage-3-cartoonizer`
-**Status:** not started
+**Status:** done
 
 ## Context
 
