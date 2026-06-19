@@ -11,6 +11,20 @@ interface OverlayNodeLayerProps {
   isSelected: boolean;
 }
 
+function buildDropShadowFilter(node: OverlayNode): string | undefined {
+  const s = node.dropShadow;
+  if (!s) return undefined;
+  return `drop-shadow(${s.x}px ${s.y}px ${s.blur}px ${withAlpha(s.color, s.opacity)})`;
+}
+
+function withAlpha(color: string, alpha: number): string {
+  const hex = color.replace("#", "");
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function buildOverlayStyle(node: OverlayNode): React.CSSProperties {
   const isBorder = node.overlayType === "border";
   const b = isBorder ? (node as BorderOverlay) : null;
@@ -31,7 +45,12 @@ function buildOverlayStyle(node: OverlayNode): React.CSSProperties {
           borderRadius: `${b.borderRadius}px`,
           background: "transparent",
         }
-      : {}),
+      : {
+          transform: `rotate(${node.rotation ?? 0}deg)`,
+          borderRadius: `${node.cornerRadius ?? 0}px`,
+          overflow: "hidden",
+          filter: buildDropShadowFilter(node),
+        }),
   };
 }
 
@@ -95,6 +114,7 @@ export function OverlayNodeLayer({
       role="button"
       tabIndex={0}
       aria-label={isImage ? "Image overlay" : "Border overlay"}
+      {...(isImage ? { "data-post-pass": "true", "data-overlay": JSON.stringify(node) } : {})}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

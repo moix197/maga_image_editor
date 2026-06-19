@@ -5,6 +5,12 @@ vi.mock("html-to-image", () => ({
   toPng: vi.fn().mockResolvedValue("data:image/png;base64,mock"),
 }));
 
+// Mock the canvas post-pass so export-helpers logic is tested in isolation
+// (the real post-pass loads images, which never resolve in jsdom).
+vi.mock("@/lib/canvas-post-pass", () => ({
+  applyImageOverlayPostPass: vi.fn().mockResolvedValue("data:image/png;base64,postpass"),
+}));
+
 import * as htmlToImage from "html-to-image";
 import { exportCanvasElement } from "@/lib/export-helpers";
 
@@ -37,7 +43,7 @@ describe("exportCanvasElement", () => {
   it("sets anchor href to the data URL and clicks it", async () => {
     const el = realCreateElement("div");
     await exportCanvasElement(el, "test.png");
-    expect(anchor.href).toBe("data:image/png;base64,mock");
+    expect(anchor.href).toBe("data:image/png;base64,postpass");
     expect(anchor.download).toBe("test.png");
     expect(anchor.click).toHaveBeenCalledOnce();
   });

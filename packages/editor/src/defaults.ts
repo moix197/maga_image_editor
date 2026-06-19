@@ -26,6 +26,8 @@ export const DEFAULT_OVERLAY_NODE: Omit<OverlayNode, "id"> = {
   zIndex: 0,
   overlayType: "image",
   aspectRatioLocked: true,
+  rotation: 0,
+  cornerRadius: 0,
 };
 
 export const DEFAULT_BORDER_NODE: Omit<BorderOverlay, "id"> = {

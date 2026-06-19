@@ -15,6 +15,15 @@ export interface TextBackground {
   paddingY: number;
 }
 
+/** Drop shadow for image overlays; baked into export by the canvas post-pass. */
+export interface DropShadow {
+  x: number;
+  y: number;
+  blur: number;
+  color: string;
+  opacity: number;
+}
+
 export interface TextNode {
   id: NodeId;
   content: string;
@@ -48,6 +57,12 @@ export interface OverlayNode {
   overlayType: "image" | "border";
   /** When true, editing width or height preserves the current W:H ratio. */
   aspectRatioLocked?: boolean;
+  /** Clockwise rotation in degrees (default 0). */
+  rotation?: number;
+  /** Corner radius in px (default 0). */
+  cornerRadius?: number;
+  /** Drop shadow; undefined = no shadow. */
+  dropShadow?: DropShadow;
 }
 
 /** Border overlay — a CSS-border div with configurable style. */

@@ -1,7 +1,7 @@
 "use client";
 
 import { isBorderOverlay } from "@maga/editor";
-import type { OverlayNode, BorderOverlay } from "@maga/editor";
+import type { OverlayNode, BorderOverlay, DropShadow } from "@maga/editor";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -31,6 +31,8 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 }
 
 type OverlayPatch = Partial<Omit<OverlayNode, "id">>;
+
+const DEFAULT_DROP_SHADOW: DropShadow = { x: 5, y: 5, blur: 10, color: "#000000", opacity: 0.5 };
 
 /** When the lock is on, scales the unedited dimension to preserve the current W:H ratio. */
 export function applyAspectRatioLock(patch: OverlayPatch, currentNode: OverlayNode): OverlayPatch {
@@ -155,6 +157,126 @@ export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: Ov
                 Lock aspect ratio
               </label>
             </div>
+          </FieldRow>
+
+          <FieldRow label={`Rotation (${node.rotation ?? 0}°)`}>
+            <div className="flex items-center gap-2">
+              <Slider
+                min={0}
+                max={360}
+                step={1}
+                value={[node.rotation ?? 0]}
+                onValueChange={([v]) => onChange({ rotation: v ?? 0 })}
+                aria-label="Rotation"
+              />
+              <Input
+                type="number"
+                min={0}
+                max={360}
+                value={node.rotation ?? 0}
+                onChange={(e) => onChange({ rotation: Number(e.target.value) })}
+                aria-label="Rotation value"
+                className="h-8 w-16 text-xs"
+              />
+            </div>
+          </FieldRow>
+
+          <FieldRow label={`Corner Radius (${node.cornerRadius ?? 0}px)`}>
+            <Slider
+              min={0}
+              max={200}
+              step={1}
+              value={[node.cornerRadius ?? 0]}
+              onValueChange={([v]) => onChange({ cornerRadius: v ?? 0 })}
+              aria-label="Corner radius"
+            />
+          </FieldRow>
+
+          <FieldRow label="Drop Shadow">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="drop-shadow-toggle"
+                checked={node.dropShadow !== undefined}
+                onChange={(e) =>
+                  onChange({ dropShadow: e.target.checked ? DEFAULT_DROP_SHADOW : undefined })
+                }
+                className="h-4 w-4 cursor-pointer rounded"
+              />
+              <label htmlFor="drop-shadow-toggle" className="cursor-pointer text-xs">
+                Enable drop shadow
+              </label>
+            </div>
+            {node.dropShadow && (
+              <div className="mt-2 flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <div className="flex flex-1 items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">X</Label>
+                    <Input
+                      type="number"
+                      value={node.dropShadow.x}
+                      onChange={(e) =>
+                        onChange({ dropShadow: { ...node.dropShadow!, x: Number(e.target.value) } })
+                      }
+                      aria-label="Shadow X"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="flex flex-1 items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">Y</Label>
+                    <Input
+                      type="number"
+                      value={node.dropShadow.y}
+                      onChange={(e) =>
+                        onChange({ dropShadow: { ...node.dropShadow!, y: Number(e.target.value) } })
+                      }
+                      aria-label="Shadow Y"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="w-10 text-xs text-muted-foreground">Blur</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={node.dropShadow.blur}
+                    onChange={(e) =>
+                      onChange({ dropShadow: { ...node.dropShadow!, blur: Number(e.target.value) } })
+                    }
+                    aria-label="Shadow blur"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="w-10 text-xs text-muted-foreground">Color</Label>
+                  <input
+                    type="color"
+                    value={node.dropShadow.color}
+                    onChange={(e) =>
+                      onChange({ dropShadow: { ...node.dropShadow!, color: e.target.value } })
+                    }
+                    aria-label="Shadow color"
+                    className="h-8 flex-1 cursor-pointer rounded border border-input"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-muted-foreground">
+                    Opacity ({Math.round(node.dropShadow.opacity * 100)}%)
+                  </Label>
+                  <Slider
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={[node.dropShadow.opacity]}
+                    onValueChange={([v]) =>
+                      onChange({ dropShadow: { ...node.dropShadow!, opacity: v ?? 0 } })
+                    }
+                    aria-label="Shadow opacity"
+                  />
+                </div>
+              </div>
+            )}
           </FieldRow>
         </>
       )}
