@@ -1,8 +1,16 @@
 # @maga/web
 
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DEEPAI_API_KEY` | Optional | Enables the Cartoonize feature. Get a free key at https://deepai.org. Set in `.env.local` — never commit that file. See `.env.example` for the placeholder. |
+
+Without `DEEPAI_API_KEY` the Cartoonize button is disabled and all other editor features remain fully functional.
+
 ## Routes
 
-- `/editor` — main image editor page (`src/app/editor/page.tsx`). Upload an image via drag-and-drop or file picker; download the result.
+- `/editor` — main image editor page (`src/app/editor/page.tsx`). Upload an image via drag-and-drop or file picker; add text/overlays; cartoonize; download the result.
 
 ## image-helpers API (`src/lib/image-helpers.ts`)
 
@@ -19,6 +27,17 @@ downscaleIfNeeded(dataUrl: string, maxDimension?: number): Promise<string>
 downloadDataUrl(dataUrl: string, filename: string): void
 // Triggers a browser download of the given data URL.
 ```
+
+## Features
+
+### Cartoonize
+
+Click **Cartoonize** in the toolbar to send the source image to the DeepAI Toonify API and display the result in the right panel.
+
+- **Requires** `DEEPAI_API_KEY` in `.env.local`. Without it the button is visibly disabled with a tooltip: "Add DEEPAI_API_KEY to .env.local to enable".
+- The result is **ephemeral** — it lives in React state only. Reloading the page clears it. An inline warning is shown below the result panel as a reminder to download before reloading.
+- The server fetches DeepAI's temporary CDN URL immediately and converts it to a base64 data URL before returning to the client; the CDN URL is never stored or sent to the browser.
+- Input images are downscaled client-side (≤ 2048 px) before upload to stay within the API's payload limit.
 
 ## Components
 
@@ -62,6 +81,15 @@ Tests live in `src/__tests__/` and `src/components/__tests__/`. Uses Vitest + js
 
 ## Hooks
 
+### `useCartoonize()`
+
+Manages the Cartoonize feature state. Returns:
+
+- `enabled: boolean` — true when `DEEPAI_API_KEY` is set (checked on mount via `GET /api/cartoonize`)
+- `loading: boolean` — true while a cartoonize request is in flight
+- `error: string | null` — last error message, or null
+- `cartoonize(dataUrl: string): Promise<string | null>` — downscales the image client-side, POSTs to `/api/cartoonize`, returns the base64 output data URL on success or null on failure (sets `error`)
+
 ### `useEditorState(initial?)`
 
 Wraps `@maga/editor` state mutations. Returns:
@@ -73,9 +101,37 @@ Wraps `@maga/editor` state mutations. Returns:
 
 ## Lib
 
+### `cartoonize-service` (`src/lib/cartoonize-service.ts`)
+
+Five focused server-only functions (no React, no `packages/editor` imports):
+
+```ts
+isCartoonizeEnabled(): boolean
+// Returns true when process.env.DEEPAI_API_KEY is set.
+
+dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mimeType: string }
+// Decodes a base64 data URL to a Buffer and extracts the MIME type.
+
+cartoonizeBuffer(buffer: Buffer, mimeType: string): Promise<string>
+// POSTs image bytes to DeepAI Toonify as multipart/form-data.
+// Returns the raw CDN output_url. Throws on HTTP 429 ("rate limit"), 402/403 ("quota exceeded"), or other errors.
+
+fetchOutputAsDataUrl(outputUrl: string): Promise<string>
+// Server-fetches the DeepAI CDN URL and returns a base64 data URL (data:image/...;base64,...).
+// The CDN URL is never sent to the client.
+
+cartoonizeDataUrl(dataUrl: string): Promise<string>
+// Composer: dataUrlToBuffer → cartoonizeBuffer → fetchOutputAsDataUrl. Returns a base64 data URL.
+```
+
 ### `exportCanvasElement(el, filename)`
 
 Awaits `document.fonts.ready`, calls `html-to-image.toPng` at 2× pixel ratio, downloads the result as a PNG.
+
+## Known Limitations
+
+- **Cartoonize result is not persisted.** It lives in React state only — reloading the page clears it. Download the result before reloading.
+- **DeepAI free-tier rate limits.** The free tier has a limited number of API calls per month. Heavy usage will hit limits; check your DeepAI dashboard at https://deepai.org.
 
 ## Editor Controls
 

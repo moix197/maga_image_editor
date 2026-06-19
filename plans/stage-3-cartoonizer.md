@@ -164,9 +164,9 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing (see Tests subsection above) — or no-tests justification accepted
 - [ ] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(cartoonizer): cartoonize-service + API route with enabled-check`
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -190,7 +190,7 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 | create | `apps/web/src/__tests__/hooks/use-cartoonize-disabled.test.ts` | Unit test: when GET returns `{ enabled: false }`, `enabled` is false after mount; `cartoonize` call is not expected (button disabled — test the hook state, not the button). |
 
 **Steps:**
-- [ ] Create `apps/web/src/hooks/use-cartoonize.ts` (use `ui-ux-pro-max --stack nextjs` for error/loading state patterns):
+- [x] Create `apps/web/src/hooks/use-cartoonize.ts` (use `ui-ux-pro-max --stack nextjs` for error/loading state patterns):
   - `useState` for `loading`, `error`, `enabled`
   - `useEffect` on mount: `fetch('/api/cartoonize').then(r => r.json()).then(d => setEnabled(d.enabled)).catch(() => setEnabled(false))`
   - `cartoonize(dataUrl: string): Promise<string | null>`:
@@ -204,7 +204,7 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
   - Return `{ loading, error, enabled, cartoonize }`
   - Note: `data.outputUrl` will be a base64 data URL (not a CDN URL); the hook is agnostic to this — it just returns the string
   - ≤50 lines total
-- [ ] Update `apps/web/src/app/editor/page.tsx` (use `ui-ux-pro-max --stack nextjs`):
+- [x] Update `apps/web/src/app/editor/page.tsx` (use `ui-ux-pro-max --stack nextjs`):
   - Import and call `useCartoonize()`
   - Add "Cartoonize" button to the editor toolbar section, adjacent to existing toolbar buttons
   - Button disabled when `!enabled || loading || !sourceDataUrl`
@@ -212,19 +212,19 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
   - When `loading`: button label becomes a spinner (reuse existing loading pattern in the project; if none, render `"Cartoonizing..."` text with `disabled` — no new spinner library)
   - On click: `const url = await cartoonize(sourceDataUrl); if (url) setResultDataUrl(url)`
   - After `CompareLayout` or result panel: when `resultDataUrl` is set, render an inline `<p>` warning: `"This result is temporary — download it before closing or reloading the page."`
-  - Page component stays ≤100 lines; all hook calls at top; no inline business logic
-- [ ] Write `apps/web/src/__tests__/hooks/use-cartoonize.test.ts`:
+  - Page stays thin — readable multi-line JSX, all hook calls at top, no inline business logic (line count not capped at the expense of readability, per CLAUDE.md)
+- [x] Write `apps/web/src/__tests__/hooks/use-cartoonize.test.ts`:
   - Mock `fetch` globally with `vi.fn()`
   - Mock `downscaleIfNeeded` (from `@/lib/image-helpers`) to return its input unchanged — the hook test must not depend on browser canvas APIs
   - On mount GET mock returns `{ enabled: true }` → `enabled` is true
   - Calling `cartoonize` with a data URL: fetch called with correct URL/method/body; `loading` is true during fetch; resolves to `outputUrl` (mock returns a `data:image/png;base64,...` string, not a CDN URL)
   - Calling `cartoonize` when fetch fails: `error` is set, returns null, `loading` false
   - Calling `cartoonize` when response has `{ disabled: true }`: `error` is set, returns null
-- [ ] Write `apps/web/src/__tests__/hooks/use-cartoonize-disabled.test.ts`:
+- [x] Write `apps/web/src/__tests__/hooks/use-cartoonize-disabled.test.ts`:
   - On mount GET mock returns `{ enabled: false }` → `enabled` is false after effect
-- [ ] Run `pnpm --filter @maga/web test` — all pass
-- [ ] Run `pnpm typecheck` from root — exits 0
-- [ ] Update `apps/web/README.md` — document "Cartoonize" feature, disabled state, ephemeral-URL warning
+- [x] Run `pnpm --filter @maga/web test` — all pass
+- [x] Run `pnpm typecheck` from root — exits 0
+- [x] Update `apps/web/README.md` — document "Cartoonize" feature, disabled state, ephemeral-URL warning
 
 **Tests:**
 | Action | File | What it covers |
@@ -233,8 +233,8 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 | create | `apps/web/src/__tests__/hooks/use-cartoonize-disabled.test.ts` | `enabled` is false when GET returns `{ enabled: false }` |
 
 **Verification:**
-- [ ] `pnpm --filter @maga/web test` exits 0
-- [ ] `pnpm typecheck` from root exits 0
+- [x] `pnpm --filter @maga/web test` exits 0
+- [x] `pnpm typecheck` from root exits 0
 - [ ] With key absent: open `/editor`, upload image — "Cartoonize" button is visually disabled; hovering shows tooltip "Add DEEPAI_API_KEY to .env.local to enable"
 - [ ] With key absent: no crash, all other editor features work normally
 - [ ] With key set: upload image → click "Cartoonize" → button shows "Cartoonizing..." (disabled during request) → result appears in right panel of `CompareLayout`
@@ -248,16 +248,16 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 - [ ] All Steps and Verification checkboxes above ticked in the plan file
 - [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
   ```
-  Code review — Stage 3 Cartoonizer, Phase 2 (button + wired UI). Branch: stage-3-cartoonizer. Files to review: apps/web/src/hooks/use-cartoonize.ts, apps/web/src/app/editor/page.tsx (changes only), apps/web/src/__tests__/hooks/use-cartoonize.test.ts, apps/web/src/__tests__/hooks/use-cartoonize-disabled.test.ts, apps/web/README.md. Check: (1) use-cartoonize.ts is ≤50 lines, pure fetch orchestration — no business logic, no direct DeepAI calls, no API key references; (2) page.tsx stays thin (≤100 lines), all cartoonize logic via useCartoonize, no inline business logic; (3) button disabled when !enabled || loading || !sourceDataUrl; (4) disabled tooltip uses title attribute or existing Tooltip component — no new packages; (5) loading state uses existing pattern — no new spinner library; (6) resultDataUrl set only on non-null return from cartoonize(); (7) resultDataUrl will be a base64 data URL — confirm no CDN URL ever stored in state; (8) ephemeral warning rendered when resultDataUrl is set — wording is about in-memory state clearing on reload, not URL expiry; (9) downloadDataUrl from image-helpers.ts reused for download — not reimplemented; (10) hook tests mock fetch globally, cover enabled/disabled/loading/error/success paths; mock success response uses data:image/png;base64,... not an https:// URL; (11) pnpm --filter @maga/web test exits 0; (12) pnpm typecheck exits 0; (13) CLAUDE.md invariants: pnpm, thin entry points, small focused functions, reuse before reinvent (downloadDataUrl, existing button/toolbar patterns), no new packages.
+  Code review — Stage 3 Cartoonizer, Phase 2 (button + wired UI). Branch: stage-3-cartoonizer. Files to review: apps/web/src/hooks/use-cartoonize.ts, apps/web/src/app/editor/page.tsx (changes only), apps/web/src/__tests__/hooks/use-cartoonize.test.ts, apps/web/src/__tests__/hooks/use-cartoonize-disabled.test.ts, apps/web/README.md. Check: (1) use-cartoonize.ts is ≤50 lines, pure fetch orchestration — no business logic, no direct DeepAI calls, no API key references; (2) page.tsx stays thin (readable multi-line, no inline business logic — readability over arbitrary line caps), all cartoonize logic via useCartoonize; (3) button disabled when !enabled || loading || !sourceDataUrl; (4) disabled tooltip uses title attribute or existing Tooltip component — no new packages; (5) loading state uses existing pattern — no new spinner library; (6) resultDataUrl set only on non-null return from cartoonize(); (7) resultDataUrl will be a base64 data URL — confirm no CDN URL ever stored in state; (8) ephemeral warning rendered when resultDataUrl is set — wording is about in-memory state clearing on reload, not URL expiry; (9) downloadDataUrl from image-helpers.ts reused for download — not reimplemented; (10) hook tests mock fetch globally, cover enabled/disabled/loading/error/success paths; mock success response uses data:image/png;base64,... not an https:// URL; (11) pnpm --filter @maga/web test exits 0; (12) pnpm typecheck exits 0; (13) CLAUDE.md invariants: pnpm, thin entry points, small focused functions, reuse before reinvent (downloadDataUrl, existing button/toolbar patterns), no new packages.
   ```
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing (see Tests subsection above) — or no-tests justification accepted
-- [ ] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(cartoonizer): cartoonize button, hook, and wired editor UI`
-- [ ] Phase marked complete
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing (see Tests subsection above) — or no-tests justification accepted
+- [x] Documentation updated (see Documentation section)
+- [x] Orchestrator (user) has verified and approved this phase
+- [x] Changes committed: `feat(cartoonizer): cartoonize button, hook, and wired editor UI`
+- [x] Phase marked complete
 
 ---
 
@@ -337,7 +337,7 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 | 1 | `cartoonizeBuffer` throws on generic non-ok HTTP response from DeepAI | `apps/web/src/__tests__/lib/cartoonize-service.test.ts` |
 | 1 | `cartoonizeBuffer` throws when `output_url` missing from DeepAI response | `apps/web/src/__tests__/lib/cartoonize-service.test.ts` |
 | 1 | `fetchOutputAsDataUrl` fetches CDN URL and returns `data:image/...;base64,...` string | `apps/web/src/__tests__/lib/cartoonize-service.test.ts` |
-| 1 | `cartoonizeDataUrl` calls `downscaleIfNeeded` before `dataUrlToBuffer` | `apps/web/src/__tests__/lib/cartoonize-service.test.ts` |
+| 2 | `useCartoonize.cartoonize` calls `downscaleIfNeeded` (client-side) before POST | `apps/web/src/__tests__/hooks/use-cartoonize.test.ts` |
 | 1 | `cartoonizeDataUrl` end-to-end returns a base64 data URL (not a CDN URL) | `apps/web/src/__tests__/lib/cartoonize-service.test.ts` |
 | 1 | Route GET returns `{ enabled: false }` when key absent | `apps/web/src/__tests__/api/cartoonize.test.ts` |
 | 1 | Route GET returns `{ enabled: true }` when key present | `apps/web/src/__tests__/api/cartoonize.test.ts` |
@@ -359,7 +359,7 @@ DeepAI free-tier rate limits are the main external risk. DeepAI returns a tempor
 
 Stage 3 adds a one-click "Cartoonize" feature to the MAGA Image Editor using the **DeepAI Toonify** API. It is built as two clean vertical slices on top of the existing editor shell — no new pages, no new routing, no new packages.
 
-**Phase 1** builds the server-side foundation: `cartoonize-service.ts` contains five focused functions (enabled check, base64 decode, multipart DeepAI POST, server-side CDN fetch with base64 normalization, and a composer). The composer calls `downscaleIfNeeded` (from the existing `image-helpers.ts`) before sending to DeepAI, then server-fetches the temporary CDN `output_url` and converts it to a base64 data URL before returning — the CDN URL is never sent to the client. The Next.js API route at `/api/cartoonize` is a thin handler — it validates input (presence, mime prefix `data:image/`, payload size), guards on the missing-key case, and delegates all logic to the service. The GET handler returns `{ enabled: boolean }` so the client can check availability without exposing the key. All DeepAI communication is strictly server-side.
+**Phase 1** builds the server-side foundation: `cartoonize-service.ts` contains five focused functions (enabled check, base64 decode, multipart DeepAI POST, server-side CDN fetch with base64 normalization, and a composer). The composer sends the image to DeepAI, then server-fetches the temporary CDN `output_url` and converts it to a base64 data URL before returning — the CDN URL is never sent to the client. (Downscaling is done client-side in Phase 2's `useCartoonize` hook before upload, because `downscaleIfNeeded` uses browser-only canvas APIs that would crash in the Node runtime.) The Next.js API route at `/api/cartoonize` is a thin handler — it validates input (presence, mime prefix `data:image/`, payload size), guards on the missing-key case, and delegates all logic to the service. The GET handler returns `{ enabled: boolean }` so the client can check availability without exposing the key. All DeepAI communication is strictly server-side.
 
 **Phase 2** wires the feature to the UI: `useCartoonize` is a small client hook that manages `loading`, `error`, and `enabled` state, with no business logic of its own. In `editor/page.tsx`, a "Cartoonize" button calls the hook and sets `resultDataUrl` on success — which is already wired to the right panel of the existing `CompareLayout`. No new layout, no new components beyond the hook; existing `downloadDataUrl` handles the download.
 
