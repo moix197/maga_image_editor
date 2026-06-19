@@ -117,21 +117,28 @@ export default function EditorPage() {
           />
           {resultDataUrl && <p className="mt-2 text-xs text-amber-600">This result is temporary — download it before closing or reloading the page.</p>}
         </div>
-        {isSelectedText && (
-          <TextStylePanel
-            node={selectedNode as TextNode}
-            onChange={(patch) => updateTextNode(selectedNodeId!, patch)}
-            onDelete={() => { removeNode(selectedNodeId!); setSelectedNodeId(null); }}
-            onReorder={(dir) => reorderNode(selectedNodeId!, dir)}
-          />
-        )}
-        {isSelectedOverlay && (
-          <OverlayControlsPanel
-            node={selectedNode as OverlayNode}
-            onChange={(patch) => updateOverlayNode(selectedNodeId!, patch)}
-            onDelete={() => { removeNode(selectedNodeId!); setSelectedNodeId(null); }}
-            onReorder={(dir) => reorderNode(selectedNodeId!, dir)}
-          />
+        {sourceDataUrl && (
+          <div className="w-64 shrink-0">
+            {isSelectedText && (
+              <TextStylePanel
+                node={selectedNode as TextNode}
+                onChange={(patch) => updateTextNode(selectedNodeId!, patch)}
+                onDelete={() => { removeNode(selectedNodeId!); setSelectedNodeId(null); }}
+                onReorder={(dir) => reorderNode(selectedNodeId!, dir)}
+              />
+            )}
+            {isSelectedOverlay && (
+              <OverlayControlsPanel
+                node={selectedNode as OverlayNode}
+                onChange={(patch) => updateOverlayNode(selectedNodeId!, patch)}
+                onDelete={() => { removeNode(selectedNodeId!); setSelectedNodeId(null); }}
+                onReorder={(dir) => reorderNode(selectedNodeId!, dir)}
+              />
+            )}
+            {!isSelectedText && !isSelectedOverlay && (
+              <p className="text-sm text-muted-foreground">Select a layer to edit its properties.</p>
+            )}
+          </div>
         )}
       </div>
     </main>
