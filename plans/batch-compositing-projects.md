@@ -222,13 +222,13 @@ Center-crop to fill slot: compute `scale = max(slotW / imgW, slotH / imgH)`, the
 
 **Steps:**
 
-- [ ] Build `use-batch-render`: sequential loop over `project.overlays`; per iteration: await `coverCropDataUrl`, clone EditorState swapping slot src, await `exportCanvasElement`, call `addOutput`; update `progress`; check cancel flag between iterations
-- [ ] Build `BatchResultsGallery`: grid of output cards with image preview, filename label, and per-item download via `downloadDataUrl`; progress bar via shadcn/ui `Progress` component; renders in-progress (partial results) as they arrive
-- [ ] Add "Generate all" + "Cancel" controls in `BatchWorkspace`; disable "Generate all" while running
-- [ ] Write unit tests for `use-batch-render` loop logic (mock compositing helpers)
-- [ ] Handle zero overlays: if `project.overlays` is empty, show an inline warning "No overlay images uploaded" and disable "Generate all" button; do not enter the render loop
-- [ ] Handle UI freeze: each iteration yields to the event loop via `await new Promise(r => setTimeout(r, 0))` between renders to keep the progress bar responsive
-- [ ] Large batches (20+ overlays): output data URLs are held in React state in memory. Add a comment in `use-batch-render.ts` noting that if memory becomes a constraint, outputs should be written to IDB immediately per-item and references stored instead of data URLs; this is a known trade-off deferred to a future phase.
+- [x] Build `use-batch-render`: sequential loop over `project.overlays`; per iteration: await `coverCropDataUrl`, clone EditorState swapping slot src, await `exportCanvasElement`, call `addOutput`; update `progress`; check cancel flag between iterations
+- [x] Build `BatchResultsGallery`: grid of output cards with image preview, filename label, and per-item download via `downloadDataUrl`; progress bar via shadcn/ui `Progress` component; renders in-progress (partial results) as they arrive
+- [x] Add "Generate all" + "Cancel" controls in `BatchWorkspace`; disable "Generate all" while running
+- [x] Write unit tests for `use-batch-render` loop logic (mock compositing helpers)
+- [x] Handle zero overlays: if `project.overlays` is empty, show an inline warning "No overlay images uploaded" and disable "Generate all" button; do not enter the render loop
+- [x] Handle UI freeze: each iteration yields to the event loop via `await new Promise(r => setTimeout(r, 0))` between renders to keep the progress bar responsive
+- [x] Large batches (20+ overlays): output data URLs are held in React state in memory. Add a comment in `use-batch-render.ts` noting that if memory becomes a constraint, outputs should be written to IDB immediately per-item and references stored instead of data URLs; this is a known trade-off deferred to a future phase.
 
 **Tests:**
 
@@ -239,25 +239,27 @@ Center-crop to fill slot: compute `scale = max(slotW / imgW, slotH / imgH)`, the
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `apps/web`
-- [ ] Upload background + 5 overlays; click "Generate all" → progress shows "1 / 5" … "5 / 5"; gallery populates as renders complete
-- [ ] Cancel mid-run → loop stops; partial results remain in gallery
-- [ ] Each gallery card "Download" saves the correct composited image
-- [ ] No TypeScript errors
-- [ ] Upload 0 overlays → "Generate all" is disabled and warning is shown (not a silent no-op)
+- [x] Automated tests pass: `pnpm test` in `apps/web`
+- [ ] Upload background + 5 overlays; click "Generate all" → progress shows "1 / 5" … "5 / 5"; gallery populates as renders complete _(deferred → final manual pass)_
+- [ ] Cancel mid-run → loop stops; partial results remain in gallery _(deferred → final manual pass)_
+- [ ] Each gallery card "Download" saves the correct composited image _(deferred → final manual pass)_
+- [x] No TypeScript errors (@maga/web tsc exit 0)
+- [x] Upload 0 overlays → "Generate all" is disabled and warning is shown (not a silent no-op) — covered by test + code; UI confirm in final pass
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted
-- [ ] Orchestrator cleared context
-- [ ] Code-reviewer verified
-- [ ] Reviewer changes reflected back
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator approved
-- [ ] Changes committed: `feat: batch render with results gallery and progress`
-- [ ] Phase marked complete
+- [ ] All Steps and Verification checkboxes above ticked _(browser-manual verification deferred to final pass)_
+- [ ] Reviewer handoff prompt emitted _(n/a — subagent-driven flow)_
+- [ ] Orchestrator cleared context _(n/a)_
+- [x] Code-reviewer verified
+- [x] Reviewer changes reflected back _(extracted shared `patchOverlays` helper; stable React key)_
+- [x] Tests written and passing
+- [ ] Documentation updated _(batched to final docs pass)_
+- [ ] Orchestrator approved _(pending final manual pass)_
+- [x] Changes committed: `feat: batch render with results gallery and progress`
+- [ ] Phase marked complete _(pending final manual pass)_
+
+> **Phase 5 carry-over:** `outputBlobKey` (and `ProjectAsset.blobKey`) currently hold raw data URLs, but the schema documents them as blob-store keys / relative ZIP paths. Phase 5 ZIP export must convert these data URLs into ZIP file entries + rewrite refs to relative paths.
 
 ---
 
