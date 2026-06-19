@@ -97,9 +97,9 @@ function buildEdgeGradients(
   if (f <= 0) return;
   const edges: [number, number, number, number][] = [
     [0, 0, 0, f],
-    [0, h - f, 0, h],
+    [0, h, 0, h - f],
     [0, 0, f, 0],
-    [w - f, 0, w, 0],
+    [w, 0, w - f, 0],
   ];
   ctx.globalCompositeOperation = "destination-in";
   for (const [x0, y0, x1, y1] of edges) {

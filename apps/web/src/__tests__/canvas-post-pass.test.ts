@@ -49,6 +49,11 @@ describe("applyImageOverlayPostPass", () => {
   // Snapshot of shadow props captured at the moment the silhouette is filled,
   // since the shadow is intentionally cleared again before drawImage.
   let shadowAtFill: { x: number; y: number; blur: number; color: string } | null;
+  // Records every createLinearGradient call: its 4 coords plus the stops added to it.
+  let gradients: {
+    coords: [number, number, number, number];
+    stops: { offset: number; color: string }[];
+  }[];
 
   // Builds a fresh ctx whose mutating ops append to its own scoped call log,
   // prefixed so we can tell the main ctx apart from the offscreen one.
@@ -73,9 +78,15 @@ describe("applyImageOverlayPostPass", () => {
       }),
       clip: track("clip"),
       fillRect: track("fillRect"),
-      createLinearGradient: vi.fn(() => {
+      createLinearGradient: vi.fn((x0: number, y0: number, x1: number, y1: number) => {
         log.push(`${label}:createLinearGradient`);
-        return { addColorStop: vi.fn() };
+        const entry: (typeof gradients)[number] = { coords: [x0, y0, x1, y1], stops: [] };
+        gradients.push(entry);
+        return {
+          addColorStop: vi.fn((offset: number, color: string) => {
+            entry.stops.push({ offset, color });
+          }),
+        };
       }),
       globalAlpha: 1,
       globalCompositeOperation: "source-over",
@@ -91,6 +102,7 @@ describe("applyImageOverlayPostPass", () => {
     calls = [];
     canvases = [];
     shadowAtFill = null;
+    gradients = [];
     // The first canvas created is the main one; reuse its ctx so tests can
     // reference it directly. Later canvases (offscreen feather) each get their own.
     mainCtx = makeCtx("main", calls);
@@ -226,6 +238,70 @@ describe("applyImageOverlayPostPass", () => {
     expect(mainCtx.drawImage).toHaveBeenCalledWith(offCanvas, 160, 120);
     // The offscreen ctx draws the source image into itself before feathering.
     expect(offCtx.drawImage).toHaveBeenCalled();
+  });
+
+  it("orients each feather edge gradient: TRANSPARENT at the outer border, OPAQUE inset", async () => {
+    // w = 100 * pr(2) = 200, h = 200; featherPx = 30 * 2 = 60; f = min(60, 100, 100) = 60.
+    await applyImageOverlayPostPass(
+      "data:image/png;base64,base",
+      [makeNode({ width: 100, height: 100, featherRadius: 30 })],
+      800,
+      600,
+      2,
+    );
+
+    const w = 200;
+    const h = 200;
+    const f = 60;
+
+    // Four edge gradients are built in order: top, bottom, left, right.
+    expect(gradients).toHaveLength(4);
+    const [top, bottom, left, right] = gradients as [
+      (typeof gradients)[number],
+      (typeof gradients)[number],
+      (typeof gradients)[number],
+      (typeof gradients)[number],
+    ];
+
+    // For each edge, locate the transparent stop (alpha 0, offset 0) and the
+    // opaque stop (offset 1), then assert which gradient endpoint each sits at.
+    const isTransparent = (color: string) => /,\s*0\s*\)$/.test(color);
+    const endpointOf = (
+      grad: (typeof gradients)[number],
+      offset: number,
+      axis: "x" | "y",
+    ): number => {
+      const stop = grad.stops.find((s) => s.offset === offset)!;
+      expect(stop).toBeDefined();
+      const [x0, y0, x1, y1] = grad.coords;
+      const start = axis === "x" ? x0 : y0;
+      const end = axis === "x" ? x1 : y1;
+      return stop === grad.stops.find((s) => s.offset === 0) ? start : end;
+    };
+
+    // Transparent stop is offset 0, opaque stop is offset 1, on every edge.
+    for (const edge of [top, bottom, left, right]) {
+      const transparentStop = edge.stops.find((s) => s.offset === 0)!;
+      const opaqueStop = edge.stops.find((s) => s.offset === 1)!;
+      expect(isTransparent(transparentStop.color)).toBe(true);
+      expect(isTransparent(opaqueStop.color)).toBe(false);
+    }
+
+    // top: transparent end at y=0 (border), opaque end at y=f (inset).
+    expect(endpointOf(top, 0, "y")).toBe(0);
+    expect(endpointOf(top, 1, "y")).toBe(f);
+
+    // bottom: transparent end at y=h (border), opaque end at y=h-f (inset).
+    expect(endpointOf(bottom, 0, "y")).toBe(h);
+    expect(endpointOf(bottom, 1, "y")).toBe(h - f);
+
+    // left: transparent end at x=0 (border), opaque end at x=f (inset).
+    expect(endpointOf(left, 0, "x")).toBe(0);
+    expect(endpointOf(left, 1, "x")).toBe(f);
+
+    // right: transparent end at x=w (border), opaque end at x=w-f (inset).
+    expect(endpointOf(right, 0, "x")).toBe(w);
+    expect(endpointOf(right, 1, "x")).toBe(w - f);
   });
 
   it("skips an overlay whose image fails to load instead of rejecting", async () => {
