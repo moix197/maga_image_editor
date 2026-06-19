@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
@@ -8,9 +10,12 @@ export default function Home() {
           MAGA Image Editor
         </h1>
         <p className="text-muted-foreground max-w-md text-lg">
-          Powerful image editing for everyone. Coming soon.
+          Powerful image editing for everyone.
         </p>
       </div>
+      <Button asChild size="lg">
+        <Link href="/editor">Open Editor</Link>
+      </Button>
       <ThemeToggle />
     </main>
   );
