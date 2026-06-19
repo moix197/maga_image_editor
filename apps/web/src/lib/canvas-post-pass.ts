@@ -175,7 +175,10 @@ function drawOverlayImage(
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    // Only request CORS for remote http(s) sources. Forcing crossOrigin on
+    // same-origin data:/blob: URLs can fail the load or taint the canvas
+    // (breaking toDataURL). Overlay srcs in this app are data: URLs.
+    if (/^https?:/i.test(src)) img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
@@ -203,8 +206,13 @@ export async function applyImageOverlayPostPass(
 
   const ordered = [...overlayNodes].sort((a, b) => a.zIndex - b.zIndex);
   for (const node of ordered) {
-    const img = await loadImage(node.src);
-    drawOverlayImage(ctx, img, node, containerW, containerH, pixelRatio);
+    // A single failed overlay must not blank the whole export — skip it.
+    try {
+      const img = await loadImage(node.src);
+      drawOverlayImage(ctx, img, node, containerW, containerH, pixelRatio);
+    } catch {
+      // Skip overlays that fail to load/draw rather than aborting the export.
+    }
   }
   return canvas.toDataURL("image/png");
 }

@@ -228,6 +228,30 @@ describe("applyImageOverlayPostPass", () => {
     expect(offCtx.drawImage).toHaveBeenCalled();
   });
 
+  it("skips an overlay whose image fails to load instead of rejecting", async () => {
+    // src "FAIL" triggers onerror; the good node still draws and export resolves.
+    class FailingImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      crossOrigin = "";
+      set src(v: string) {
+        queueMicrotask(() => (v === "FAIL" ? this.onerror?.() : this.onload?.()));
+      }
+    }
+    vi.stubGlobal("Image", FailingImage);
+
+    const result = await applyImageOverlayPostPass(
+      "data:image/png;base64,base",
+      [makeNode({ src: "FAIL" }), makeNode({})],
+      800,
+      600,
+      2,
+    );
+    expect(result).toBe("data:image/png;base64,result");
+    // Base PNG draw + exactly one successful overlay draw (the failing one is skipped).
+    expect(mainCtx.drawImage).toHaveBeenCalledTimes(2);
+  });
+
   it("does NOT create an offscreen canvas when featherRadius is 0 or undefined", async () => {
     await applyImageOverlayPostPass(
       "data:image/png;base64,base",
