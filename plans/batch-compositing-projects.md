@@ -166,12 +166,12 @@ Center-crop to fill slot: compute `scale = max(slotW / imgW, slotH / imgH)`, the
 
 **Steps:**
 
-- [ ] Implement `coverCropDataUrl` in `apps/web/src/lib/cover-crop.ts` using offscreen `<canvas>`; keep under 30 lines; export as named function
-- [ ] Build `TemplateEditor`: render background image as base; layer existing `OverlayNodeLayer` component (reuse from current editor) to place the variable slot; expose `onSave(editorState, variableSlotId)` callback; "variable slot" is visually distinguished (dashed border, label)
-- [ ] Wire `setTemplate` into `useBatchProject`
-- [ ] Build `use-single-composite`: (1) `coverCropDataUrl(overlay.src, slot.width, slot.height)` → croppedSrc, (2) clone template EditorState, swap variable node src to croppedSrc, (3) call existing `exportCanvasElement` from `apps/web/src/lib/export-helpers.ts`, (4) return result data URL
-- [ ] Add "Generate preview" button in `BatchWorkspace`; show first overlay composite result in a preview card
-- [ ] Write unit test for `coverCropDataUrl`; write unit test for the slot-swap logic in `use-single-composite` (mock `exportCanvasElement`)
+- [x] Implement `coverCropDataUrl` in `apps/web/src/lib/cover-crop.ts` using offscreen `<canvas>`; keep under 30 lines; export as named function
+- [x] Build `TemplateEditor`: render background image as base; layer existing `OverlayNodeLayer` component (reuse from current editor) to place the variable slot; expose `onSave(editorState, variableSlotId)` callback; "variable slot" is visually distinguished (dashed border, label)
+- [x] Wire `setTemplate` into `useBatchProject`
+- [x] Build `use-single-composite`: (1) `coverCropDataUrl(overlay.src, slot.width, slot.height)` → croppedSrc, (2) clone template EditorState, swap variable node src to croppedSrc, (3) call existing `exportCanvasElement` from `apps/web/src/lib/export-helpers.ts`, (4) return result data URL
+- [x] Add "Generate preview" button in `BatchWorkspace`; show first overlay composite result in a preview card
+- [x] Write unit test for `coverCropDataUrl`; write unit test for the slot-swap logic in `use-single-composite` (mock `exportCanvasElement`)
 
 **Tests:**
 
@@ -182,23 +182,25 @@ Center-crop to fill slot: compute `scale = max(slotW / imgW, slotH / imgH)`, the
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `apps/web`
-- [ ] Upload background + 3 overlays; define slot by placing an overlay node on the template; click "Generate preview" → composite appears (first overlay image fills the slot, cropped to cover)
-- [ ] Slot covers (no letterbox) with center crop on a non-square overlay image
-- [ ] No TypeScript errors
+- [x] Automated tests pass: `pnpm test` in `apps/web`
+- [ ] Upload background + 3 overlays; define slot by placing an overlay node on the template; click "Generate preview" → composite appears (first overlay image fills the slot, cropped to cover) _(deferred → final manual pass)_
+- [ ] Slot covers (no letterbox) with center crop on a non-square overlay image _(deferred → final manual pass)_
+- [x] No TypeScript errors (tsc clean: @maga/web + @maga/projects)
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt
-- [ ] Code-reviewer agent verified
-- [ ] Reviewer changes reflected back
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator approved
-- [ ] Changes committed: `feat: template editor with single composite generation`
-- [ ] Phase marked complete
+- [ ] All Steps and Verification checkboxes above ticked _(browser-manual verification deferred to final pass)_
+- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn _(n/a — subagent-driven flow)_
+- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt _(n/a)_
+- [x] Code-reviewer agent verified
+- [x] Reviewer changes reflected back _(red fixed: schema.test.ts + JSDoc; removed stray duplicate test)_
+- [x] Tests written and passing
+- [ ] Documentation updated _(batched to final docs pass)_
+- [ ] Orchestrator approved _(pending final manual pass)_
+- [x] Changes committed: `feat: template editor with single composite generation`
+- [ ] Phase marked complete _(pending final manual pass)_
+
+> **Phase 4 carry-over (from review):** the hidden composite canvas is hardcoded 800×600 while the slot's width/height are px from the editor canvas (possibly a different size) → preview slot size can drift from placement. Phase 4 batch render must capture at the true template dimensions.
 
 ---
 
