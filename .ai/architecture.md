@@ -63,7 +63,17 @@ see [[canvas-post-pass-for-export-effects]]. The post-pass is non-React and read
 each overlay's state from a `data-overlay` JSON attribute on the DOM, see
 [[data-overlay-dom-serialization]].
 
-_Other flows (cartoonize) sketched by later sections as they land._
+### Cartoonize (external service)
+
+Cartoonize is a one-shot, server-mediated call. `apps/web/src/app/editor/page.tsx`
+holds the source image; its `handleCartoonize` calls the `use-cartoonize.ts`
+hook, which POSTs the image to the internal `/api/cartoonize` route. The route —
+not the client — holds the provider key and forwards to **DeepAI Toonify**
+(`apps/web/src/lib/cartoonize-service.ts`), then returns a dataURL the hook hands
+back to the page, which stores it in `resultDataUrl` React state. The server-key
+boundary is the point: the provider key never reaches the client, see
+[[deepai-toonify-provider]]. The result is ephemeral page state, not persisted —
+see [[ephemeral-cartoonize-result-state]].
 
 > Update via the `sync-knowledge` skill when an architectural boundary, package,
 > or flow is introduced or changed.

@@ -19,6 +19,7 @@ anywhere real.
 | ------- | ------------------ | ----- |
 | Property panels | `apps/web/src/components/{text-style-panel,overlay-controls-panel}.tsx` | [[field-row-property-panel-layout]] |
 | Export / compositing | `apps/web/src/lib/{export-helpers,canvas-post-pass}.ts` | [[canvas-post-pass-for-export-effects]] · [[data-overlay-dom-serialization]] · [[pixelratio-coordinate-mapping]] · [[per-item-trycatch-fallback]] |
+| External services (cartoonize) | `apps/web/src/app/api/cartoonize/route.ts` · `apps/web/src/lib/cartoonize-service.ts` · `apps/web/src/hooks/use-cartoonize.ts` | [[deepai-toonify-provider]] · [[ephemeral-cartoonize-result-state]] · [[lib-service-function-convention]] |
 
 > Update via the `sync-knowledge` skill — don't hand-edit drift in. See
 > `architecture.md` for the package map and dependency direction.
