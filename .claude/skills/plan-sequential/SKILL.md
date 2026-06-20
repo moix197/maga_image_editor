@@ -153,6 +153,18 @@ Map each change to where its documentation belongs:
 
 Documentation is added as a step within each relevant phase, not as a separate phase.
 
+## Knowledge Base Impact
+
+Identify the `.ai/` knowledge-base changes this plan requires. Decision-oriented only — capture *why*, constraints, and the map; never restate code.
+
+| `.ai/` artifact       | Action          | What it captures                |
+| --------------------- | --------------- | ------------------------------- |
+| `index.md`            | update          | new module → path row           |
+| `decisions/<slug>.md` | create          | the why + rejected alternatives |
+| `<existing>`          | retire/outdated | now superseded by this change   |
+
+If this plan introduces no new concept, module, flow, or decision, write `_None — no knowledge-base impact._`. Keeping `.ai/` current is part of "done" — `execute-prd` syncs it at closeout via the `sync-knowledge` skill, which owns the rules.
+
 ## Tests
 
 Map each piece of testable logic introduced by this plan to the test file that covers it. Tests live alongside the code they exercise.

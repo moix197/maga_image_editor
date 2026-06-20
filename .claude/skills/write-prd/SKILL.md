@@ -38,6 +38,8 @@ Gather context before designing anything. **All MCP and codebase exploration hap
 
 Spawn 1–3 research subagents in parallel. Each subagent's prompt MUST include all of the following:
 
+0. **Consult `.ai/` first.** If `.ai/index.md` exists, read it — plus any `architecture.md` and linked `decisions/` it points to — **before** grepping raw source. Use it to jump straight to the relevant paths; fall back to codebase search only for what the index doesn't cover or that looks stale against the code. If `.ai/` is absent, proceed with codebase search as below. This is the read side of the knowledge base: it's what keeps research from re-deriving the whole codebase every pass.
+
 1. **Project-specific MCP tools** — if CLAUDE.md lists any, the subagent must call them before reading raw source. Skip if none are defined.
 
 2. **Codebase search focus** — distinct per agent, no overlap. Look for existing patterns, similar implementations, reusable code, files that will need changes, relevant tests, configs, registration touchpoints.
@@ -54,7 +56,7 @@ Spawn 1–3 research subagents in parallel. Each subagent's prompt MUST include 
 - **Switch to `general-purpose`** when the agent may need the disk fallback. `Explore` lacks `Write/Edit/NotebookEdit` and cannot reliably create files in `plans/.research/`. Choose `general-purpose` for large/uncertain scopes, multi-file pattern catalogs, or any prompt where you've explicitly asked for disk fallback as a possibility.
 - Never tell an `Explore` agent to write to disk.
 
-The chat history of subagent replies IS the index — main thread already has the summaries and any disk paths. Do **not** write a separate `index.md`.
+The chat history of subagent replies IS the index — main thread already has the summaries and any disk paths. Do **not** write a separate research `index.md` under `plans/.research/`. (This is unrelated to the project-level `.ai/index.md`, which subagents *read* in item 0 and never write during research.)
 
 ### Phase 1.5: Resolve open questions (grill the user)
 

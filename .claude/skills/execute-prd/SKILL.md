@@ -461,12 +461,28 @@ After a successful merge, run `git -C <worktree> status --porcelain`. Then:
 
 The skill never auto-removes a worktree. Always confirm worktree removal with the user before running.
 
+### Step 4 — Sync the `.ai/` knowledge base
+
+Runs once, after merge-back is confirmed (all code has landed on the target
+branch). Keeps the project knowledge base current so future research reads the
+map instead of re-deriving the codebase.
+
+- **Skip cleanly** if `.ai/` does not exist, or the plan's `## Knowledge Base
+  Impact` section is `_None — no knowledge-base impact._`. Report "KB: no impact"
+  and continue.
+- Otherwise, read the plan's `## Knowledge Base Impact` section and invoke the
+  `sync-knowledge` skill (`.claude/skills/sync-knowledge/SKILL.md`) to create,
+  update, or retire the listed `.ai/` files on the merged branch. That skill owns
+  the format and the decision-oriented rules — do not reimplement them here.
+- Collect the list of `.ai/` files it touched for the Final report.
+
 ### Final report
 
 ```
 Plan <slug> complete.
 Branch: <branch>  →  merged into <target> at commit <sha>
 Worktree: <path> (kept | removed)
+Knowledge base: <.ai/ files synced | no impact>
 ```
 
 Then exit.
