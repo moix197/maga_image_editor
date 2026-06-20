@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WorkspaceActionsBar } from "./WorkspaceActionsBar";
+import { BulkTextPanel } from "./BulkTextPanel";
 import { SCHEMA_VERSION, type BatchProject } from "@maga/projects";
 import { isTextNode, isOverlayNode, isBorderOverlay } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
@@ -439,18 +440,18 @@ function BatchWorkspaceInner() {
           <div className="flex flex-col gap-4">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Text</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Edit text layer properties.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Edit per-item text for each overlay. Lock a layer to share one value across all items.
+              </p>
             </div>
-            {isSelectedText ? (
-              <TextStylePanel
-                node={selectedNode as TextNode}
-                onChange={(patch) => editorState.updateTextNode(selectedNodeId!, patch)}
-                onDelete={() => { editorState.removeNode(selectedNodeId!); setSelectedNodeId(null); }}
-                onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">Select a text layer on the canvas to edit its properties.</p>
-            )}
+            <BulkTextPanel
+              overlays={overlays}
+              textNodes={textNodes}
+              itemTextValues={itemTextValues}
+              textLayerLocks={textLayerLocks}
+              setItemTextValue={setItemTextValue}
+              setTextLayerLock={setTextLayerLock}
+            />
           </div>
         )}
 
