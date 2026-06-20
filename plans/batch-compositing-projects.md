@@ -137,7 +137,7 @@ Create a new package `packages/projects` that owns: the versioned project JSON s
 - [x] Code-reviewer agent has verified this phase
 - [x] Any changes from reviewer reflected back into this plan file
 - [x] Tests written and passing
-- [ ] Documentation updated _(batched to final docs pass)_
+- [x] Documentation updated _(apps/web/README: /batch feature overview — commit 5894e25)_
 - [ ] Orchestrator has verified and approved this phase _(pending final manual pass)_
 - [x] Changes committed: `feat: batch project scaffold with asset upload UI`
 - [ ] Phase marked complete _(pending final manual pass)_
@@ -195,7 +195,7 @@ Center-crop to fill slot: compute `scale = max(slotW / imgW, slotH / imgH)`, the
 - [x] Code-reviewer agent verified
 - [x] Reviewer changes reflected back _(red fixed: schema.test.ts + JSDoc; removed stray duplicate test)_
 - [x] Tests written and passing
-- [ ] Documentation updated _(batched to final docs pass)_
+- [x] Documentation updated _(apps/web/README: /batch feature overview — commit 5894e25)_
 - [ ] Orchestrator approved _(pending final manual pass)_
 - [x] Changes committed: `feat: template editor with single composite generation`
 - [ ] Phase marked complete _(pending final manual pass)_
@@ -254,7 +254,7 @@ Center-crop to fill slot: compute `scale = max(slotW / imgW, slotH / imgH)`, the
 - [x] Code-reviewer verified
 - [x] Reviewer changes reflected back _(extracted shared `patchOverlays` helper; stable React key)_
 - [x] Tests written and passing
-- [ ] Documentation updated _(batched to final docs pass)_
+- [x] Documentation updated _(apps/web/README: /batch feature overview — commit 5894e25)_
 - [ ] Orchestrator approved _(pending final manual pass)_
 - [x] Changes committed: `feat: batch render with results gallery and progress`
 - [ ] Phase marked complete _(pending final manual pass)_
