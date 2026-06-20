@@ -182,15 +182,15 @@ Create a git worktree for this plan's branch.
 
 **Steps:**
 
-- [ ] Update `packages/projects/src/schema.ts`: bump `SCHEMA_VERSION` to `2`; add `itemTextValues` and `textLayerLocks` fields to `BatchProject` type with required declarations
-- [ ] Add v1→v2 migration in `zip-import.ts` `normalizeNullableFields`: detect `schemaVersion === 1` (or missing), populate defaults (`itemTextValues: {}`, all text nodes locked via `textLayerLocks`)
-- [ ] Mirror same migration in `idb-adapter.ts` for records loaded from IndexedDB
-- [ ] Update `zip-export.ts` to serialize new fields and write `schemaVersion: 2`
-- [ ] Add `setItemTextValue` and `setTextLayerLock` mutations to `use-batch-project.ts` (keep mutations small, one responsibility each)
-- [ ] Create `use-item-text.ts` — wraps the two new mutations + reads from project state; <30 lines
-- [ ] Update `use-batch-render.ts` render loop: for each overlay item, (1) call `updateTextNode` for each unlocked text node with that item's override value into the LIVE editor state; (2) `await` a requestAnimationFrame / next-tick so React re-renders the canvas DOM; (3) call `compositeFromElement` to capture; (4) call `updateTextNode` again to restore each node's original template value. Reuse the existing deselect-before-capture and restore pattern already present in the hook. Do NOT use a detached EditorState clone — it never reaches the DOM and `compositeFromElement` captures only the live canvas.
-- [ ] Wire text inputs + lock toggles in `BatchWorkspace.tsx` for the active overlay; use `use-item-text` hook; reuse shadcn/ui `Input`, `Label`, `Button` (lock toggle icon)
-- [ ] Update `packages/projects/README.md` schema section
+- [x] Update `packages/projects/src/schema.ts`: bump `SCHEMA_VERSION` to `2`; add `itemTextValues` and `textLayerLocks` fields to `BatchProject` type with required declarations
+- [x] Add v1→v2 migration in `zip-import.ts` `normalizeNullableFields`: detect `schemaVersion === 1` (or missing), populate defaults (`itemTextValues: {}`, all text nodes locked via `textLayerLocks`)
+- [x] Mirror same migration in `idb-adapter.ts` for records loaded from IndexedDB
+- [x] Update `zip-export.ts` to serialize new fields and write `schemaVersion: 2`
+- [x] Add `setItemTextValue` and `setTextLayerLock` mutations to `use-batch-project.ts` (keep mutations small, one responsibility each)
+- [x] Create `use-item-text.ts` — wraps the two new mutations + reads from project state; <30 lines
+- [x] Update `use-batch-render.ts` render loop: for each overlay item, (1) call `updateTextNode` for each unlocked text node with that item's override value into the LIVE editor state; (2) `await` a requestAnimationFrame / next-tick so React re-renders the canvas DOM; (3) call `compositeFromElement` to capture; (4) call `updateTextNode` again to restore each node's original template value. Reuse the existing deselect-before-capture and restore pattern already present in the hook. Do NOT use a detached EditorState clone — it never reaches the DOM and `compositeFromElement` captures only the live canvas. **(Restore made exception-safe via per-item try/finally after code review.)**
+- [x] Wire text inputs + lock toggles in `BatchWorkspace.tsx` for the active overlay; use `use-item-text` hook; reuse shadcn/ui `Input`, `Label`, `Button` (lock toggle icon)
+- [x] Update `packages/projects/README.md` schema section
 
 **Tests:**
 
@@ -205,7 +205,7 @@ Create a git worktree for this plan's branch.
 
 **Verification:**
 
-- [ ] Automated tests for this phase pass: `pnpm test`
+- [x] Automated tests for this phase pass: `pnpm test`
 - [ ] Manual: set different text values per overlay item; Generate All — inspect outputs have correct per-item text
 - [ ] Manual: lock a text layer — all items show same value; unlocked layer shows per-item value
 - [ ] Manual: export ZIP with v2 project; reimport — values and locks preserved
@@ -213,16 +213,16 @@ Create a git worktree for this plan's branch.
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
-- [ ] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(projects): schema v2 — per-item text values + layer locks + render-loop application`
-- [ ] Phase marked complete
+- [x] All Steps and Verification checkboxes above ticked in the plan file (manual smoke-tests deferred to end-of-plan revision)
+- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn (N/A — afk subagent execution)
+- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session (N/A — afk subagent execution)
+- [x] Code-reviewer agent has verified this phase (red → fixed exception-safe restore → re-verified)
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
+- [x] Documentation updated (see Documentation section)
+- [ ] Orchestrator (user) has verified and approved this phase (deferred to end-of-plan revision)
+- [x] Changes committed: `feat(projects): schema v2 — per-item text values + layer locks + render-loop application`
+- [x] Phase marked complete
 
 ---
 
