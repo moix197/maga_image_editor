@@ -90,7 +90,6 @@ export function useSingleComposite(options: UseSingleCompositeOptions = {}): Use
       setIsRendering(false);
       onRestoreSelection(prevId);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overlays]);
 
   return { compositeDataUrl, isRendering, error, generate };
