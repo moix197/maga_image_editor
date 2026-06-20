@@ -11,6 +11,7 @@ Without `DEEPAI_API_KEY` the Cartoonize button is disabled and all other editor 
 ## Routes
 
 - `/editor` — main image editor page (`src/app/editor/page.tsx`). Upload an image via drag-and-drop or file picker; add text/overlays; cartoonize; download the result.
+- `/batch` — batch compositing page (`src/app/batch/page.tsx`), linked from the home page. See **Batch compositing** below.
 
 ## image-helpers API (`src/lib/image-helpers.ts`)
 
@@ -38,6 +39,31 @@ Click **Cartoonize** in the toolbar to send the source image to the DeepAI Tooni
 - The result is **ephemeral** — it lives in React state only. Reloading the page clears it. An inline warning is shown below the result panel as a reminder to download before reloading.
 - The server fetches DeepAI's temporary CDN URL immediately and converts it to a base64 data URL before returning to the client; the CDN URL is never stored or sent to the browser.
 - Input images are downscaled client-side (≤ 2048 px) before upload to stay within the API's payload limit.
+
+### Batch compositing (`/batch`)
+
+Produce many composites from one template in the browser — no backend. Upload a single **background** plus **N overlay images**, position a **variable image slot** on the template, then **Generate all** to render one cover-fit composite per overlay. Results appear in a gallery; download them individually or **export a portable ZIP**.
+
+- **Variable slot.** One overlay node on the template is the slot whose `src` is swapped per overlay image at render time. Each overlay is center-cropped (cover-fit) into the slot's exact dimensions before compositing.
+- **Persistence.** The in-progress project auto-saves (debounced) to IndexedDB (`maga-batch` DB) and restores on reload. A previously exported ZIP can be re-imported to resume work.
+
+#### Portable ZIP layout
+
+A self-contained export with relative-path asset refs (no absolute URLs):
+
+```
+project.json          # versioned BatchProject (schemaVersion: 1), refs as relative paths
+background.<ext>      # extension derived from the background's MIME type
+overlays/             # one entry per overlay, index-prefixed: overlays/<i>-<filename>
+outputs/              # one composite per generated output: outputs/<i>-<stem>.<ext>
+```
+
+The project model (`BatchProject`, `ProjectAsset`, `VariableSlot`, `GeneratedOutput`), the IndexedDB adapter, and the ZIP export/import logic all live in the `@maga/projects` package — see [`packages/projects/README.md`](../../packages/projects/README.md) for the API.
+
+#### Key client helpers
+
+- `coverCropDataUrl(src, slotW, slotH)` (`src/lib/cover-crop.ts`) — center-crops a source image to exactly `slotW × slotH` using cover-fit math, returning a fitted data URL so the composite post-pass blits it 1:1 without distortion.
+- **Sequential batch render** (`src/hooks/use-batch-render.ts`) — renders overlays one at a time off the live DOM canvas, reports progress, and is cancellable mid-run.
 
 ## Components
 
