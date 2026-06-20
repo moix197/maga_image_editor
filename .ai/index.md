@@ -18,6 +18,7 @@ anywhere real.
 | Concern | Where it's handled | Notes |
 | ------- | ------------------ | ----- |
 | Property panels | `apps/web/src/components/{text-style-panel,overlay-controls-panel}.tsx` | [[field-row-property-panel-layout]] |
+| Export / compositing | `apps/web/src/lib/{export-helpers,canvas-post-pass}.ts` | [[canvas-post-pass-for-export-effects]] · [[data-overlay-dom-serialization]] · [[pixelratio-coordinate-mapping]] · [[per-item-trycatch-fallback]] |
 
 > Update via the `sync-knowledge` skill — don't hand-edit drift in. See
 > `architecture.md` for the package map and dependency direction.

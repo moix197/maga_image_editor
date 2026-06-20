@@ -51,7 +51,19 @@ mutates the array only through the pure transitions in
 [[immutable-state-mutation-functions]]); the DOM overlay reflects the new state,
 it is never the state itself.
 
-_Other flows (export, cartoonize) sketched by later sections as they land._
+### Export fidelity
+
+Export runs in two stages. `html-to-image` rasterizes the editor DOM to a base
+PNG at `pixelRatio: 2` (`apps/web/src/lib/export-helpers.ts`); then a native
+`<canvas>` post-pass at the same 2x re-draws the image overlays to bake their
+effects — opacity, corner radius, rotation, drop shadow, edge feather —
+back in (`apps/web/src/lib/canvas-post-pass.ts`). The second pass exists because
+`html-to-image`'s `foreignObject` rasterizer silently drops those CSS effects;
+see [[canvas-post-pass-for-export-effects]]. The post-pass is non-React and reads
+each overlay's state from a `data-overlay` JSON attribute on the DOM, see
+[[data-overlay-dom-serialization]].
+
+_Other flows (cartoonize) sketched by later sections as they land._
 
 > Update via the `sync-knowledge` skill when an architectural boundary, package,
 > or flow is introduced or changed.

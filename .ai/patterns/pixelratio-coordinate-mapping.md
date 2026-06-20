@@ -1,0 +1,23 @@
+# pixelRatio-aware percent↔pixel coordinate mapping
+
+Overlay node geometry is stored **resolution-independent**: position (`x`, `y`)
+as a percentage of the container, size and effect magnitudes (width, height,
+corner radius, shadow offset/blur, feather radius) in CSS pixels. The export
+canvas, however, is rendered at `pixelRatio: 2` — twice the container's CSS
+dimensions. So every value must be mapped onto that scaled canvas at bake time.
+
+**The convention:** when baking a value onto the post-pass canvas
+(`apps/web/src/lib/canvas-post-pass.ts`), always go through the pixelRatio.
+Percentages convert via the shared `toCanvasPx(percent, dimension, pixelRatio)`
+helper; absolute pixel magnitudes multiply by the same ratio (`* pr` — width,
+height, `cornerRadius`, the `dropShadow` offsets/blur, `featherRadius`). The
+ratio is threaded through every draw helper as `pr` for exactly this reason.
+
+**Why pixelRatio matters:** it is the one factor that ties the stored,
+device-independent units to the actual canvas pixels. Skip it on any single
+value and that value renders at half scale relative to the rest — a shadow that
+is too tight, a radius that is too small, an overlay placed off its intended
+spot. The mapping is uniform precisely so no value is left in the wrong
+coordinate space. The base PNG enters the same canvas already scaled
+(`drawImage(base, 0, 0, canvas.width, canvas.height)`), so overlays must match
+it.
