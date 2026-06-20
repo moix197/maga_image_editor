@@ -46,6 +46,17 @@ describe("idb-adapter", () => {
     expect(loaded).toEqual(project);
   });
 
+  it("round-trips a background-only draft with null template + null variableSlot", async () => {
+    const db = await openDb();
+    const draft = makeProject({ template: null, variableSlot: null });
+    await saveProject(db, draft);
+    const loaded = await loadProject(db, draft.id);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.template).toBeNull();
+    expect(loaded!.variableSlot).toBeNull();
+    expect(loaded).toEqual(draft);
+  });
+
   it("round-trips a Blob via saveBlob + loadBlob", async () => {
     const db = await openDb();
     const blob = new Blob(["hello"], { type: "text/plain" });

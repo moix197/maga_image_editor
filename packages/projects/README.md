@@ -33,6 +33,8 @@ Single database `maga-batch` (v1), two object stores: `projects` (keyed by proje
 
 `importProjectZip(zipBlob)` reverses `exportProjectZip`: it parses `project.json`, validates `schemaVersion === 1` immediately (throwing `ZipImportError("Incompatible project version")` on mismatch, or a corruption message on missing/invalid JSON), and returns the project plus a `Map` of blobs **keyed by the same ZIP-relative paths the project refs use** (`background.<ext>`, `overlays/<i>-...`, `outputs/<i>-...`) so callers can reconcile bytes to refs directly.
 
+Nullable-field handling: `template` and `variableSlot` are optional in the JSON. Import never hard-throws on a missing field — an absent `template`/`variableSlot` is normalized to `null` (background-only drafts), while a legacy project that carries a non-null value keeps it as-is. Only `schemaVersion` mismatch and missing/corrupt JSON reject.
+
 ## ZIP export
 
 `exportProjectZip(project, backgroundDataUrl, overlayDataUrls, outputDataUrls): Promise<Blob>` packages a project into a self-contained, human-readable ZIP:
@@ -48,9 +50,13 @@ The in-memory `project` holds raw data URLs in `background.blobKey`, each `overl
 
 Both overlays and outputs are index-prefixed, so two overlays sharing a filename never collide. Output extensions are derived from each output data URL's own MIME (`image/png` → `.png`, `image/jpeg` → `.jpg`): outputs arrive already-encoded from the render pipeline, and this package has no DOM/canvas, so we preserve the upstream encoding rather than decoding + re-encoding. Alpha-based format selection (PNG for transparent, JPEG for opaque) belongs upstream at render time if ever needed.
 
+Nullable-field handling: a background-only draft carries `template: null` and `variableSlot: null`. Both pass through unchanged and serialize as JSON `null` — no crash. With no outputs, no `outputs/` entries are written.
+
 ## Schema versioning
 
 `BatchProject.schemaVersion` is the `1` literal. It is the single discriminant that ZIP import and IDB restore gate on: a project whose `schemaVersion` is not `1` is rejected as incompatible. Bump `SCHEMA_VERSION` only on a breaking change to the project JSON shape.
+
+`template` (`EditorState | null`) and `variableSlot` (`VariableSlot | null`) are nullable: a background-only draft is a valid v1 project with both `null`. Making them nullable did **not** bump the version — pre-refactor projects that carried a non-null `template`/`variableSlot` still validate as v1, so no migration is needed (`schemaVersion` stays `1`). The IDB adapter and ZIP serialize/deserialize all tolerate `null` natively.
 
 ## Asset refs are out-of-band
 

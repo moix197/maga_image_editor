@@ -27,7 +27,9 @@ export function BatchWorkspace() {
   const { isExporting, error: exportError, exportZip } = useZipExport();
 
   const persistedProject = useMemo<BatchProject | null>(() => {
-    if (!background || !template || !variableSlot) return null;
+    // Autosave as soon as a background exists; template/variableSlot are
+    // nullable so a background-only draft persists and survives reload.
+    if (!background) return null;
     return {
       schemaVersion: SCHEMA_VERSION,
       id: "active",
@@ -42,7 +44,7 @@ export function BatchWorkspace() {
     };
   }, [background, overlays, template, variableSlot, outputs]);
 
-  const { restored, importError, quotaWarning, importZip } = useProjectPersistence({
+  const { restored, pendingRestore, consumeRestore, importError, quotaWarning, importZip } = useProjectPersistence({
     project: persistedProject,
     setProject,
   });
@@ -56,6 +58,18 @@ export function BatchWorkspace() {
   useEffect(() => {
     setEditorTemplate(editorState.state);
   }, [editorState.state, setEditorTemplate]);
+
+  // Seed the editor exactly once per distinct restore/import event (IDB load or
+  // ZIP import). pendingRestore is a one-time payload set by useProjectPersistence
+  // on each such event; consuming it immediately prevents live-sync updates
+  // (setEditorTemplate → project.template change) from re-triggering seeding.
+  const { replace: replaceEditorState } = editorState;
+  useEffect(() => {
+    if (!pendingRestore) return;
+    consumeRestore();
+    if (pendingRestore.template) replaceEditorState(pendingRestore.template);
+    setVariableSlotNodeId(pendingRestore.variableSlot?.overlayNodeId ?? null);
+  }, [pendingRestore, consumeRestore, replaceEditorState]);
 
   async function handleImportZipFiles(files: File[]) {
     const file = files[0];

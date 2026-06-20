@@ -5,7 +5,7 @@ import { coverCropDataUrl } from "@/lib/cover-crop";
 import { compositeFromElement } from "@/lib/export-helpers";
 import { patchOverlays } from "@/lib/overlay-patch";
 import { waitTwoFrames } from "@/lib/capture-helpers";
-import type { EditorState } from "@maga/editor";
+import type { EditorState, NodeId } from "@maga/editor";
 import type { VariableSlot } from "@maga/projects";
 
 interface UseSingleCompositeResult {
@@ -17,8 +17,8 @@ interface UseSingleCompositeResult {
     template: EditorState,
     slot: VariableSlot,
     overlaySrc: string,
-    onDeselectForCapture: () => string | null,
-    onRestoreSelection: (prevId: string | null) => void,
+    onDeselectForCapture: () => NodeId | null,
+    onRestoreSelection: (prevId: NodeId | null) => void,
   ) => Promise<void>;
 }
 
@@ -40,8 +40,8 @@ export function useSingleComposite(): UseSingleCompositeResult {
     template: EditorState,
     slot: VariableSlot,
     overlaySrc: string,
-    onDeselectForCapture: () => string | null,
-    onRestoreSelection: (prevId: string | null) => void,
+    onDeselectForCapture: () => NodeId | null,
+    onRestoreSelection: (prevId: NodeId | null) => void,
   ) => {
     if (!canvasEl) {
       console.warn("[useSingleComposite] canvasEl is null — capture skipped");

@@ -76,4 +76,45 @@ describe("importProjectZip", () => {
     const zipBlob = await zipWithProjectJson(JSON.stringify(stale));
     await expect(importProjectZip(zipBlob)).rejects.toThrow("Incompatible project version");
   });
+
+  it("sets template to null (no throw) when project.json omits it", async () => {
+    const { template: _omitTemplate, ...withoutTemplate } = makeProject();
+    const zipBlob = await zipWithProjectJson(JSON.stringify(withoutTemplate));
+
+    const { project: imported } = await importProjectZip(zipBlob);
+    expect(imported.template).toBeNull();
+    // variableSlot was present, so it is preserved
+    expect(imported.variableSlot).toEqual({ overlayNodeId: "slot", width: 100, height: 100 });
+  });
+
+  it("sets variableSlot to null (no throw) when project.json omits it", async () => {
+    const { variableSlot: _omitSlot, ...withoutSlot } = makeProject();
+    const zipBlob = await zipWithProjectJson(JSON.stringify(withoutSlot));
+
+    const { project: imported } = await importProjectZip(zipBlob);
+    expect(imported.variableSlot).toBeNull();
+  });
+
+  it("sets both null (no throw) for a background-only draft", async () => {
+    const draft = makeProject({ template: null, variableSlot: null });
+    const zipBlob = await exportProjectZip(draft, PNG_DATA_URL, [], []);
+
+    const { project: imported } = await importProjectZip(zipBlob);
+    expect(imported.template).toBeNull();
+    expect(imported.variableSlot).toBeNull();
+  });
+
+  it("preserves a legacy project's non-null template value when present", async () => {
+    // Pre-refactor projects always carried a non-null template; that value must
+    // survive import unchanged. A node with a marker id proves the value (not a
+    // freshly-defaulted empty template) round-trips.
+    const legacyTemplate = {
+      nodes: [{ id: "legacy-node" as NodeId, type: "text", text: "legacy" }],
+    } as unknown as BatchProject["template"];
+    const legacy = makeProject({ template: legacyTemplate });
+    const zipBlob = await zipWithProjectJson(JSON.stringify(legacy));
+
+    const { project: imported } = await importProjectZip(zipBlob);
+    expect(imported.template).toEqual(legacyTemplate);
+  });
 });

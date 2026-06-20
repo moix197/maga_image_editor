@@ -84,6 +84,26 @@ describe("exportProjectZip", () => {
     expect(parsed.outputs[0]?.outputBlobKey).toBe("outputs/0-a.png");
   });
 
+  it("exports a background-only draft (null template + null variableSlot) without crashing", async () => {
+    const project = makeProject({ template: null, variableSlot: null });
+
+    const blob = await exportProjectZip(project, PNG_DATA_URL, [], []);
+    expect(blob.size).toBeGreaterThan(0);
+
+    const { raw, parsed } = await readProjectJson(blob);
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.template).toBeNull();
+    expect(parsed.variableSlot).toBeNull();
+    // null fields are written natively as JSON null
+    expect(raw).toContain('"template": null');
+    expect(raw).toContain('"variableSlot": null');
+
+    // no outputs → no outputs/ directory entries
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const outputFiles = Object.keys(zip.files).filter((p) => p.startsWith("outputs/"));
+    expect(outputFiles).toHaveLength(0);
+  });
+
   it("avoids collisions when two overlays share a filename", async () => {
     const project = makeProject({
       overlays: [

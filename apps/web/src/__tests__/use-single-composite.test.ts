@@ -23,7 +23,7 @@ vi.mock("@/lib/capture-helpers", () => ({
 // ── subject under test ──────────────────────────────────────────────────────
 
 import { useSingleComposite } from "@/hooks/use-single-composite";
-import type { EditorState } from "@maga/editor";
+import type { EditorState, NodeId } from "@maga/editor";
 import type { VariableSlot } from "@maga/projects";
 
 // ── helpers ─────────────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ describe("useSingleComposite", () => {
     // Kick off generate (don't await — compositeFromElement is still pending).
     let generatePromise!: Promise<void>;
     act(() => {
-      generatePromise = result.current.generate(el, template, slot, "data:src", () => {}, () => {});
+      generatePromise = result.current.generate(el, template, slot, "data:src", () => null as NodeId | null, () => {});
     });
 
     // After coverCrop resolves (next microtask), compositeFromElement is in-flight.
@@ -105,7 +105,7 @@ describe("useSingleComposite", () => {
     const template = makeTemplate("node-abc");
 
     await act(async () => {
-      await result.current.generate(el, template, slot, "data:original", () => {}, () => {});
+      await result.current.generate(el, template, slot, "data:original", () => null as NodeId | null, () => {});
     });
 
     // coverCrop called with correct slot dims
@@ -125,7 +125,7 @@ describe("useSingleComposite", () => {
     const template = makeTemplate("node-1");
 
     await act(async () => {
-      await result.current.generate(el, template, slot, "data:src", () => {}, () => {});
+      await result.current.generate(el, template, slot, "data:src", () => null as NodeId | null, () => {});
     });
 
     expect(result.current.compositeDataUrl).toBe(COMPOSITE);
@@ -141,7 +141,7 @@ describe("useSingleComposite", () => {
     const template = makeTemplate("node-1");
 
     await act(async () => {
-      await result.current.generate(el, template, slot, "data:src", () => {}, () => {});
+      await result.current.generate(el, template, slot, "data:src", () => null as NodeId | null, () => {});
     });
 
     expect(result.current.error).toBe("Canvas failure");
@@ -158,7 +158,7 @@ describe("useSingleComposite", () => {
     const template = makeTemplate("node-1");
 
     await act(async () => {
-      await result.current.generate(el, template, slot, "data:src", () => {}, () => {});
+      await result.current.generate(el, template, slot, "data:src", () => null as NodeId | null, () => {});
     });
 
     expect(result.current.error).toBe("Image load failed");
@@ -194,7 +194,7 @@ describe("useSingleComposite", () => {
     const el = document.createElement("div");
     const slot = makeSlot("node-1");
     const template = makeTemplate("node-1");
-    const onDeselect = vi.fn(() => { callOrder.push("deselect"); return "node-1"; });
+    const onDeselect = vi.fn(() => { callOrder.push("deselect"); return "node-1" as NodeId; });
     const onRestore = vi.fn(() => { callOrder.push("restore"); });
 
     await act(async () => {
@@ -213,11 +213,11 @@ describe("useSingleComposite", () => {
     const template = makeTemplate("node-1");
 
     await act(async () => {
-      await result.current.generate(el, template, slot, "data:src", () => {}, () => {});
+      await result.current.generate(el, template, slot, "data:src", () => null as NodeId | null, () => {});
     });
 
     expect(mockCompositeFromElement).toHaveBeenCalledWith(el, expect.any(Array));
-    const passedEl = (mockCompositeFromElement.mock.calls[0] as [HTMLElement, unknown[]])[0];
+    const passedEl = (mockCompositeFromElement.mock.calls[0] as unknown as [HTMLElement, unknown[]])[0];
     expect(passedEl).toBe(el);
   });
 
@@ -245,10 +245,10 @@ describe("useSingleComposite", () => {
     const slot = makeSlot("slot-node", 200, 150);
 
     await act(async () => {
-      await result.current.generate(el, templateWithStatic, slot, "data:overlay-src", () => {}, () => {});
+      await result.current.generate(el, templateWithStatic, slot, "data:overlay-src", () => null as NodeId | null, () => {});
     });
 
-    const passedNodes = (mockCompositeFromElement.mock.calls[0] as [HTMLElement, Array<{ id: string; src: string }>])[1];
+    const passedNodes = (mockCompositeFromElement.mock.calls[0] as unknown as [HTMLElement, Array<{ id: string; src: string }>])[1];
     const staticNode = passedNodes.find((n) => n.id === "static-node");
     expect(staticNode?.src).toBe(STATIC_SRC);
     const slotNode = passedNodes.find((n) => n.id === "slot-node");
@@ -265,7 +265,7 @@ describe("useSingleComposite", () => {
     const onRestore = vi.fn();
 
     await act(async () => {
-      await result.current.generate(el, template, slot, "data:src", () => "node-1", onRestore);
+      await result.current.generate(el, template, slot, "data:src", () => "node-1" as NodeId, onRestore);
     });
 
     expect(onRestore).toHaveBeenCalledTimes(1);

@@ -65,6 +65,11 @@ interface UseProjectPersistenceArgs {
 
 interface UseProjectPersistenceResult {
   restored: boolean;
+  /** Non-null exactly once per IDB-load or ZIP-import event; cleared by consumeRestore(). */
+  pendingRestore: BatchProject | null;
+  /** Drains pendingRestore — call after seeding the editor so subsequent live-sync
+   *  updates to `project` do not re-trigger seeding. */
+  consumeRestore: () => void;
   importError: string | null;
   quotaWarning: boolean;
   importZip: (file: File) => Promise<void>;
@@ -76,6 +81,7 @@ export function useProjectPersistence({
 }: UseProjectPersistenceArgs): UseProjectPersistenceResult {
   const [db, setDb] = useState<IDBDatabase | null>(null);
   const [restored, setRestored] = useState(false);
+  const [pendingRestore, setPendingRestore] = useState<BatchProject | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [quotaWarning, setQuotaWarning] = useState(false);
 
@@ -87,7 +93,9 @@ export function useProjectPersistence({
       setDb(opened);
       const stored = await loadProject(opened, ACTIVE_PROJECT_KEY);
       if (cancelled || !stored) return;
-      setProject(await hydrateFromIdb(opened, stored));
+      const hydrated = await hydrateFromIdb(opened, stored);
+      setProject(hydrated);
+      setPendingRestore(hydrated);
       setRestored(true);
     })();
     return () => {
@@ -103,12 +111,18 @@ export function useProjectPersistence({
     return () => clearTimeout(timer);
   }, [db, project]);
 
+  const consumeRestore = useCallback(() => {
+    setPendingRestore(null);
+  }, []);
+
   const importZip = useCallback(
     async (file: File) => {
       setImportError(null);
       try {
         const { project: imported, blobs } = await importProjectZip(file);
-        setProject(await hydrateFromBlobs(imported, blobs));
+        const hydrated = await hydrateFromBlobs(imported, blobs);
+        setProject(hydrated);
+        setPendingRestore(hydrated);
         setRestored(true);
       } catch (error) {
         if (error instanceof ZipImportError) {
@@ -121,7 +135,7 @@ export function useProjectPersistence({
     [setProject],
   );
 
-  return { restored, importError, quotaWarning, importZip };
+  return { restored, pendingRestore, consumeRestore, importError, quotaWarning, importZip };
 }
 
 /** Loads each ref's blob from IDB and rehydrates the project with data URLs. */

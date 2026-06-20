@@ -13,6 +13,21 @@ export class ZipImportError extends Error {
   }
 }
 
+/**
+ * Normalizes nullable fields after parsing. `template` and `variableSlot` are
+ * optional in the JSON (background-only drafts omit them); a legacy project that
+ * carries a non-null value keeps it as-is, while an absent field becomes `null`.
+ * This replaces the previous hard-throw-on-missing behavior so incomplete and
+ * pre-refactor projects import without crashing.
+ */
+function normalizeNullableFields(project: BatchProject): BatchProject {
+  return {
+    ...project,
+    template: project.template ?? null,
+    variableSlot: project.variableSlot ?? null,
+  };
+}
+
 /** Parses the ZIP's `project.json`, throwing {@link ZipImportError} on any fault. */
 async function parseProjectJson(zip: JSZip): Promise<BatchProject> {
   const entry = zip.file("project.json");
@@ -28,7 +43,7 @@ async function parseProjectJson(zip: JSZip): Promise<BatchProject> {
   if (project?.schemaVersion !== SCHEMA_VERSION) {
     throw new ZipImportError("Incompatible project version");
   }
-  return project;
+  return normalizeNullableFields(project);
 }
 
 /**

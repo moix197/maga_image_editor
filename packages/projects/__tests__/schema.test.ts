@@ -35,9 +35,18 @@ describe("BatchProject schema", () => {
       variableSlot: { overlayNodeId: "slot-node-id", width: 800, height: 600 },
       outputs: [],
     });
-    expect(project.variableSlot.overlayNodeId).toBe("slot-node-id");
-    expect(project.variableSlot.width).toBe(800);
-    expect(project.variableSlot.height).toBe(600);
+    expect(project.variableSlot?.overlayNodeId).toBe("slot-node-id");
+    expect(project.variableSlot?.width).toBe(800);
+    expect(project.variableSlot?.height).toBe(600);
+  });
+
+  it("validates a background-only draft with null template and null variableSlot", () => {
+    const project = makeProject({ template: null, variableSlot: null });
+    expect(project.schemaVersion).toBe(1);
+    expect(project.template).toBeNull();
+    expect(project.variableSlot).toBeNull();
+    // background is still required and present
+    expect(project.background).toEqual({ id: "bg", filename: "bg.png", blobKey: "blob-bg" });
   });
 
   it("schemaVersion equals 1", () => {

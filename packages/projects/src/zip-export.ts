@@ -110,6 +110,10 @@ function serializeProjectJson(
     ...project,
     background: { ...project.background, blobKey: backgroundPath(backgroundDataUrl) },
     overlays,
+    // template / variableSlot pass through unchanged: a background-only draft
+    // carries `null` for both, which JSON.stringify writes natively — no crash.
+    template: project.template,
+    variableSlot: project.variableSlot,
     outputs,
   };
 

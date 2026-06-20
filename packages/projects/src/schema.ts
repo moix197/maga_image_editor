@@ -81,10 +81,16 @@ export interface BatchProject {
   background: ProjectAsset;
   /** Overlay image assets, one composite produced per entry. */
   overlays: ProjectAsset[];
-  /** Editor template the variable slot is composited into. */
-  template: EditorState;
-  /** The variable slot descriptor: node id + cover-fit dimensions. */
-  variableSlot: VariableSlot;
+  /**
+   * Editor template the variable slot is composited into, or `null` for a
+   * background-only draft (no template authored yet).
+   */
+  template: EditorState | null;
+  /**
+   * The variable slot descriptor (node id + cover-fit dimensions), or `null`
+   * when no slot has been designated yet.
+   */
+  variableSlot: VariableSlot | null;
   /** Generated composites; defaults to `[]` before any render. */
   outputs: GeneratedOutput[];
 }
