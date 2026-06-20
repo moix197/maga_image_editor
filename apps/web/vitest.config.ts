@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@maga/projects": path.resolve(__dirname, "../../packages/projects/src/index.ts"),
     },
   },
 });

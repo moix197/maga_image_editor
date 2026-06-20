@@ -57,6 +57,15 @@ export function useEditorState(initial?: EditorState) {
     setState((s) => reorderNode(s, id, direction));
   }
 
+  /**
+   * Replaces the entire editor state. `useState`'s `initial` is read only on the
+   * first render, so a template that arrives after mount (e.g. an IDB/ZIP
+   * restore) must be seeded through here to actually render.
+   */
+  function replace(next: EditorState) {
+    setState(next);
+  }
+
   return {
     state,
     addTextNode,
@@ -66,5 +75,6 @@ export function useEditorState(initial?: EditorState) {
     updateOverlayNode: patchOverlayNode,
     removeNode: deleteNode,
     reorderNode: reorder,
+    replace,
   };
 }

@@ -56,10 +56,10 @@ Create a new package `packages/projects` that owns: the versioned project JSON s
 
 **Steps:**
 
-- [ ] Create `packages/projects` with `package.json`, `tsconfig.json`, `src/schema.ts`, `src/index.ts`; add to pnpm workspace
-- [ ] Define `BatchProject` schema v1 in `schema.ts` with `schemaVersion: 1` literal type; include `id`, `name`, `createdAt`, `updatedAt`, `background: ProjectAsset`, `overlays: ProjectAsset[]`, `template: EditorState`, `variableSlotId: string`, `outputs: GeneratedOutput[]`
-- [ ] Write `packages/projects` schema unit tests
-- [ ] Update `packages/projects/README.md`
+- [x] Create `packages/projects` with `package.json`, `tsconfig.json`, `src/schema.ts`, `src/index.ts`; add to pnpm workspace
+- [x] Define `BatchProject` schema v1 in `schema.ts` with `schemaVersion: 1` literal type; include `id`, `name`, `createdAt`, `updatedAt`, `background: ProjectAsset`, `overlays: ProjectAsset[]`, `template: EditorState`, `variableSlotId: string`, `outputs: GeneratedOutput[]`
+- [x] Write `packages/projects` schema unit tests
+- [x] Update `packages/projects/README.md`
 
 **Tests:**
 
@@ -69,22 +69,22 @@ Create a new package `packages/projects` that owns: the versioned project JSON s
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `packages/projects`
-- [ ] No TypeScript errors (`pnpm tsc --noEmit` in `packages/projects`)
-- [ ] No imports from `apps/web` in `packages/projects`
+- [x] Automated tests pass: `pnpm test` in `packages/projects`
+- [x] No TypeScript errors (`pnpm tsc --noEmit` in `packages/projects`)
+- [x] No imports from `apps/web` in `packages/projects`
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes from reviewer reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator has verified and approved this phase
-- [ ] Changes committed: `feat: packages/projects scaffold with versioned BatchProject schema`
-- [ ] Phase marked complete
+- [x] All Steps and Verification checkboxes above ticked
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes from reviewer reflected back into this plan file
+- [x] Tests written and passing
+- [x] Documentation updated
+- [x] Orchestrator has verified and approved this phase
+- [x] Changes committed: `feat: packages/projects scaffold with versioned BatchProject schema`
+- [x] Phase marked complete
 
 ---
 
@@ -109,12 +109,12 @@ Create a new package `packages/projects` that owns: the versioned project JSON s
 
 **Steps:**
 
-- [ ] Create `/batch` route: thin `page.tsx` + `layout.tsx` with metadata
-- [ ] Build `AssetUploadZone` (generic, callback-only) accepting `onFiles: (files: File[]) => void`, `accept`, `multiple` props; use shadcn/ui `Card` for drop-target styling
-- [ ] Build `useBatchProject` hook: convert uploaded `File` objects to data URLs via existing `fileToDataUrl`; store as `ProjectAsset` with a uuid key; hold full `BatchProject` in `useState`
-- [ ] Build `AssetList` to render background thumbnail + overlay thumbnails grid
-- [ ] Build `BatchWorkspace` composing the above; wire background zone (single) and overlays zone (multiple)
-- [ ] Add nav link on home page
+- [x] Create `/batch` route: thin `page.tsx` + `layout.tsx` with metadata
+- [x] Build `AssetUploadZone` (generic, callback-only) accepting `onFiles: (files: File[]) => void`, `accept`, `multiple` props; use shadcn/ui `Card` for drop-target styling
+- [x] Build `useBatchProject` hook: convert uploaded `File` objects to data URLs via existing `fileToDataUrl`; store as `ProjectAsset` with a uuid key; hold full `BatchProject` in `useState`
+- [x] Build `AssetList` to render background thumbnail + overlay thumbnails grid
+- [x] Build `BatchWorkspace` composing the above; wire background zone (single) and overlays zone (multiple)
+- [x] Add nav link on home page
 
 **Tests:**
 
@@ -124,23 +124,23 @@ Create a new package `packages/projects` that owns: the versioned project JSON s
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `apps/web`
-- [ ] Navigate to `/batch`, drag-drop a background image → thumbnail appears labeled "Background"
-- [ ] Upload 3 overlay images → 3 thumbnails appear in overlay list
-- [ ] No console errors; no TypeScript errors (`pnpm tsc --noEmit` in `apps/web`)
+- [x] Automated tests pass: `pnpm test` in `apps/web`
+- [ ] Navigate to `/batch`, drag-drop a background image → thumbnail appears labeled "Background" _(deferred → final manual pass)_
+- [ ] Upload 3 overlay images → 3 thumbnails appear in overlay list _(deferred → final manual pass)_
+- [x] No console errors; no TypeScript errors (`pnpm tsc --noEmit` in `apps/web`) — tsc clean; console pending manual pass
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes from reviewer reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator has verified and approved this phase
-- [ ] Changes committed: `feat: batch project scaffold with asset upload UI`
-- [ ] Phase marked complete
+- [ ] All Steps and Verification checkboxes above ticked _(browser-manual verification deferred to final pass)_
+- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn _(n/a — subagent-driven execute-prd flow)_
+- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session _(n/a)_
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes from reviewer reflected back into this plan file
+- [x] Tests written and passing
+- [x] Documentation updated _(apps/web/README: /batch feature overview — commit 5894e25)_
+- [ ] Orchestrator has verified and approved this phase _(pending final manual pass)_
+- [x] Changes committed: `feat: batch project scaffold with asset upload UI`
+- [ ] Phase marked complete _(pending final manual pass)_
 
 ---
 
@@ -166,12 +166,12 @@ Center-crop to fill slot: compute `scale = max(slotW / imgW, slotH / imgH)`, the
 
 **Steps:**
 
-- [ ] Implement `coverCropDataUrl` in `apps/web/src/lib/cover-crop.ts` using offscreen `<canvas>`; keep under 30 lines; export as named function
-- [ ] Build `TemplateEditor`: render background image as base; layer existing `OverlayNodeLayer` component (reuse from current editor) to place the variable slot; expose `onSave(editorState, variableSlotId)` callback; "variable slot" is visually distinguished (dashed border, label)
-- [ ] Wire `setTemplate` into `useBatchProject`
-- [ ] Build `use-single-composite`: (1) `coverCropDataUrl(overlay.src, slot.width, slot.height)` → croppedSrc, (2) clone template EditorState, swap variable node src to croppedSrc, (3) call existing `exportCanvasElement` from `apps/web/src/lib/export-helpers.ts`, (4) return result data URL
-- [ ] Add "Generate preview" button in `BatchWorkspace`; show first overlay composite result in a preview card
-- [ ] Write unit test for `coverCropDataUrl`; write unit test for the slot-swap logic in `use-single-composite` (mock `exportCanvasElement`)
+- [x] Implement `coverCropDataUrl` in `apps/web/src/lib/cover-crop.ts` using offscreen `<canvas>`; keep under 30 lines; export as named function
+- [x] Build `TemplateEditor`: render background image as base; layer existing `OverlayNodeLayer` component (reuse from current editor) to place the variable slot; expose `onSave(editorState, variableSlotId)` callback; "variable slot" is visually distinguished (dashed border, label)
+- [x] Wire `setTemplate` into `useBatchProject`
+- [x] Build `use-single-composite`: (1) `coverCropDataUrl(overlay.src, slot.width, slot.height)` → croppedSrc, (2) clone template EditorState, swap variable node src to croppedSrc, (3) call existing `exportCanvasElement` from `apps/web/src/lib/export-helpers.ts`, (4) return result data URL
+- [x] Add "Generate preview" button in `BatchWorkspace`; show first overlay composite result in a preview card
+- [x] Write unit test for `coverCropDataUrl`; write unit test for the slot-swap logic in `use-single-composite` (mock `exportCanvasElement`)
 
 **Tests:**
 
@@ -182,23 +182,25 @@ Center-crop to fill slot: compute `scale = max(slotW / imgW, slotH / imgH)`, the
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `apps/web`
-- [ ] Upload background + 3 overlays; define slot by placing an overlay node on the template; click "Generate preview" → composite appears (first overlay image fills the slot, cropped to cover)
-- [ ] Slot covers (no letterbox) with center crop on a non-square overlay image
-- [ ] No TypeScript errors
+- [x] Automated tests pass: `pnpm test` in `apps/web`
+- [ ] Upload background + 3 overlays; define slot by placing an overlay node on the template; click "Generate preview" → composite appears (first overlay image fills the slot, cropped to cover) _(deferred → final manual pass)_
+- [ ] Slot covers (no letterbox) with center crop on a non-square overlay image _(deferred → final manual pass)_
+- [x] No TypeScript errors (tsc clean: @maga/web + @maga/projects)
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt
-- [ ] Code-reviewer agent verified
-- [ ] Reviewer changes reflected back
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator approved
-- [ ] Changes committed: `feat: template editor with single composite generation`
-- [ ] Phase marked complete
+- [ ] All Steps and Verification checkboxes above ticked _(browser-manual verification deferred to final pass)_
+- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn _(n/a — subagent-driven flow)_
+- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt _(n/a)_
+- [x] Code-reviewer agent verified
+- [x] Reviewer changes reflected back _(red fixed: schema.test.ts + JSDoc; removed stray duplicate test)_
+- [x] Tests written and passing
+- [x] Documentation updated _(apps/web/README: /batch feature overview — commit 5894e25)_
+- [ ] Orchestrator approved _(pending final manual pass)_
+- [x] Changes committed: `feat: template editor with single composite generation`
+- [ ] Phase marked complete _(pending final manual pass)_
+
+> **Phase 4 carry-over (from review):** the hidden composite canvas is hardcoded 800×600 while the slot's width/height are px from the editor canvas (possibly a different size) → preview slot size can drift from placement. Phase 4 batch render must capture at the true template dimensions.
 
 ---
 
@@ -220,13 +222,13 @@ Center-crop to fill slot: compute `scale = max(slotW / imgW, slotH / imgH)`, the
 
 **Steps:**
 
-- [ ] Build `use-batch-render`: sequential loop over `project.overlays`; per iteration: await `coverCropDataUrl`, clone EditorState swapping slot src, await `exportCanvasElement`, call `addOutput`; update `progress`; check cancel flag between iterations
-- [ ] Build `BatchResultsGallery`: grid of output cards with image preview, filename label, and per-item download via `downloadDataUrl`; progress bar via shadcn/ui `Progress` component; renders in-progress (partial results) as they arrive
-- [ ] Add "Generate all" + "Cancel" controls in `BatchWorkspace`; disable "Generate all" while running
-- [ ] Write unit tests for `use-batch-render` loop logic (mock compositing helpers)
-- [ ] Handle zero overlays: if `project.overlays` is empty, show an inline warning "No overlay images uploaded" and disable "Generate all" button; do not enter the render loop
-- [ ] Handle UI freeze: each iteration yields to the event loop via `await new Promise(r => setTimeout(r, 0))` between renders to keep the progress bar responsive
-- [ ] Large batches (20+ overlays): output data URLs are held in React state in memory. Add a comment in `use-batch-render.ts` noting that if memory becomes a constraint, outputs should be written to IDB immediately per-item and references stored instead of data URLs; this is a known trade-off deferred to a future phase.
+- [x] Build `use-batch-render`: sequential loop over `project.overlays`; per iteration: await `coverCropDataUrl`, clone EditorState swapping slot src, await `exportCanvasElement`, call `addOutput`; update `progress`; check cancel flag between iterations
+- [x] Build `BatchResultsGallery`: grid of output cards with image preview, filename label, and per-item download via `downloadDataUrl`; progress bar via shadcn/ui `Progress` component; renders in-progress (partial results) as they arrive
+- [x] Add "Generate all" + "Cancel" controls in `BatchWorkspace`; disable "Generate all" while running
+- [x] Write unit tests for `use-batch-render` loop logic (mock compositing helpers)
+- [x] Handle zero overlays: if `project.overlays` is empty, show an inline warning "No overlay images uploaded" and disable "Generate all" button; do not enter the render loop
+- [x] Handle UI freeze: each iteration yields to the event loop via `await new Promise(r => setTimeout(r, 0))` between renders to keep the progress bar responsive
+- [x] Large batches (20+ overlays): output data URLs are held in React state in memory. Add a comment in `use-batch-render.ts` noting that if memory becomes a constraint, outputs should be written to IDB immediately per-item and references stored instead of data URLs; this is a known trade-off deferred to a future phase.
 
 **Tests:**
 
@@ -237,25 +239,27 @@ Center-crop to fill slot: compute `scale = max(slotW / imgW, slotH / imgH)`, the
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `apps/web`
-- [ ] Upload background + 5 overlays; click "Generate all" → progress shows "1 / 5" … "5 / 5"; gallery populates as renders complete
-- [ ] Cancel mid-run → loop stops; partial results remain in gallery
-- [ ] Each gallery card "Download" saves the correct composited image
-- [ ] No TypeScript errors
-- [ ] Upload 0 overlays → "Generate all" is disabled and warning is shown (not a silent no-op)
+- [x] Automated tests pass: `pnpm test` in `apps/web`
+- [ ] Upload background + 5 overlays; click "Generate all" → progress shows "1 / 5" … "5 / 5"; gallery populates as renders complete _(deferred → final manual pass)_
+- [ ] Cancel mid-run → loop stops; partial results remain in gallery _(deferred → final manual pass)_
+- [ ] Each gallery card "Download" saves the correct composited image _(deferred → final manual pass)_
+- [x] No TypeScript errors (@maga/web tsc exit 0)
+- [x] Upload 0 overlays → "Generate all" is disabled and warning is shown (not a silent no-op) — covered by test + code; UI confirm in final pass
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted
-- [ ] Orchestrator cleared context
-- [ ] Code-reviewer verified
-- [ ] Reviewer changes reflected back
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator approved
-- [ ] Changes committed: `feat: batch render with results gallery and progress`
-- [ ] Phase marked complete
+- [ ] All Steps and Verification checkboxes above ticked _(browser-manual verification deferred to final pass)_
+- [ ] Reviewer handoff prompt emitted _(n/a — subagent-driven flow)_
+- [ ] Orchestrator cleared context _(n/a)_
+- [x] Code-reviewer verified
+- [x] Reviewer changes reflected back _(extracted shared `patchOverlays` helper; stable React key)_
+- [x] Tests written and passing
+- [x] Documentation updated _(apps/web/README: /batch feature overview — commit 5894e25)_
+- [ ] Orchestrator approved _(pending final manual pass)_
+- [x] Changes committed: `feat: batch render with results gallery and progress`
+- [ ] Phase marked complete _(pending final manual pass)_
+
+> **Phase 5 carry-over:** `outputBlobKey` (and `ProjectAsset.blobKey`) currently hold raw data URLs, but the schema documents them as blob-store keys / relative ZIP paths. Phase 5 ZIP export must convert these data URLs into ZIP file entries + rewrite refs to relative paths.
 
 ---
 
@@ -294,14 +298,14 @@ outputs/
 
 **Steps:**
 
-- [ ] Install `jszip` and `@types/jszip` in `packages/projects` via `pnpm add jszip` / `pnpm add -D @types/jszip`
-- [ ] Implement `exportProjectZip` in `packages/projects/src/zip-export.ts`: create `JSZip`, add `project.json` (stringify with relative path refs), add background file (data URL → blob via `dataUrlToBlob` helper), add overlay files under `overlays/`, add output files under `outputs/`, return `zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })`
-- [ ] Add `dataUrlToBlob` private helper in the same file (converts `data:<mime>;base64,<data>` to `Blob`) — no external dependency, straightforward atob + Uint8Array
-- [ ] Build `use-zip-export` hook in `apps/web`; download via `URL.createObjectURL` + click + `URL.revokeObjectURL`
-- [ ] Wire "Export ZIP" button into `BatchWorkspace`
-- [ ] Write unit tests for `exportProjectZip`
-- [ ] Handle duplicate output filenames: if two overlays share the same filename, prefix with index (`0-filename.png`, `1-filename.png`) — the ZIP layout already index-prefixes overlays, apply the same pattern to outputs explicitly
-- [ ] Output format: use PNG for transparent outputs, JPEG (quality 0.92) for opaque outputs — detect by checking whether the overlay's source image has an alpha channel; document this decision in a comment in `zip-export.ts`
+- [x] Install `jszip` and `@types/jszip` in `packages/projects` via `pnpm add jszip` / `pnpm add -D @types/jszip`
+- [x] Implement `exportProjectZip` in `packages/projects/src/zip-export.ts`: create `JSZip`, add `project.json` (stringify with relative path refs), add background file (data URL → blob via `dataUrlToBlob` helper), add overlay files under `overlays/`, add output files under `outputs/`, return `zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })`
+- [x] Add `dataUrlToBlob` private helper in the same file (converts `data:<mime>;base64,<data>` to `Blob`) — no external dependency, straightforward atob + Uint8Array
+- [x] Build `use-zip-export` hook in `apps/web`; download via `URL.createObjectURL` + click + `URL.revokeObjectURL` (revoke deferred a tick to avoid download race)
+- [x] Wire "Export ZIP" button into `BatchWorkspace`
+- [x] Write unit tests for `exportProjectZip`
+- [x] Handle duplicate output filenames: if two overlays share the same filename, prefix with index (`0-filename.png`, `1-filename.png`) — the ZIP layout already index-prefixes overlays, apply the same pattern to outputs explicitly
+- [x] Output format: ~~PNG-for-transparent / JPEG-for-opaque by alpha detection~~ — **deviation (documented in `zip-export.ts` + README):** outputs arrive pre-encoded and `packages/projects` has no DOM/canvas to decode+re-encode, so extension is derived from each data URL's own MIME (no re-encode); alpha-based format selection belongs upstream at render time if ever needed
 
 **Tests:**
 
@@ -312,24 +316,24 @@ outputs/
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `packages/projects`
-- [ ] Generate a batch with 3 overlays → click "Export ZIP" → ZIP downloads
-- [ ] Unzip manually: `project.json` is valid JSON with `schemaVersion: 1`; background file present; 3 overlay files under `overlays/`; 3 output files under `outputs/`
-- [ ] No TypeScript errors
-- [ ] Two overlays with identical filenames → ZIP contains two distinct output files without collision
+- [x] Automated tests pass: `pnpm test` in `packages/projects` (9 tests)
+- [ ] Generate a batch with 3 overlays → click "Export ZIP" → ZIP downloads _(deferred → final manual pass)_
+- [ ] Unzip manually: `project.json` is valid JSON with `schemaVersion: 1`; background file present; 3 overlay files under `overlays/`; 3 output files under `outputs/` _(deferred → final manual pass)_
+- [x] No TypeScript errors (@maga/projects + @maga/web tsc exit 0)
+- [x] Two overlays with identical filenames → ZIP contains two distinct output files without collision (covered by test; manual confirm in final pass)
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted
-- [ ] Orchestrator cleared context
-- [ ] Code-reviewer verified
-- [ ] Reviewer changes reflected back
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator approved
-- [ ] Changes committed: `feat: portable project ZIP export`
-- [ ] Phase marked complete
+- [ ] All Steps and Verification checkboxes above ticked _(browser-manual verification deferred to final pass)_
+- [ ] Reviewer handoff prompt emitted _(n/a — subagent-driven flow)_
+- [ ] Orchestrator cleared context _(n/a)_
+- [x] Code-reviewer verified
+- [x] Reviewer changes reflected back _(deferred revoke; removed dead disabled clause)_
+- [x] Tests written and passing
+- [x] Documentation updated _(packages/projects/README: exportProjectZip API + JSZip rationale)_
+- [ ] Orchestrator approved _(pending final manual pass)_
+- [x] Changes committed: `feat: portable project ZIP export`
+- [ ] Phase marked complete _(pending final manual pass)_
 
 ---
 
@@ -360,16 +364,16 @@ This keeps project JSON small and queryable while delegating binary storage to t
 
 **Steps:**
 
-- [ ] Implement `openDb` with `indexedDB.open('maga-batch', 1)` + `onupgradeneeded` creating both object stores
-- [ ] Implement `saveBlob` / `loadBlob` / `saveProject` / `loadProject` / `deleteProject` in `idb-adapter.ts` — each is a small focused function under 30 lines
-- [ ] Implement `importProjectZip`: open ZIP with JSZip, extract `project.json`, extract each blob file by relative path, return `{ project, blobs }` map
-- [ ] Build `use-project-persistence`: on mount → `openDb` → `loadProject(db, ACTIVE_PROJECT_KEY)` → if found restore state + load blobs; subscribe to project state changes → debounced `saveProject` + `saveBlob` per new/changed blob; expose `importZip`
-- [ ] Call `downscaleIfNeeded(2048)` on background and each overlay blob before `saveBlob`
-- [ ] Add ZIP import button + restore banner in `BatchWorkspace`
-- [ ] Write IDB adapter unit tests (use fake-indexeddb); write ZIP import unit tests
-- [ ] Handle `QuotaExceededError` from IndexedDB: wrap all `saveBlob` calls in try/catch; on quota error show a toast notification "Storage quota exceeded — images will not be saved between sessions. Consider using smaller images." and continue without crashing
-- [ ] Handle corrupt or wrong-version ZIP on re-import: in `importProjectZip`, validate `schemaVersion === 1` immediately after parsing `project.json`; if missing or mismatched, throw a typed error `ZipImportError` with message "Incompatible project version"; catch in `use-project-persistence` and display an inline error banner
-- [ ] Handle `schemaVersion` mismatch on IDB restore: in `loadProject`, check `schemaVersion`; if not `1`, discard stored project and return `null` (log a console warning)
+- [x] Implement `openDb` with `indexedDB.open('maga-batch', 1)` + `onupgradeneeded` creating both object stores
+- [x] Implement `saveBlob` / `loadBlob` / `saveProject` / `loadProject` / `deleteProject` in `idb-adapter.ts` — each is a small focused function under 30 lines
+- [x] Implement `importProjectZip`: open ZIP with JSZip, extract `project.json`, extract each blob file by relative path, return `{ project, blobs }` map
+- [x] Build `use-project-persistence`: on mount → `openDb` → `loadProject(db, ACTIVE_PROJECT_KEY)` → if found restore state + load blobs; subscribe to project state changes → debounced `saveProject` + `saveBlob` per new/changed blob; expose `importZip`
+- [x] Call `downscaleIfNeeded(2048)` on background and each overlay blob before `saveBlob`
+- [x] Add ZIP import button + restore banner in `BatchWorkspace`
+- [x] Write IDB adapter unit tests (use fake-indexeddb); write ZIP import unit tests
+- [x] Handle `QuotaExceededError` from IndexedDB: wrap all `saveBlob` calls in try/catch; on quota error show a notification "Storage quota exceeded — images will not be saved between sessions. Consider using smaller images." and continue without crashing _(used an inline banner — no toast system existed; quota guard now also wraps the final `saveProject` write)_
+- [x] Handle corrupt or wrong-version ZIP on re-import: in `importProjectZip`, validate `schemaVersion === 1` immediately after parsing `project.json`; if missing or mismatched, throw a typed error `ZipImportError` with message "Incompatible project version"; catch in `use-project-persistence` and display an inline error banner
+- [x] Handle `schemaVersion` mismatch on IDB restore: in `loadProject`, check `schemaVersion`; if not `1`, discard stored project and return `null` (log a console warning)
 
 **Tests:**
 
@@ -383,26 +387,32 @@ This keeps project JSON small and queryable while delegating binary storage to t
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `packages/projects` and `apps/web`
-- [ ] Upload assets, define template, generate batch → reload page → project fully restored (assets thumbnails visible, outputs visible in gallery)
-- [ ] Export ZIP → reload → import that ZIP → project restored; "Generate all" re-runs successfully
-- [ ] Large images (>2048px) stored downscaled; no QuotaExceededError in browser console
-- [ ] No TypeScript errors
-- [ ] Import a ZIP with `schemaVersion: 2` → inline error banner shown, no crash
-- [ ] Import a ZIP with malformed `project.json` → inline error banner shown, no crash
+- [x] Automated tests pass: `pnpm test` in `packages/projects` (19) and `apps/web` (142)
+- [ ] Upload assets, define template, generate batch → reload page → project fully restored (assets thumbnails visible, outputs visible in gallery) _(deferred → final manual pass)_
+- [ ] Export ZIP → reload → import that ZIP → project restored; "Generate all" re-runs successfully _(deferred → final manual pass)_
+- [ ] Large images (>2048px) stored downscaled; no QuotaExceededError in browser console _(deferred → final manual pass)_
+- [x] No TypeScript errors (@maga/projects + @maga/web tsc exit 0)
+- [ ] Import a ZIP with `schemaVersion: 2` → inline error banner shown, no crash _(covered by unit test; UI confirm in final pass)_
+- [ ] Import a ZIP with malformed `project.json` → inline error banner shown, no crash _(covered by unit test; UI confirm in final pass)_
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted
-- [ ] Orchestrator cleared context
-- [ ] Code-reviewer verified
-- [ ] Reviewer changes reflected back
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator approved
-- [ ] Changes committed: `feat: IndexedDB autosave and ZIP re-import for project resume`
-- [ ] Phase marked complete
+- [ ] All Steps and Verification checkboxes above ticked _(browser-manual verification deferred to final pass)_
+- [ ] Reviewer handoff prompt emitted _(n/a — subagent-driven flow)_
+- [ ] Orchestrator cleared context _(n/a)_
+- [x] Code-reviewer verified
+- [x] Reviewer changes reflected back _(removed no-op id; quota guard now wraps saveProject too)_
+- [x] Tests written and passing
+- [x] Documentation updated _(packages/projects/README: IDB adapter + ZIP import API)_
+- [ ] Orchestrator approved _(pending final manual pass)_
+- [x] Changes committed: `feat: IndexedDB autosave and ZIP re-import for project resume`
+- [ ] Phase marked complete _(pending final manual pass)_
+
+> **Phase 6 known gaps (reviewer-flagged, accepted — verify/decide in final pass):**
+> 1. **Assets-only state is not autosaved.** `BatchProject` requires non-null `template` + `variableSlot`, so autosave only fires once a template is defined. Uploading assets then reloading *before* defining a template loses the uploads. This trades success-criterion (a)'s "assets restored" for schema integrity; the expensive work (template + outputs) is preserved. Decide in final pass whether to persist a partial draft.
+> 2. **Original `createdAt`/`name` not preserved across reload** — `persistedProject` rebuilds with `id:"active"`, `name:"Batch project"`, `createdAt:0`; stored metadata is overwritten on next autosave. Acceptable for single-active-project scope.
+> 3. **e2e blob-decode coverage gap** — the web hook test mocks the `@maga/projects` IDB surface (jsdom + fake-indexeddb mangle cross-realm Blobs), so `blobToDataUrl` over a *real* IDB-retrieved Blob is not exercised end-to-end; the adapter test covers real Blob round-trips but not the data-URL encode step. Pure logic, low risk.
+> 4. **ZIP-imported images lose MIME** — JSZip blobs carry no MIME, so re-imported images hydrate as `application/octet-stream` data URLs (still render in `<img>`; IDB-restored images keep real MIME).
 
 ---
 

@@ -13,9 +13,14 @@ export default function Home() {
           Powerful image editing for everyone.
         </p>
       </div>
-      <Button asChild size="lg">
-        <Link href="/editor">Open Editor</Link>
-      </Button>
+      <div className="flex gap-3">
+        <Button asChild size="lg">
+          <Link href="/editor">Open Editor</Link>
+        </Button>
+        <Button asChild size="lg" variant="outline">
+          <Link href="/batch">Batch Compositing</Link>
+        </Button>
+      </div>
       <ThemeToggle />
     </main>
   );
