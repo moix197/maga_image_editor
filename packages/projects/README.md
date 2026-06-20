@@ -64,6 +64,10 @@ The `template` field is `EditorState` from `@maga/editor`, reused via a type-onl
 
 `TemplateEditor.tsx` was removed in the batch-editor-parity refactor. `BatchWorkspace` now embeds the real editor surface directly: `useEditorState` owns the template state, `TextOverlayCanvas` renders the live canvas, and `TextStylePanel` / `OverlayControlsPanel` handle per-node controls. Editor state is synced to `project.template` via `setEditorTemplate` in `use-batch-project`.
 
+### Phase 3: live-canvas capture
+
+Preview capture (both single preview and batch render) now targets the live `TextOverlayCanvas` div via `liveCanvasRef` instead of the former `HiddenCompositeCanvas` off-screen element. `HiddenCompositeCanvas` and its associated `bgDimensions` state and `canvasElRef`/`canvasCallbackRef` refs have been removed. Before capture, `useSingleComposite` calls `onDeselectForCapture` to clear the selection ring from the DOM, waits two animation frames (via `waitTwoFrames` in `apps/web/src/lib/capture-helpers.ts`) for React to flush, then restores selection in the `finally` block — matching the `/editor` `handleExport` pattern exactly.
+
 ## Dependency rationale: JSZip
 
 `jszip` is the package's one runtime third-party dependency, used by `exportProjectZip`. Per CLAUDE.md's "build our own before installing" rule, building a ZIP encoder ourselves is impractical: it requires implementing the ZIP binary format spec (local file headers, central directory, end-of-central-directory record), DEFLATE compression (LZ77 + Huffman coding), and CRC-32 checksumming. That is squarely a "deep protocol/spec implementation" — the same category as cryptography — so a battle-tested library is the right call. `dataUrl → bytes` conversion is done in-package (`atob` + `Uint8Array`); only the ZIP container itself is delegated to JSZip.

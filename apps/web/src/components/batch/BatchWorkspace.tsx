@@ -60,15 +60,11 @@ export function BatchWorkspace() {
     const file = files[0];
     if (file) await importZip(file);
   }
-  const [bgDimensions, setBgDimensions] = useState<{ w: number; h: number } | null>(null);
-  const canvasElRef = useRef<HTMLDivElement | null>(null);
-  const canvasCallbackRef = useCallback((el: HTMLDivElement | null) => { canvasElRef.current = el; }, []);
-
   const liveCanvasRef = useRef<HTMLDivElement | null>(null);
   const liveCanvasCallbackRef = useCallback((el: HTMLDivElement | null) => { liveCanvasRef.current = el; }, []);
 
   const batchRender = useBatchRender(
-    canvasElRef.current,
+    liveCanvasRef.current,
     overlays,
     template ?? { nodes: [] },
     variableSlot ?? { overlayNodeId: "" as never, width: 0, height: 0 },
@@ -143,14 +139,21 @@ export function BatchWorkspace() {
   }
 
   async function handleGeneratePreview() {
-    if (!canvasElRef.current || !template || !variableSlot) return;
+    if (!liveCanvasRef.current || !template || !variableSlot) return;
     const firstOverlay = overlays[0];
     if (!firstOverlay) return;
-    await generate(canvasElRef.current, template, variableSlot, firstOverlay.blobKey);
+    await generate(
+      liveCanvasRef.current,
+      template,
+      variableSlot,
+      firstOverlay.blobKey,
+      () => { const prev = selectedNodeId; setSelectedNodeId(null); return prev; },
+      (id) => setSelectedNodeId(id),
+    );
   }
 
   async function handleGenerateAll() {
-    if (!canvasElRef.current || !template || !variableSlot) return;
+    if (!liveCanvasRef.current || !template || !variableSlot) return;
     await batchRender.run(addOutput, clearOutputs);
   }
 
@@ -301,32 +304,6 @@ export function BatchWorkspace() {
         </div>
       )}
 
-      {/* Hidden image to capture natural background dimensions */}
-      {background && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={background.id}
-          src={background.blobKey}
-          alt=""
-          aria-hidden="true"
-          style={{ display: "none" }}
-          onLoad={(e) => {
-            const img = e.currentTarget;
-            setBgDimensions({ w: img.naturalWidth, h: img.naturalHeight });
-          }}
-        />
-      )}
-
-      {/* Hidden canvas for capturing the background during composite generation. */}
-      {background && template && variableSlot && (
-        <HiddenCompositeCanvas
-          backgroundSrc={background.blobKey}
-          canvasCallbackRef={canvasCallbackRef}
-          width={bgDimensions?.w ?? 800}
-          height={bgDimensions?.h ?? 600}
-        />
-      )}
-
       {compositeError && (
         <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {compositeError}
@@ -366,24 +343,6 @@ export function BatchWorkspace() {
         progress={batchRender.progress}
         isRunning={batchRender.isRunning}
       />
-    </div>
-  );
-}
-
-function HiddenCompositeCanvas({ backgroundSrc, canvasCallbackRef, width, height }: {
-  backgroundSrc: string;
-  canvasCallbackRef: (el: HTMLDivElement | null) => void;
-  width: number;
-  height: number;
-}) {
-  return (
-    <div
-      ref={canvasCallbackRef}
-      aria-hidden="true"
-      style={{ position: "absolute", left: -9999, top: -9999, width, height, overflow: "hidden", pointerEvents: "none" }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={backgroundSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
     </div>
   );
 }
