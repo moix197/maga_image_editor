@@ -20,6 +20,8 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     template: { nodes: [] },
     variableSlot: { overlayNodeId: "slot" as NodeId, width: 100, height: 100 },
     outputs: [],
+    itemTextValues: {},
+    textLayerLocks: {},
     ...overrides,
   };
 }
@@ -38,9 +40,29 @@ describe("exportProjectZip", () => {
     expect(blob.size).toBeGreaterThan(0);
 
     const { parsed } = await readProjectJson(blob);
-    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.schemaVersion).toBe(2);
     expect(parsed.id).toBe("project-1");
     expect(parsed.background).toBeDefined();
+  });
+
+  it("writes schemaVersion 2 and the v2 fields (itemTextValues + textLayerLocks)", async () => {
+    const project = makeProject({
+      itemTextValues: { "ov-1": { "node-1": "hello" } },
+      textLayerLocks: { "node-1": false },
+    });
+    const blob = await exportProjectZip(project, PNG_DATA_URL, [], []);
+    const { parsed } = await readProjectJson(blob);
+
+    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.itemTextValues).toEqual({ "ov-1": { "node-1": "hello" } });
+    expect(parsed.textLayerLocks).toEqual({ "node-1": false });
+  });
+
+  it("forces schemaVersion 2 on export even if the in-memory record is older", async () => {
+    const stale = { ...makeProject(), schemaVersion: 1 as unknown as BatchProject["schemaVersion"] };
+    const blob = await exportProjectZip(stale, PNG_DATA_URL, [], []);
+    const { parsed } = await readProjectJson(blob);
+    expect(parsed.schemaVersion).toBe(2);
   });
 
   it("includes one entry per overlay and per output", async () => {
@@ -91,7 +113,7 @@ describe("exportProjectZip", () => {
     expect(blob.size).toBeGreaterThan(0);
 
     const { raw, parsed } = await readProjectJson(blob);
-    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.schemaVersion).toBe(2);
     expect(parsed.template).toBeNull();
     expect(parsed.variableSlot).toBeNull();
     // null fields are written natively as JSON null

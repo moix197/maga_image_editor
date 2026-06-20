@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import type { BatchProject, GeneratedOutput, ProjectAsset } from "./schema";
+import { SCHEMA_VERSION, type BatchProject, type GeneratedOutput, type ProjectAsset } from "./schema";
 
 /**
  * Maps a data URL's MIME type to a file extension. Falls back to `.bin` for an
@@ -108,6 +108,8 @@ function serializeProjectJson(
 
   const portable: BatchProject = {
     ...project,
+    // Always emit the current schema version so reimport sees a v2 record.
+    schemaVersion: SCHEMA_VERSION,
     background: { ...project.background, blobKey: backgroundPath(backgroundDataUrl) },
     overlays,
     // template / variableSlot pass through unchanged: a background-only draft
@@ -115,6 +117,9 @@ function serializeProjectJson(
     template: project.template,
     variableSlot: project.variableSlot,
     outputs,
+    // Per-item text overrides + layer locks (schema v2).
+    itemTextValues: project.itemTextValues,
+    textLayerLocks: project.textLayerLocks,
   };
 
   return JSON.stringify(portable, null, 2);

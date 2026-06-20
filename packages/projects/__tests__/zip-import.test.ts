@@ -20,6 +20,8 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     template: { nodes: [] },
     variableSlot: { overlayNodeId: "slot" as NodeId, width: 100, height: 100 },
     outputs: [],
+    itemTextValues: {},
+    textLayerLocks: {},
     ...overrides,
   };
 }
@@ -48,7 +50,7 @@ describe("importProjectZip", () => {
 
     const { project: imported, blobs } = await importProjectZip(zipBlob);
 
-    expect(imported.schemaVersion).toBe(1);
+    expect(imported.schemaVersion).toBe(2);
     expect(imported.background.blobKey).toBe("background.png");
     expect(imported.overlays.map((o) => o.blobKey)).toEqual([
       "overlays/0-a.png",
@@ -71,10 +73,39 @@ describe("importProjectZip", () => {
     await expect(importProjectZip(zipBlob)).rejects.toBeInstanceOf(ZipImportError);
   });
 
-  it("throws ZipImportError on incompatible schemaVersion", async () => {
-    const stale = { ...makeProject(), schemaVersion: 2 };
-    const zipBlob = await zipWithProjectJson(JSON.stringify(stale));
+  it("throws ZipImportError on a schemaVersion newer than this build", async () => {
+    const futuristic = { ...makeProject(), schemaVersion: 99 };
+    const zipBlob = await zipWithProjectJson(JSON.stringify(futuristic));
     await expect(importProjectZip(zipBlob)).rejects.toThrow("Incompatible project version");
+  });
+
+  it("migrates a v1 ZIP to v2: itemTextValues {} and all text nodes locked", async () => {
+    // A legacy v1 project: schemaVersion 1, no v2 fields, template with two text
+    // layers. Migration must default itemTextValues to {} and lock every layer.
+    const v1 = {
+      schemaVersion: 1,
+      id: "legacy",
+      name: "Legacy",
+      createdAt: 0,
+      updatedAt: 0,
+      background: { id: "bg", filename: "bg.png", blobKey: PNG_DATA_URL },
+      overlays: [],
+      template: {
+        nodes: [
+          { id: "t1" as NodeId, content: "A", x: 0, y: 0, rotation: 0, zIndex: 0, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null },
+          { id: "t2" as NodeId, content: "B", x: 0, y: 0, rotation: 0, zIndex: 1, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null },
+        ],
+      },
+      variableSlot: null,
+      outputs: [],
+    };
+    const zipBlob = await zipWithProjectJson(JSON.stringify(v1));
+
+    const { project: imported } = await importProjectZip(zipBlob);
+
+    expect(imported.schemaVersion).toBe(2);
+    expect(imported.itemTextValues).toEqual({});
+    expect(imported.textLayerLocks).toEqual({ t1: true, t2: true });
   });
 
   it("sets template to null (no throw) when project.json omits it", async () => {

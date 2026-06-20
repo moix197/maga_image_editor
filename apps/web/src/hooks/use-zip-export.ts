@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { exportProjectZip } from "@maga/projects";
+import { exportProjectZip, SCHEMA_VERSION } from "@maga/projects";
 import { safeRandomId } from "@/lib/id";
 import type {
   BatchProject,
@@ -17,6 +17,8 @@ interface ProjectState {
   template: EditorState | null;
   variableSlot: VariableSlot | null;
   outputs: GeneratedOutput[];
+  itemTextValues?: Record<string, Record<string, string>>;
+  textLayerLocks?: Record<string, boolean>;
 }
 
 interface UseZipExportResult {
@@ -36,7 +38,7 @@ function assembleProject(
 ): BatchProject {
   const now = Date.now();
   return {
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     id: safeRandomId(),
     name: "Batch project",
     createdAt: now,
@@ -50,6 +52,8 @@ function assembleProject(
       height: 0,
     },
     outputs: state.outputs,
+    itemTextValues: state.itemTextValues ?? {},
+    textLayerLocks: state.textLayerLocks ?? {},
   };
 }
 

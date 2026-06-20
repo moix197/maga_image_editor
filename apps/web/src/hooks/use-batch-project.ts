@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { fileToDataUrl } from "@/lib/image-helpers";
 import { safeRandomId } from "@/lib/id";
+import { newTextLayerLockDefault } from "@maga/projects";
 import type { BatchProject, GeneratedOutput, ProjectAsset, VariableSlot } from "@maga/projects";
 import type { EditorState } from "@maga/editor";
 
@@ -12,6 +13,8 @@ interface UseBatchProjectResult {
   template: EditorState | null;
   variableSlot: VariableSlot | null;
   outputs: GeneratedOutput[];
+  itemTextValues: Record<string, Record<string, string>>;
+  textLayerLocks: Record<string, boolean>;
   setBackground: (file: File) => Promise<void>;
   addOverlays: (files: File[]) => Promise<void>;
   setTemplate: (editorState: EditorState, slot: VariableSlot) => void;
@@ -21,6 +24,8 @@ interface UseBatchProjectResult {
   clearProject: () => void;
   setProject: (project: BatchProject) => void;
   setVariableSlot: (slot: VariableSlot | null) => void;
+  setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
+  setTextLayerLock: (textNodeId: string, locked: boolean) => void;
 }
 
 export function useBatchProject(): UseBatchProjectResult {
@@ -29,6 +34,8 @@ export function useBatchProject(): UseBatchProjectResult {
   const [template, setTemplateState] = useState<EditorState | null>(null);
   const [variableSlot, setVariableSlotState] = useState<VariableSlot | null>(null);
   const [outputs, setOutputs] = useState<GeneratedOutput[]>([]);
+  const [itemTextValues, setItemTextValuesState] = useState<Record<string, Record<string, string>>>({});
+  const [textLayerLocks, setTextLayerLocksState] = useState<Record<string, boolean>>({});
 
   const setBackground = useCallback(async (file: File) => {
     const blobKey = await fileToDataUrl(file);
@@ -74,6 +81,8 @@ export function useBatchProject(): UseBatchProjectResult {
     setTemplateState(null);
     setVariableSlotState(null);
     setOutputs([]);
+    setItemTextValuesState({});
+    setTextLayerLocksState({});
   }, []);
 
   const setProject = useCallback((project: BatchProject) => {
@@ -82,10 +91,26 @@ export function useBatchProject(): UseBatchProjectResult {
     setTemplateState(project.template);
     setVariableSlotState(project.variableSlot);
     setOutputs(project.outputs);
+    setItemTextValuesState(project.itemTextValues);
+    setTextLayerLocksState(project.textLayerLocks);
   }, []);
 
   const setVariableSlot = useCallback((slot: VariableSlot | null) => {
     setVariableSlotState(slot);
+  }, []);
+
+  const setItemTextValue = useCallback(
+    (overlayAssetId: string, textNodeId: string, value: string) => {
+      setItemTextValuesState((prev) => ({
+        ...prev,
+        [overlayAssetId]: { ...prev[overlayAssetId], [textNodeId]: value },
+      }));
+    },
+    [],
+  );
+
+  const setTextLayerLock = useCallback((textNodeId: string, locked: boolean) => {
+    setTextLayerLocksState((prev) => ({ ...prev, [textNodeId]: locked }));
   }, []);
 
   return {
@@ -94,6 +119,8 @@ export function useBatchProject(): UseBatchProjectResult {
     template,
     variableSlot,
     outputs,
+    itemTextValues,
+    textLayerLocks,
     setBackground,
     addOverlays,
     setTemplate,
@@ -103,5 +130,7 @@ export function useBatchProject(): UseBatchProjectResult {
     clearProject,
     setProject,
     setVariableSlot,
+    setItemTextValue,
+    setTextLayerLock,
   };
 }

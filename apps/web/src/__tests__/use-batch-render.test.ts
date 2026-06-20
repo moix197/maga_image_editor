@@ -17,6 +17,11 @@ vi.mock("@/lib/export-helpers", () => ({
 
 vi.mock("@maga/editor", () => ({
   isOverlayNode: vi.fn((n: unknown) => (n as { overlayType?: string })?.overlayType === "image"),
+  isTextNode: vi.fn((n: unknown) => "content" in (n as object)),
+}));
+
+vi.mock("@maga/projects", () => ({
+  newTextLayerLockDefault: false,
 }));
 
 vi.mock("@/lib/capture-helpers", () => ({
@@ -213,6 +218,129 @@ describe("useBatchRender", () => {
     // deselect happens before any composite
     expect(callOrder[0]).toBe("deselect");
     expect(callOrder[callOrder.length - 1]).toBe("restore");
+  });
+
+  it("template text node values are UNCHANGED after a full batch run (immutability guard)", async () => {
+    // Template carries one unlocked text node. The hook must mutate LIVE state
+    // via updateTextNode (not the template arg) and restore it after each
+    // capture, so the shared template object is never permanently changed.
+    const TEXT_ID = "text-1";
+    const textTemplate: EditorState = {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        { id: TEXT_ID as NodeId, content: "TEMPLATE", x: 0, y: 0, rotation: 0, zIndex: 1, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null } as unknown as EditorState["nodes"][0],
+      ],
+    };
+    const overlays = [makeOverlay("a"), makeOverlay("b")];
+    const itemTextValues = { a: { [TEXT_ID]: "A-text" }, b: { [TEXT_ID]: "B-text" } };
+    const textLayerLocks = { [TEXT_ID]: false }; // unlocked → per-item
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, textLayerLocks, updateTextNode)
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // The shared template object's text node value is untouched.
+    const textNode = textTemplate.nodes.find((n) => n.id === TEXT_ID) as unknown as { content: string };
+    expect(textNode.content).toBe("TEMPLATE");
+  });
+
+  it("restores template text values even when compositeFromElement THROWS mid-capture", async () => {
+    // If capture throws, the finally must still restore the live editor's text
+    // node back to its template value — the shared template must never be left
+    // holding the per-item override.
+    const TEXT_ID = "text-1";
+    const textTemplate: EditorState = {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        { id: TEXT_ID as NodeId, content: "TEMPLATE", x: 0, y: 0, rotation: 0, zIndex: 1, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null } as unknown as EditorState["nodes"][0],
+      ],
+    };
+    const overlays = [makeOverlay("a")];
+    const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
+    const textLayerLocks = { [TEXT_ID]: false };
+
+    // Simulate the live editor state mutated by updateTextNode so we can assert
+    // its final value after the (throwing) run.
+    let liveContent = "TEMPLATE";
+    const updateTextNode = vi.fn<(id: NodeId, patch: { content?: string }) => void>(
+      (_id, patch) => { if (patch.content !== undefined) liveContent = patch.content; },
+    );
+
+    mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, textLayerLocks, updateTextNode)
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Override was applied, then restored despite the throw.
+    const contents = updateTextNode.mock.calls.map((c) => (c[1] as { content: string }).content);
+    expect(contents).toEqual(["A-text", "TEMPLATE"]);
+    // Live editor state ends on the template value, not the per-item override.
+    expect(liveContent).toBe("TEMPLATE");
+    // The shared template object itself is untouched.
+    const textNode = textTemplate.nodes.find((n) => n.id === TEXT_ID) as unknown as { content: string };
+    expect(textNode.content).toBe("TEMPLATE");
+    // The error is surfaced.
+    expect(result.current.error).toBe("composite boom");
+  });
+
+  it("each captured item receives its own per-item override, then is restored", async () => {
+    const TEXT_ID = "text-1";
+    const textTemplate: EditorState = {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        { id: TEXT_ID as NodeId, content: "TEMPLATE", x: 0, y: 0, rotation: 0, zIndex: 1, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null } as unknown as EditorState["nodes"][0],
+      ],
+    };
+    const overlays = [makeOverlay("a"), makeOverlay("b")];
+    const itemTextValues = { a: { [TEXT_ID]: "A-text" }, b: { [TEXT_ID]: "B-text" } };
+    const textLayerLocks = { [TEXT_ID]: false };
+    const updateTextNode = vi.fn<(id: NodeId, patch: { content?: string }) => void>();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, textLayerLocks, updateTextNode)
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Per item: apply override then restore template value → 4 calls total.
+    const contents = updateTextNode.mock.calls.map((c) => (c[1] as { content: string }).content);
+    expect(contents).toEqual(["A-text", "TEMPLATE", "B-text", "TEMPLATE"]);
+  });
+
+  it("locked text nodes are NOT patched — updateTextNode never called for them", async () => {
+    const TEXT_ID = "text-1";
+    const textTemplate: EditorState = {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        { id: TEXT_ID as NodeId, content: "TEMPLATE", x: 0, y: 0, rotation: 0, zIndex: 1, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null } as unknown as EditorState["nodes"][0],
+      ],
+    };
+    const overlays = [makeOverlay("a"), makeOverlay("b")];
+    const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
+    const textLayerLocks = { [TEXT_ID]: true }; // locked → shared, no patch
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, textLayerLocks, updateTextNode)
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    expect(updateTextNode).not.toHaveBeenCalled();
   });
 
   it("iterates ALL overlays regardless of any external activeOverlayId — batch loop is unaffected by preview selection", async () => {

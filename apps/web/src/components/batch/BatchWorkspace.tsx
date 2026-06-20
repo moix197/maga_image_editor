@@ -2,8 +2,10 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Lock, Unlock } from "lucide-react";
 import { useBatchProject } from "@/hooks/use-batch-project";
 import { useEditorState } from "@/hooks/use-editor-state";
+import { useItemText } from "@/hooks/use-item-text";
 import { useSingleComposite } from "@/hooks/use-single-composite";
 import { useBatchRender } from "@/hooks/use-batch-render";
 import { useZipExport } from "@/hooks/use-zip-export";
@@ -18,6 +20,8 @@ import { TextOverlayCanvas } from "@/components/text-overlay-canvas";
 import { TextStylePanel } from "@/components/text-style-panel";
 import { OverlayControlsPanel } from "@/components/overlay-controls-panel";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { WorkspaceActionsBar } from "./WorkspaceActionsBar";
 import { SCHEMA_VERSION, type BatchProject } from "@maga/projects";
 import { isTextNode, isOverlayNode, isBorderOverlay } from "@maga/editor";
@@ -31,7 +35,7 @@ function BatchWorkspaceInner() {
   const searchParams = useSearchParams();
   const activeSection = resolveSection(searchParams.get("section"));
 
-  const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, clearProject, setBackground, addOverlays, setEditorTemplate, setProject, setVariableSlot } =
+  const { background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, addOutput, clearOutputs, clearProject, setBackground, addOverlays, setEditorTemplate, setProject, setVariableSlot, setItemTextValue, setTextLayerLock } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite({ overlays });
   const { isExporting, error: exportError, exportZip } = useZipExport();
@@ -69,8 +73,10 @@ function BatchWorkspaceInner() {
       template,
       variableSlot,
       outputs,
+      itemTextValues,
+      textLayerLocks,
     };
-  }, [background, overlays, template, variableSlot, outputs]);
+  }, [background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks]);
 
   const { restored, pendingRestore, consumeRestore, clearPersisted, importError, quotaWarning, importZip } = useProjectPersistence({
     project: persistedProject,
@@ -108,6 +114,9 @@ function BatchWorkspaceInner() {
     overlays,
     template ?? { nodes: [] },
     variableSlot ?? { overlayNodeId: "" as never, width: 0, height: 0 },
+    itemTextValues,
+    textLayerLocks,
+    editorState.updateTextNode,
   );
 
   async function handleBackgroundFiles(files: File[]) {
@@ -208,7 +217,7 @@ function BatchWorkspaceInner() {
   }
 
   async function handleExportZip() {
-    await exportZip({ background, overlays, template, variableSlot, outputs });
+    await exportZip({ background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks });
   }
 
   async function handleClearProject() {
@@ -235,6 +244,12 @@ function BatchWorkspaceInner() {
   const selectedNode = selectedNodeId ? (editorState.state.nodes.find((n) => n.id === selectedNodeId) ?? null) : null;
   const isSelectedText = selectedNode !== null && isTextNode(selectedNode);
   const isSelectedOverlay = selectedNode !== null && isOverlayNode(selectedNode);
+
+  const itemText = useItemText({ itemTextValues, textLayerLocks, setItemTextValue, setTextLayerLock });
+  const textNodes = useMemo(
+    () => editorState.state.nodes.filter((n): n is TextNode => isTextNode(n)),
+    [editorState.state.nodes],
+  );
 
   return (
     <div className="flex flex-col">
@@ -403,6 +418,16 @@ function BatchWorkspaceInner() {
                     </div>
                   )}
                 </div>
+
+                {/* Per-item text for the active overlay (schema v2). */}
+                {activeOverlay && textNodes.length > 0 && (
+                  <ItemTextPanel
+                    overlayAssetId={activeOverlay.id}
+                    overlayLabel={activeOverlay.filename}
+                    textNodes={textNodes}
+                    itemText={itemText}
+                  />
+                )}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">Upload a background image first in the Assets section.</p>
@@ -445,6 +470,57 @@ function BatchWorkspaceInner() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface ItemTextPanelProps {
+  overlayAssetId: string;
+  overlayLabel: string;
+  textNodes: TextNode[];
+  itemText: ReturnType<typeof useItemText>;
+}
+
+/**
+ * Per-item text editor for the active overlay: one input per text layer plus a
+ * lock toggle. Locked layers share the template value (input disabled); unlocked
+ * layers carry a per-item override.
+ */
+function ItemTextPanel({ overlayAssetId, overlayLabel, textNodes, itemText }: ItemTextPanelProps) {
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <h2 className="text-sm font-semibold tracking-tight">Text for {overlayLabel}</h2>
+      {textNodes.map((node, i) => {
+        const locked = itemText.isLocked(node.id);
+        const value = locked ? node.content : itemText.getTextValue(overlayAssetId, node.id);
+        const inputId = `item-text-${overlayAssetId}-${node.id}`;
+        return (
+          <div key={node.id} className="flex flex-col gap-1.5">
+            <Label htmlFor={inputId} className="text-xs text-muted-foreground">
+              Text layer {i + 1}
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id={inputId}
+                value={value}
+                disabled={locked}
+                placeholder={node.content}
+                onChange={(e) => itemText.setTextValue(overlayAssetId, node.id, e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label={locked ? "Unlock layer (edit per item)" : "Lock layer (share across items)"}
+                aria-pressed={locked}
+                onClick={() => itemText.toggleLock(node.id)}
+              >
+                {locked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+              </Button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { SCHEMA_VERSION, type BatchProject } from "./schema";
+import { SCHEMA_VERSION, migrateToV2, type BatchProject } from "./schema";
 
 /**
  * Thrown when a ZIP cannot be imported: missing/corrupt `project.json` or an
@@ -19,13 +19,17 @@ export class ZipImportError extends Error {
  * carries a non-null value keeps it as-is, while an absent field becomes `null`.
  * This replaces the previous hard-throw-on-missing behavior so incomplete and
  * pre-refactor projects import without crashing.
+ *
+ * Also applies the v1→v2 schema migration: a project with `schemaVersion < 2`
+ * (or a missing version) gains an empty `itemTextValues` and an all-locked
+ * `textLayerLocks` derived from its template (see {@link migrateToV2}).
  */
 function normalizeNullableFields(project: BatchProject): BatchProject {
-  return {
+  return migrateToV2({
     ...project,
     template: project.template ?? null,
     variableSlot: project.variableSlot ?? null,
-  };
+  });
 }
 
 /** Parses the ZIP's `project.json`, throwing {@link ZipImportError} on any fault. */
@@ -40,7 +44,9 @@ async function parseProjectJson(zip: JSZip): Promise<BatchProject> {
     throw new ZipImportError("project.json is corrupt or not valid JSON");
   }
 
-  if (project?.schemaVersion !== SCHEMA_VERSION) {
+  // Accept any version up to the current one (older versions are migrated in
+  // normalizeNullableFields); reject only versions newer than this build knows.
+  if (typeof project?.schemaVersion !== "number" || project.schemaVersion > SCHEMA_VERSION) {
     throw new ZipImportError("Incompatible project version");
   }
   return normalizeNullableFields(project);

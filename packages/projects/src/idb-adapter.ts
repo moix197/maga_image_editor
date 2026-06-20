@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, type BatchProject } from "./schema";
+import { SCHEMA_VERSION, migrateToV2, type BatchProject } from "./schema";
 
 const DB_NAME = "maga-batch";
 const DB_VERSION = 1;
@@ -53,20 +53,23 @@ export function saveProject(db: IDBDatabase, project: BatchProject): Promise<voi
 
 /**
  * Loads a project by id. Returns `null` if absent, or if the stored record's
- * `schemaVersion` is not the current version (logs a warning and discards it).
+ * `schemaVersion` is newer than this build understands (logs a warning and
+ * discards it). Records at an older version (`< 2`) are migrated in-memory via
+ * {@link migrateToV2} — same v1→v2 defaults the ZIP import applies — so legacy
+ * IDB records load without error.
  */
 export async function loadProject(db: IDBDatabase, id: string): Promise<BatchProject | null> {
   const tx = db.transaction(PROJECTS_STORE, "readonly");
   const stored = await awaitRequest(tx.objectStore(PROJECTS_STORE).get(id));
   if (!stored) return null;
   const project = stored as BatchProject;
-  if (project.schemaVersion !== SCHEMA_VERSION) {
+  if (project.schemaVersion > SCHEMA_VERSION) {
     console.warn(
-      `Discarding stored project ${id}: schemaVersion ${project.schemaVersion} != ${SCHEMA_VERSION}`,
+      `Discarding stored project ${id}: schemaVersion ${project.schemaVersion} > ${SCHEMA_VERSION}`,
     );
     return null;
   }
-  return project;
+  return migrateToV2(project);
 }
 
 /** Stores a raw blob under `key`. May reject with `QuotaExceededError`. */

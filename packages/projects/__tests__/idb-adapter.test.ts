@@ -24,6 +24,8 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     template: { nodes: [] },
     variableSlot: { overlayNodeId: "slot" as NodeId, width: 100, height: 100 },
     outputs: [],
+    itemTextValues: {},
+    textLayerLocks: {},
     ...overrides,
   };
 }
@@ -85,10 +87,39 @@ describe("idb-adapter", () => {
     expect(await loadProject(db, project.id)).toBeNull();
   });
 
-  it("loadProject discards a record with a mismatched schemaVersion", async () => {
+  it("loadProject discards a record whose schemaVersion is newer than this build", async () => {
     const db = await openDb();
-    const stale = { ...makeProject(), schemaVersion: 2 } as unknown as BatchProject;
-    await saveProject(db, stale);
-    expect(await loadProject(db, stale.id)).toBeNull();
+    const futuristic = { ...makeProject(), schemaVersion: 99 } as unknown as BatchProject;
+    await saveProject(db, futuristic);
+    expect(await loadProject(db, futuristic.id)).toBeNull();
+  });
+
+  it("loadProject migrates a stored v1 record to v2 (itemTextValues {}, all layers locked)", async () => {
+    const db = await openDb();
+    // A legacy v1 record: schemaVersion 1, no v2 fields, two text layers.
+    const v1 = {
+      schemaVersion: 1,
+      id: "legacy",
+      name: "Legacy",
+      createdAt: 0,
+      updatedAt: 0,
+      background: { id: "bg", filename: "bg.png", blobKey: "bg-key" },
+      overlays: [],
+      template: {
+        nodes: [
+          { id: "t1", content: "A", x: 0, y: 0, rotation: 0, zIndex: 0, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null },
+          { id: "t2", content: "B", x: 0, y: 0, rotation: 0, zIndex: 1, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null },
+        ],
+      },
+      variableSlot: null,
+      outputs: [],
+    } as unknown as BatchProject;
+    await saveProject(db, v1);
+
+    const loaded = await loadProject(db, "legacy");
+    expect(loaded).not.toBeNull();
+    expect(loaded!.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(loaded!.itemTextValues).toEqual({});
+    expect(loaded!.textLayerLocks).toEqual({ t1: true, t2: true });
   });
 });

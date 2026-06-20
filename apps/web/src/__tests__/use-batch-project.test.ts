@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useBatchProject } from "@/hooks/use-batch-project";
+import { useItemText } from "@/hooks/use-item-text";
 import { useProjectPersistence } from "@/hooks/use-project-persistence";
+import { migrateToV2, SCHEMA_VERSION } from "@maga/projects";
 import type { BatchProject, VariableSlot } from "@maga/projects";
 import type { NodeId, EditorState } from "@maga/editor";
 
@@ -168,6 +170,84 @@ describe("useBatchProject", () => {
     expect(result.current.variableSlot).toBeNull();
     expect(result.current.outputs).toHaveLength(0);
   });
+
+  it("itemTextValues and textLayerLocks start empty", () => {
+    const { result } = renderHook(() => useBatchProject());
+    expect(result.current.itemTextValues).toEqual({});
+    expect(result.current.textLayerLocks).toEqual({});
+  });
+
+  it("setItemTextValue stores a per-item override keyed by overlay then node", () => {
+    const { result } = renderHook(() => useBatchProject());
+
+    act(() => {
+      result.current.setItemTextValue("ov-1", "node-1", "hello");
+      result.current.setItemTextValue("ov-1", "node-2", "world");
+      result.current.setItemTextValue("ov-2", "node-1", "bye");
+    });
+
+    expect(result.current.itemTextValues).toEqual({
+      "ov-1": { "node-1": "hello", "node-2": "world" },
+      "ov-2": { "node-1": "bye" },
+    });
+  });
+
+  it("setTextLayerLock toggles a layer's lock state", () => {
+    const { result } = renderHook(() => useBatchProject());
+
+    act(() => {
+      result.current.setTextLayerLock("node-1", true);
+    });
+    expect(result.current.textLayerLocks["node-1"]).toBe(true);
+
+    act(() => {
+      result.current.setTextLayerLock("node-1", false);
+    });
+    expect(result.current.textLayerLocks["node-1"]).toBe(false);
+  });
+
+  it("a newly-added (unrecorded) text layer reads as locked=false via useItemText", () => {
+    // No lock entry has been written, so the default applies (per-image).
+    const { result } = renderHook(() => useBatchProject());
+    const { result: itemText } = renderHook(() =>
+      useItemText({
+        itemTextValues: result.current.itemTextValues,
+        textLayerLocks: result.current.textLayerLocks,
+        setItemTextValue: result.current.setItemTextValue,
+        setTextLayerLock: result.current.setTextLayerLock,
+      })
+    );
+    expect(itemText.current.isLocked("brand-new-node")).toBe(false);
+  });
+
+  it("a migrated v1 layer reads as locked=true after setProject", () => {
+    const { result } = renderHook(() => useBatchProject());
+    // Build a v1 project with one text layer, migrate it, then load it.
+    const v1 = {
+      schemaVersion: 1,
+      id: "p",
+      name: "p",
+      createdAt: 0,
+      updatedAt: 0,
+      background: { id: "bg", filename: "bg.png", blobKey: "data:bg" },
+      overlays: [],
+      template: {
+        nodes: [
+          { id: "t1" as NodeId, content: "A", x: 0, y: 0, rotation: 0, zIndex: 0, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null },
+        ],
+      } as EditorState,
+      variableSlot: null,
+      outputs: [],
+    } as unknown as BatchProject;
+    const migrated = migrateToV2(v1);
+    expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
+
+    act(() => {
+      result.current.setProject(migrated);
+    });
+
+    expect(result.current.textLayerLocks["t1"]).toBe(true);
+  });
 });
 
 // ── useProjectPersistence: pendingRestore drain ──────────────────────────────
@@ -184,7 +264,7 @@ function makeProject(templateNodeId: string): BatchProject {
     ],
   };
   return {
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     id: "active",
     name: "test",
     createdAt: 0,
@@ -194,6 +274,8 @@ function makeProject(templateNodeId: string): BatchProject {
     template,
     variableSlot: { overlayNodeId: templateNodeId as NodeId, width: 200, height: 150 },
     outputs: [],
+    itemTextValues: {},
+    textLayerLocks: {},
   };
 }
 

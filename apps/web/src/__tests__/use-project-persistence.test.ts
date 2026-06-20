@@ -82,6 +82,8 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     template: { nodes: [] },
     variableSlot: { overlayNodeId: "slot" as NodeId, width: 100, height: 100 },
     outputs: [],
+    itemTextValues: {},
+    textLayerLocks: {},
     ...overrides,
   };
 }

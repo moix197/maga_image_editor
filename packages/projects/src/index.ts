@@ -5,7 +5,13 @@ export type {
   GeneratedOutput,
   SchemaVersion,
 } from "./schema";
-export { SCHEMA_VERSION } from "./schema";
+export {
+  SCHEMA_VERSION,
+  newTextLayerLockDefault,
+  migratedTextLayerLockDefault,
+  migratedTextLayerLocks,
+  migrateToV2,
+} from "./schema";
 export { exportProjectZip, dataUrlToBlob } from "./zip-export";
 export {
   openDb,
