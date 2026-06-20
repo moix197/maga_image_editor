@@ -17,6 +17,7 @@
   "devDependencies": {
     "@maga/config": "workspace:*",
     "@types/jszip": "^3.4.1",
+    "fake-indexeddb": "^6.2.5",
     "typescript": "^5.9.0",
     "vitest": "^4.1.9"
   }

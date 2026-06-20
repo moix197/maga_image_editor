@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { fileToDataUrl } from "@/lib/image-helpers";
-import type { GeneratedOutput, ProjectAsset, VariableSlot } from "@maga/projects";
+import type { BatchProject, GeneratedOutput, ProjectAsset, VariableSlot } from "@maga/projects";
 import type { EditorState } from "@maga/editor";
 
 interface UseBatchProjectResult {
@@ -16,6 +16,7 @@ interface UseBatchProjectResult {
   setTemplate: (editorState: EditorState, slot: VariableSlot) => void;
   addOutput: (output: GeneratedOutput) => void;
   clearOutputs: () => void;
+  setProject: (project: BatchProject) => void;
 }
 
 export function useBatchProject(): UseBatchProjectResult {
@@ -59,6 +60,14 @@ export function useBatchProject(): UseBatchProjectResult {
     setOutputs([]);
   }, []);
 
+  const setProject = useCallback((project: BatchProject) => {
+    setBackgroundState(project.background);
+    setOverlays(project.overlays);
+    setTemplateState(project.template);
+    setVariableSlotState(project.variableSlot);
+    setOutputs(project.outputs);
+  }, []);
+
   return {
     background,
     overlays,
@@ -70,5 +79,6 @@ export function useBatchProject(): UseBatchProjectResult {
     setTemplate,
     addOutput,
     clearOutputs,
+    setProject,
   };
 }

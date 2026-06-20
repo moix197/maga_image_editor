@@ -1,24 +1,53 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useBatchProject } from "@/hooks/use-batch-project";
 import { useSingleComposite } from "@/hooks/use-single-composite";
 import { useBatchRender } from "@/hooks/use-batch-render";
 import { useZipExport } from "@/hooks/use-zip-export";
+import { useProjectPersistence } from "@/hooks/use-project-persistence";
 import { AssetUploadZone } from "./AssetUploadZone";
 import { AssetList } from "./AssetList";
 import { TemplateEditor } from "./TemplateEditor";
 import { BatchResultsGallery } from "./BatchResultsGallery";
 import { Button } from "@/components/ui/button";
+import { SCHEMA_VERSION, type BatchProject } from "@maga/projects";
 import type { EditorState } from "@maga/editor";
 import type { VariableSlot } from "@maga/projects";
 
 export function BatchWorkspace() {
-  const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, setBackground, addOverlays, setTemplate } =
+  const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, setBackground, addOverlays, setTemplate, setProject } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite();
   const { isExporting, error: exportError, exportZip } = useZipExport();
+
+  const persistedProject = useMemo<BatchProject | null>(() => {
+    if (!background || !template || !variableSlot) return null;
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      id: "active",
+      name: "Batch project",
+      createdAt: 0,
+      updatedAt: 0,
+      background,
+      overlays,
+      template,
+      variableSlot,
+      outputs,
+    };
+  }, [background, overlays, template, variableSlot, outputs]);
+
+  const { restored, importError, quotaWarning, importZip } = useProjectPersistence({
+    project: persistedProject,
+    setProject,
+  });
+
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+
+  async function handleImportZipFiles(files: File[]) {
+    const file = files[0];
+    if (file) await importZip(file);
+  }
   const [bgDimensions, setBgDimensions] = useState<{ w: number; h: number } | null>(null);
   const canvasElRef = useRef<HTMLDivElement | null>(null);
   const canvasCallbackRef = useCallback((el: HTMLDivElement | null) => { canvasElRef.current = el; }, []);
@@ -75,10 +104,37 @@ export function BatchWorkspace() {
         </p>
       </div>
 
+      {restored && (
+        <div role="status" className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+          Project restored
+        </div>
+      )}
+
+      {quotaWarning && (
+        <div role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          Storage quota exceeded — images will not be saved between sessions. Consider using smaller images.
+        </div>
+      )}
+
+      {importError && (
+        <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {importError}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AssetUploadZone label="Background" multiple={false} onFiles={handleBackgroundFiles} />
         <AssetUploadZone label="Overlays" multiple onFiles={handleOverlayFiles} />
       </div>
+
+      {!background && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">
+            Or resume a previously exported project:
+          </p>
+          <AssetUploadZone label="Import ZIP" multiple={false} accept=".zip,application/zip" onFiles={handleImportZipFiles} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-6">
         {background && <AssetList label="Background" assets={[background]} />}

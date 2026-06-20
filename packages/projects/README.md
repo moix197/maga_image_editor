@@ -2,7 +2,7 @@
 
 Framework-light TypeScript package. Owns the versioned batch-compositing project model and ZIP serialization. No React, no imports from `apps/web`. Depends on `@maga/editor` for the `EditorState` template type and `jszip` for ZIP packaging.
 
-Future phases add the IndexedDB read/write adapter and ZIP deserialize (re-import) logic to this package; the schema defined here is the durable contract those layers read and write.
+The package also owns the IndexedDB read/write adapter and ZIP deserialize (re-import) logic; the schema defined here is the durable contract those layers read and write.
 
 ## Public API
 
@@ -17,6 +17,21 @@ Import only from `@maga/projects` — internal files are not part of the public 
 | `SchemaVersion` | type | Numeric literal type of the current schema version (`1`) |
 | `SCHEMA_VERSION` | const | The current schema version literal (`1`) |
 | `exportProjectZip` | fn | Builds a portable project ZIP (`Promise<Blob>`) — see below |
+| `dataUrlToBlob` | fn | `data:<mime>;base64,...` → `Blob` (pure `atob` + `Uint8Array`) |
+| `openDb` | fn | Opens/creates the `maga-batch` IndexedDB (`projects` + `blobs` stores) |
+| `saveProject` / `loadProject` | fn | Upsert / read a `BatchProject` JSON by id (`loadProject` returns `null` on missing or `schemaVersion` mismatch) |
+| `saveBlob` / `loadBlob` | fn | Store / read a raw `Blob` by uuid key |
+| `deleteProject` | fn | Remove a project JSON record by id |
+| `importProjectZip` | fn | ZIP `Blob` → `{ project, blobs: Map<path, Blob> }`; throws `ZipImportError` |
+| `ZipImportError` | class | Typed error for missing/corrupt `project.json` or incompatible version |
+
+## IndexedDB adapter
+
+Single database `maga-batch` (v1), two object stores: `projects` (keyed by project `id`, holds `BatchProject` JSON with blob-key refs only) and `blobs` (keyed by uuid, holds raw `Blob`s). Keeping the project JSON blob-free leaves it small and queryable; binary is delegated to the blob store. `loadProject` discards (and `console.warn`s) any record whose `schemaVersion` is not current, returning `null`. The adapter is framework-agnostic; callers (e.g. `apps/web`'s `use-project-persistence`) own the data-URL ⇄ blob-key reconciliation and quota handling.
+
+## ZIP import
+
+`importProjectZip(zipBlob)` reverses `exportProjectZip`: it parses `project.json`, validates `schemaVersion === 1` immediately (throwing `ZipImportError("Incompatible project version")` on mismatch, or a corruption message on missing/invalid JSON), and returns the project plus a `Map` of blobs **keyed by the same ZIP-relative paths the project refs use** (`background.<ext>`, `overlays/<i>-...`, `outputs/<i>-...`) so callers can reconcile bytes to refs directly.
 
 ## ZIP export
 
@@ -51,4 +66,4 @@ The `template` field is `EditorState` from `@maga/editor`, reused via a type-onl
 
 ## Architecture
 
-Consumed via the workspace protocol (`@maga/projects: workspace:*`). The `exports` map in `package.json` restricts the public surface to `./src/index.ts`. The `dataUrlToBlob` helper in `zip-export.ts` is exported only for unit testing and is intentionally not re-exported from `index.ts`.
+Consumed via the workspace protocol (`@maga/projects: workspace:*`). The `exports` map in `package.json` restricts the public surface to `./src/index.ts`. `dataUrlToBlob` lives in `zip-export.ts` and is re-exported from `index.ts` so consumers reuse the one in-package data-URL → blob conversion rather than reinventing it.
