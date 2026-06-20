@@ -13,6 +13,7 @@ import { canGenerateBatch } from "@/lib/batch-gating";
 import { AssetUploadZone } from "./AssetUploadZone";
 import { AssetList } from "./AssetList";
 import { BatchResultsGallery } from "./BatchResultsGallery";
+import { VariantStrip } from "./VariantStrip";
 import { TextOverlayCanvas } from "@/components/text-overlay-canvas";
 import { TextStylePanel } from "@/components/text-style-panel";
 import { OverlayControlsPanel } from "@/components/overlay-controls-panel";
@@ -32,8 +33,28 @@ function BatchWorkspaceInner() {
 
   const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, clearProject, setBackground, addOverlays, setEditorTemplate, setProject, setVariableSlot } =
     useBatchProject();
-  const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite();
+  const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite({ overlays });
   const { isExporting, error: exportError, exportZip } = useZipExport();
+
+  // Track which overlay is shown in the live preview canvas.
+  // Initialized to the first overlay; falls back to first if the active one is removed.
+  const [activeOverlayId, setActiveOverlayId] = useState<string | null>(
+    overlays[0]?.id ?? null,
+  );
+
+  useEffect(() => {
+    setActiveOverlayId((prev) => {
+      if (overlays.length === 0) return null;
+      const stillExists = overlays.some((o) => o.id === prev);
+      return stillExists ? prev : (overlays[0]?.id ?? null);
+    });
+  }, [overlays]);
+
+  // Resolve the ProjectAsset for the active overlay (used to drive the canvas).
+  const activeOverlay = useMemo(
+    () => overlays.find((o) => o.id === activeOverlayId) ?? overlays[0] ?? null,
+    [overlays, activeOverlayId],
+  );
 
   const persistedProject = useMemo<BatchProject | null>(() => {
     if (!background) return null;
@@ -136,7 +157,9 @@ function BatchWorkspaceInner() {
 
     const overlayNode = node as OverlayNode;
     originalSlotSrcRef.current = overlayNode.src;
-    const placeholderSrc = overlays[0]?.blobKey;
+    // Use the active overlay as the placeholder so the slot reflects the
+    // currently previewed variant, not always the first one.
+    const placeholderSrc = activeOverlay?.blobKey ?? overlays[0]?.blobKey;
     if (placeholderSrc) {
       editorState.updateOverlayNode(nodeId, { src: placeholderSrc });
     }
@@ -156,15 +179,17 @@ function BatchWorkspaceInner() {
 
   async function handleGeneratePreview() {
     if (!liveCanvasRef.current || !template || !variableSlot) return;
-    const firstOverlay = overlays[0];
-    if (!firstOverlay) return;
+    if (!activeOverlay) return;
     await generate(
       liveCanvasRef.current,
       template,
       variableSlot,
-      firstOverlay.blobKey,
+      activeOverlay.blobKey,
       () => { const prev = selectedNodeId; setSelectedNodeId(null); return prev; },
       (id) => setSelectedNodeId(id),
+      // Pass the active overlay id so the hook resolves the correct source
+      // from its overlays list — consistent with VariantStrip selection.
+      activeOverlayId ?? undefined,
     );
   }
 
@@ -172,6 +197,7 @@ function BatchWorkspaceInner() {
 
   async function handleGenerateAll() {
     if (!liveCanvasRef.current) return;
+    // Generate All iterates ALL overlays independently — activeOverlayId has no effect here.
     await batchRender.run(
       addOutput,
       clearOutputs,
@@ -328,6 +354,16 @@ function BatchWorkspaceInner() {
                     }}
                   />
                 </div>
+
+                {/* Variant strip — switches the live canvas to the selected overlay */}
+                {overlays.length > 0 && (
+                  <VariantStrip
+                    overlays={overlays}
+                    activeId={activeOverlayId}
+                    onSelect={setActiveOverlayId}
+                  />
+                )}
+
                 <div className="flex gap-4">
                   <div className="flex flex-col gap-3">
                     <div style={{ position: "relative" }} onPointerDown={() => setSelectedNodeId(null)}>
@@ -417,7 +453,7 @@ function PreviewCard({ dataUrl }: { dataUrl: string }) {
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 shadow-sm">
       <h2 className="text-sm font-semibold tracking-tight">Composite Preview</h2>
-      <p className="text-xs text-muted-foreground">First overlay composited into template.</p>
+      <p className="text-xs text-muted-foreground">Active overlay composited into template.</p>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={dataUrl} alt="Composite preview" className="max-w-full rounded-md border border-border" style={{ maxHeight: 400, objectFit: "contain" }} />
     </div>

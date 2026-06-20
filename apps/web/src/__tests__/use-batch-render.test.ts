@@ -214,4 +214,25 @@ describe("useBatchRender", () => {
     expect(callOrder[0]).toBe("deselect");
     expect(callOrder[callOrder.length - 1]).toBe("restore");
   });
+
+  it("iterates ALL overlays regardless of any external activeOverlayId — batch loop is unaffected by preview selection", async () => {
+    // activeOverlayId lives in BatchWorkspace state and controls only the
+    // preview canvas; useBatchRender receives the full list and must produce
+    // one output per overlay without filtering or skipping.
+    const allOverlays = [makeOverlay("a"), makeOverlay("b"), makeOverlay("c"), makeOverlay("d")];
+    const { result } = renderHook(() =>
+      useBatchRender(allOverlays, template, slot as VariableSlot)
+    );
+    const mockAddOutput = vi.fn();
+
+    await act(async () => {
+      await result.current.run(mockAddOutput, vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    expect(mockAddOutput).toHaveBeenCalledTimes(4);
+    const ids = mockAddOutput.mock.calls.map(
+      (c) => (c[0] as { overlayAssetId: string }).overlayAssetId,
+    );
+    expect(ids).toEqual(["a", "b", "c", "d"]);
+  });
 });

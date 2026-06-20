@@ -6,7 +6,16 @@ import { compositeFromElement } from "@/lib/export-helpers";
 import { patchOverlays } from "@/lib/overlay-patch";
 import { waitTwoFrames } from "@/lib/capture-helpers";
 import type { EditorState, NodeId } from "@maga/editor";
-import type { VariableSlot } from "@maga/projects";
+import type { ProjectAsset, VariableSlot } from "@maga/projects";
+
+interface UseSingleCompositeOptions {
+  /**
+   * Overlay assets available in the project. When provided, `generate` can
+   * resolve the overlay source by `overlayAssetId` instead of requiring the
+   * caller to supply a raw URL. Defaults to `[]`.
+   */
+  overlays?: ProjectAsset[];
+}
 
 interface UseSingleCompositeResult {
   compositeDataUrl: string | null;
@@ -19,6 +28,14 @@ interface UseSingleCompositeResult {
     overlaySrc: string,
     onDeselectForCapture: () => NodeId | null,
     onRestoreSelection: (prevId: NodeId | null) => void,
+    /**
+     * Optional: id of the {@link ProjectAsset} to use as the overlay source.
+     * When provided, the asset's `blobKey` is used instead of `overlaySrc`.
+     * Falls back to the first overlay in `options.overlays` when omitted and
+     * `options.overlays` is non-empty. Has no effect when `options.overlays`
+     * is not supplied — `overlaySrc` is always used in that case.
+     */
+    overlayAssetId?: string,
   ) => Promise<void>;
 }
 
@@ -29,8 +46,14 @@ interface UseSingleCompositeResult {
  * ring from DOM) and onRestoreSelection (restores it after capture). The hook
  * waits two animation frames between deselect and capture so React can flush
  * the DOM update — matching the /editor handleExport pattern exactly.
+ *
+ * Optional `overlays` enables per-item canvas switching: pass `overlayAssetId`
+ * to `generate()` to preview a specific overlay instead of the default first one.
+ * All existing call sites that omit `overlayAssetId` are unaffected.
  */
-export function useSingleComposite(): UseSingleCompositeResult {
+export function useSingleComposite(options: UseSingleCompositeOptions = {}): UseSingleCompositeResult {
+  const { overlays = [] } = options;
+
   const [compositeDataUrl, setCompositeDataUrl] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,17 +65,22 @@ export function useSingleComposite(): UseSingleCompositeResult {
     overlaySrc: string,
     onDeselectForCapture: () => NodeId | null,
     onRestoreSelection: (prevId: NodeId | null) => void,
+    overlayAssetId?: string,
   ) => {
     if (!canvasEl) {
       console.warn("[useSingleComposite] canvasEl is null — capture skipped");
       return;
     }
+
+    // Resolve the actual source: explicit asset id > first overlay > fallback overlaySrc
+    const resolvedSrc = resolveOverlaySrc(overlays, overlaySrc, overlayAssetId);
+
     setIsRendering(true);
     setError(null);
     const prevId = onDeselectForCapture();
     try {
       await waitTwoFrames();
-      const croppedSrc = await coverCropDataUrl(overlaySrc, slot.width, slot.height);
+      const croppedSrc = await coverCropDataUrl(resolvedSrc, slot.width, slot.height);
       const patchedOverlays = patchOverlays(template, slot.overlayNodeId, croppedSrc);
       const dataUrl = await compositeFromElement(canvasEl, patchedOverlays);
       setCompositeDataUrl(dataUrl);
@@ -62,7 +90,25 @@ export function useSingleComposite(): UseSingleCompositeResult {
       setIsRendering(false);
       onRestoreSelection(prevId);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlays]);
 
   return { compositeDataUrl, isRendering, error, generate };
+}
+
+/**
+ * Resolves which blob URL to use for compositing.
+ * Priority: explicit overlayAssetId match > first overlay > fallback overlaySrc.
+ */
+function resolveOverlaySrc(
+  overlays: ProjectAsset[],
+  fallbackSrc: string,
+  overlayAssetId?: string,
+): string {
+  if (overlays.length === 0) return fallbackSrc;
+  if (overlayAssetId) {
+    const match = overlays.find((o) => o.id === overlayAssetId);
+    if (match) return match.blobKey;
+  }
+  return overlays[0]?.blobKey ?? fallbackSrc;
 }

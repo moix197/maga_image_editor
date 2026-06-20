@@ -24,7 +24,7 @@ vi.mock("@/lib/capture-helpers", () => ({
 
 import { useSingleComposite } from "@/hooks/use-single-composite";
 import type { EditorState, NodeId } from "@maga/editor";
-import type { VariableSlot } from "@maga/projects";
+import type { ProjectAsset, VariableSlot } from "@maga/projects";
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -271,5 +271,83 @@ describe("useSingleComposite", () => {
     expect(onRestore).toHaveBeenCalledTimes(1);
     expect(onRestore).toHaveBeenCalledWith("node-1");
     expect(result.current.error).toBe("Capture failed");
+  });
+});
+
+// ── overlayAssetId override tests ────────────────────────────────────────────
+
+function makeAsset(id: string, blobKey: string): ProjectAsset {
+  return { id, filename: id + ".png", blobKey };
+}
+
+describe("useSingleComposite — overlayAssetId override", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCoverCrop.mockResolvedValue(CROPPED);
+    mockCompositeFromElement.mockResolvedValue(COMPOSITE);
+  });
+
+  it("uses overlays[0].blobKey by default when overlays option is provided and overlayAssetId is omitted", async () => {
+    const overlays = [makeAsset("first", "data:first-blob"), makeAsset("second", "data:second-blob")];
+    const { result } = renderHook(() => useSingleComposite({ overlays }));
+    const el = document.createElement("div");
+    const slot = makeSlot("node-1");
+    const template = makeTemplate("node-1");
+
+    await act(async () => {
+      await result.current.generate(el, template, slot, "data:fallback", () => null as NodeId | null, () => {});
+    });
+
+    // Should use first overlay's blobKey, not the fallback
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:first-blob", slot.width, slot.height);
+  });
+
+  it("selects the correct overlay when overlayAssetId matches a non-first overlay", async () => {
+    const overlays = [makeAsset("first", "data:first-blob"), makeAsset("second", "data:second-blob")];
+    const { result } = renderHook(() => useSingleComposite({ overlays }));
+    const el = document.createElement("div");
+    const slot = makeSlot("node-1");
+    const template = makeTemplate("node-1");
+
+    await act(async () => {
+      await result.current.generate(
+        el, template, slot, "data:fallback",
+        () => null as NodeId | null, () => {},
+        "second", // explicit overlayAssetId
+      );
+    });
+
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:second-blob", slot.width, slot.height);
+  });
+
+  it("falls back to overlaySrc when overlays option is empty", async () => {
+    const { result } = renderHook(() => useSingleComposite({ overlays: [] }));
+    const el = document.createElement("div");
+    const slot = makeSlot("node-1");
+    const template = makeTemplate("node-1");
+
+    await act(async () => {
+      await result.current.generate(
+        el, template, slot, "data:explicit-src",
+        () => null as NodeId | null, () => {},
+        "some-id",
+      );
+    });
+
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:explicit-src", slot.width, slot.height);
+  });
+
+  it("existing call sites (no overlays option, no overlayAssetId) still compile and use overlaySrc", async () => {
+    // Simulates the original call signature — no options object at all
+    const { result } = renderHook(() => useSingleComposite());
+    const el = document.createElement("div");
+    const slot = makeSlot("node-1");
+    const template = makeTemplate("node-1");
+
+    await act(async () => {
+      await result.current.generate(el, template, slot, "data:legacy-src", () => null as NodeId | null, () => {});
+    });
+
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:legacy-src", slot.width, slot.height);
   });
 });
