@@ -364,16 +364,16 @@ This keeps project JSON small and queryable while delegating binary storage to t
 
 **Steps:**
 
-- [ ] Implement `openDb` with `indexedDB.open('maga-batch', 1)` + `onupgradeneeded` creating both object stores
-- [ ] Implement `saveBlob` / `loadBlob` / `saveProject` / `loadProject` / `deleteProject` in `idb-adapter.ts` — each is a small focused function under 30 lines
-- [ ] Implement `importProjectZip`: open ZIP with JSZip, extract `project.json`, extract each blob file by relative path, return `{ project, blobs }` map
-- [ ] Build `use-project-persistence`: on mount → `openDb` → `loadProject(db, ACTIVE_PROJECT_KEY)` → if found restore state + load blobs; subscribe to project state changes → debounced `saveProject` + `saveBlob` per new/changed blob; expose `importZip`
-- [ ] Call `downscaleIfNeeded(2048)` on background and each overlay blob before `saveBlob`
-- [ ] Add ZIP import button + restore banner in `BatchWorkspace`
-- [ ] Write IDB adapter unit tests (use fake-indexeddb); write ZIP import unit tests
-- [ ] Handle `QuotaExceededError` from IndexedDB: wrap all `saveBlob` calls in try/catch; on quota error show a toast notification "Storage quota exceeded — images will not be saved between sessions. Consider using smaller images." and continue without crashing
-- [ ] Handle corrupt or wrong-version ZIP on re-import: in `importProjectZip`, validate `schemaVersion === 1` immediately after parsing `project.json`; if missing or mismatched, throw a typed error `ZipImportError` with message "Incompatible project version"; catch in `use-project-persistence` and display an inline error banner
-- [ ] Handle `schemaVersion` mismatch on IDB restore: in `loadProject`, check `schemaVersion`; if not `1`, discard stored project and return `null` (log a console warning)
+- [x] Implement `openDb` with `indexedDB.open('maga-batch', 1)` + `onupgradeneeded` creating both object stores
+- [x] Implement `saveBlob` / `loadBlob` / `saveProject` / `loadProject` / `deleteProject` in `idb-adapter.ts` — each is a small focused function under 30 lines
+- [x] Implement `importProjectZip`: open ZIP with JSZip, extract `project.json`, extract each blob file by relative path, return `{ project, blobs }` map
+- [x] Build `use-project-persistence`: on mount → `openDb` → `loadProject(db, ACTIVE_PROJECT_KEY)` → if found restore state + load blobs; subscribe to project state changes → debounced `saveProject` + `saveBlob` per new/changed blob; expose `importZip`
+- [x] Call `downscaleIfNeeded(2048)` on background and each overlay blob before `saveBlob`
+- [x] Add ZIP import button + restore banner in `BatchWorkspace`
+- [x] Write IDB adapter unit tests (use fake-indexeddb); write ZIP import unit tests
+- [x] Handle `QuotaExceededError` from IndexedDB: wrap all `saveBlob` calls in try/catch; on quota error show a notification "Storage quota exceeded — images will not be saved between sessions. Consider using smaller images." and continue without crashing _(used an inline banner — no toast system existed; quota guard now also wraps the final `saveProject` write)_
+- [x] Handle corrupt or wrong-version ZIP on re-import: in `importProjectZip`, validate `schemaVersion === 1` immediately after parsing `project.json`; if missing or mismatched, throw a typed error `ZipImportError` with message "Incompatible project version"; catch in `use-project-persistence` and display an inline error banner
+- [x] Handle `schemaVersion` mismatch on IDB restore: in `loadProject`, check `schemaVersion`; if not `1`, discard stored project and return `null` (log a console warning)
 
 **Tests:**
 
@@ -387,26 +387,32 @@ This keeps project JSON small and queryable while delegating binary storage to t
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `packages/projects` and `apps/web`
-- [ ] Upload assets, define template, generate batch → reload page → project fully restored (assets thumbnails visible, outputs visible in gallery)
-- [ ] Export ZIP → reload → import that ZIP → project restored; "Generate all" re-runs successfully
-- [ ] Large images (>2048px) stored downscaled; no QuotaExceededError in browser console
-- [ ] No TypeScript errors
-- [ ] Import a ZIP with `schemaVersion: 2` → inline error banner shown, no crash
-- [ ] Import a ZIP with malformed `project.json` → inline error banner shown, no crash
+- [x] Automated tests pass: `pnpm test` in `packages/projects` (19) and `apps/web` (142)
+- [ ] Upload assets, define template, generate batch → reload page → project fully restored (assets thumbnails visible, outputs visible in gallery) _(deferred → final manual pass)_
+- [ ] Export ZIP → reload → import that ZIP → project restored; "Generate all" re-runs successfully _(deferred → final manual pass)_
+- [ ] Large images (>2048px) stored downscaled; no QuotaExceededError in browser console _(deferred → final manual pass)_
+- [x] No TypeScript errors (@maga/projects + @maga/web tsc exit 0)
+- [ ] Import a ZIP with `schemaVersion: 2` → inline error banner shown, no crash _(covered by unit test; UI confirm in final pass)_
+- [ ] Import a ZIP with malformed `project.json` → inline error banner shown, no crash _(covered by unit test; UI confirm in final pass)_
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted
-- [ ] Orchestrator cleared context
-- [ ] Code-reviewer verified
-- [ ] Reviewer changes reflected back
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator approved
-- [ ] Changes committed: `feat: IndexedDB autosave and ZIP re-import for project resume`
-- [ ] Phase marked complete
+- [ ] All Steps and Verification checkboxes above ticked _(browser-manual verification deferred to final pass)_
+- [ ] Reviewer handoff prompt emitted _(n/a — subagent-driven flow)_
+- [ ] Orchestrator cleared context _(n/a)_
+- [x] Code-reviewer verified
+- [x] Reviewer changes reflected back _(removed no-op id; quota guard now wraps saveProject too)_
+- [x] Tests written and passing
+- [x] Documentation updated _(packages/projects/README: IDB adapter + ZIP import API)_
+- [ ] Orchestrator approved _(pending final manual pass)_
+- [x] Changes committed: `feat: IndexedDB autosave and ZIP re-import for project resume`
+- [ ] Phase marked complete _(pending final manual pass)_
+
+> **Phase 6 known gaps (reviewer-flagged, accepted — verify/decide in final pass):**
+> 1. **Assets-only state is not autosaved.** `BatchProject` requires non-null `template` + `variableSlot`, so autosave only fires once a template is defined. Uploading assets then reloading *before* defining a template loses the uploads. This trades success-criterion (a)'s "assets restored" for schema integrity; the expensive work (template + outputs) is preserved. Decide in final pass whether to persist a partial draft.
+> 2. **Original `createdAt`/`name` not preserved across reload** — `persistedProject` rebuilds with `id:"active"`, `name:"Batch project"`, `createdAt:0`; stored metadata is overwritten on next autosave. Acceptable for single-active-project scope.
+> 3. **e2e blob-decode coverage gap** — the web hook test mocks the `@maga/projects` IDB surface (jsdom + fake-indexeddb mangle cross-realm Blobs), so `blobToDataUrl` over a *real* IDB-retrieved Blob is not exercised end-to-end; the adapter test covers real Blob round-trips but not the data-URL encode step. Pure logic, low risk.
+> 4. **ZIP-imported images lose MIME** — JSZip blobs carry no MIME, so re-imported images hydrate as `application/octet-stream` data URLs (still render in `<img>`; IDB-restored images keep real MIME).
 
 ---
 
