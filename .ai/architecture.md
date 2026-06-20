@@ -15,6 +15,9 @@ Three packages in a pnpm workspace, each owning one responsibility.
   types, defaults, guards, and the pure state-mutation functions. No React, no DOM
   — see [[framework-free-editor-package]]. Web reaches it only through the
   `apps/web/src/hooks/use-editor-state.ts` wrapper.
+- **`@maga/projects`** (`packages/projects`) — framework-free batch-project domain:
+  the persisted schema (overlay assets, per-item text, layer locks) and the
+  ZIP/IDB serializers. No React, no DOM. See *Batch workspace* below.
 - **`@maga/config`** (`packages/config`) — static build configuration shared across
   the workspace: the base `tsconfig`, the ESLint config, and the Tailwind preset.
   No runtime code.
@@ -63,11 +66,40 @@ see [[canvas-post-pass-for-export-effects]]. The post-pass is non-React and read
 each overlay's state from a `data-overlay` JSON attribute on the DOM, see
 [[data-overlay-dom-serialization]].
 
+### Batch workspace
+
+There is one editor surface: the `/batch` workspace (`apps/web/src/app/batch`).
+`/editor` is a redirect into it; single-image editing is just batch with one
+overlay — see [[template-workspace-unified-route]]. `WorkspaceSideNav` switches
+sections via a `?section=` query param; `BatchWorkspace`
+(`apps/web/src/components/batch/`) wires the project, editor-state, render, and
+persistence hooks together.
+
+A batch project pairs a shared **template** (one `EditorState`: background, layers,
+text styles) with N **overlay assets** (each: id, original filename, blob key).
+Per-item text is stored as string overrides, not per-item state:
+`itemTextValues[overlayAssetId][textNodeId] = string`, with `textLayerLocks`
+deciding shared vs. per-item — see [[per-item-text-schema]]. This is the
+`@maga/projects` schema at `SCHEMA_VERSION = 2`.
+
+Rendering each variant **mutates the live template text, lets the DOM repaint,
+captures it, then restores** — never a detached clone; the shared template is never
+permanently mutated. This is the load-bearing mechanism in
+`apps/web/src/hooks/use-batch-render.ts` — see [[batch-render-text-patch]].
+
+Reorder (asset list, layer stack) uses native HTML5 DnD with no library; layer
+z-order reuses `reorderNode` from `@maga/editor` — see [[dnd-library-choice]].
+
+Projects persist two ways from `@maga/projects`: an IndexedDB adapter (live
+autosave) and a ZIP exporter/importer (portable file). Both load v1 records
+through the single shared `migrateToV2` (`packages/projects/src/schema.ts`); the
+version bump is one-way.
+
 ### Cartoonize (external service)
 
-Cartoonize is a one-shot, server-mediated call. `apps/web/src/app/editor/page.tsx`
-holds the source image; its `handleCartoonize` calls the `use-cartoonize.ts`
-hook, which POSTs the image to the internal `/api/cartoonize` route. The route —
+Cartoonize is a one-shot, server-mediated call. The batch workspace holds the
+source image and calls the `use-cartoonize.ts` hook, which POSTs the image to the
+internal `/api/cartoonize` route. The route —
 not the client — holds the provider key and forwards to **DeepAI Toonify**
 (`apps/web/src/lib/cartoonize-service.ts`), then returns a dataURL the hook hands
 back to the page, which stores it in `resultDataUrl` React state. The server-key

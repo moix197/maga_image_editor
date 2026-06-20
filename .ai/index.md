@@ -11,12 +11,14 @@ anywhere real.
 | ---------------- | ------------------------- | ---- | -------------------- |
 | `@maga/web` | Next.js app: routes, page components, hooks, and `lib/` services | `apps/web` | |
 | `@maga/editor` | Framework-free editor domain: node types, defaults, guards, state mutation | `packages/editor` | [[framework-free-editor-package]] · [[immutable-state-mutation-functions]] · [[aspect-ratio-locked-default]] · [[effect-field-optional-properties]] |
+| `@maga/projects` | Framework-free batch-project domain: schema v2 (overlay assets, per-item text, layer locks), ZIP + IDB serializers | `packages/projects` | [[per-item-text-schema]] |
 | `@maga/config` | Static build config: base tsconfig, ESLint config, Tailwind preset | `packages/config` | |
 
 ## Cross-cutting
 
 | Concern | Where it's handled | Notes |
 | ------- | ------------------ | ----- |
+| Batch workspace | `apps/web/src/app/batch/` · `apps/web/src/components/batch/` · `apps/web/src/hooks/{use-batch-render,use-batch-project}.ts` | One editor surface (`/editor` redirects in). [[template-workspace-unified-route]] · [[batch-render-text-patch]] · [[dnd-library-choice]] |
 | Property panels | `apps/web/src/components/{text-style-panel,overlay-controls-panel}.tsx` | [[field-row-property-panel-layout]] |
 | Export / compositing | `apps/web/src/lib/{export-helpers,canvas-post-pass}.ts` | [[canvas-post-pass-for-export-effects]] · [[data-overlay-dom-serialization]] · [[pixelratio-coordinate-mapping]] · [[per-item-trycatch-fallback]] |
 | External services (cartoonize) | `apps/web/src/app/api/cartoonize/route.ts` · `apps/web/src/lib/cartoonize-service.ts` · `apps/web/src/hooks/use-cartoonize.ts` | [[deepai-toonify-provider]] · [[ephemeral-cartoonize-result-state]] · [[lib-service-function-convention]] |
