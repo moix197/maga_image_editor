@@ -85,8 +85,46 @@ The project model (`BatchProject`, `ProjectAsset`, `VariableSlot`, `GeneratedOut
 
 - `coverCropDataUrl(src, slotW, slotH)` (`src/lib/cover-crop.ts`) — center-crops a source image to exactly `slotW × slotH` using cover-fit math, returning a fitted data URL so the composite post-pass blits it 1:1 without distortion.
 - **Sequential batch render** (`src/hooks/use-batch-render.ts`) — renders overlays one at a time off the live DOM canvas, reports progress, and is cancellable mid-run.
+- **`reorderOverlays(newOrder)`** (`src/hooks/use-batch-project.ts`) — replaces the `overlays` array wholesale with `newOrder` (`ProjectAsset[]`). The caller is responsible for constructing the reordered array (e.g. after a drag-and-drop). Generate All iterates `overlays` in index order, so output order mirrors the overlay order set here.
 
 ## Components
+
+### `VariantStrip` (`src/components/batch/VariantStrip.tsx`)
+
+Pure presentational thumbnail strip for switching the active overlay item in the batch workspace.
+
+```tsx
+<VariantStrip
+  overlays={overlays}          // ProjectAsset[] — items to render as thumbnails
+  activeId={activeOverlayId}   // string | null — currently previewed item
+  onSelect={(id) => setActiveId(id)}
+/>
+```
+
+- Renders `null` when `overlays` is empty (safe to always mount).
+- `role="listbox"` container; each thumbnail is a `button[role="option"]` with `aria-selected`.
+- Clicking a thumbnail fires `onSelect(id)`. The parent controls `activeId`; there is no internal state.
+- `activeId` governs **only the live-editable canvas overlay preview** (which item is shown in the canvas panel). It does not affect Generate All — that renders every item regardless of which is active.
+
+### `BulkTextPanel` (`src/components/batch/BulkTextPanel.tsx`)
+
+All-items × text-layers stacked editor rendered in the **Text** workspace section. One card per overlay, one input row per text layer — so N overlays × M text layers = N×M inputs.
+
+```tsx
+<BulkTextPanel
+  overlays={overlays}                 // ProjectAsset[]
+  textNodes={textNodes}               // TextNode[] from the active template
+  itemTextValues={itemTextValues}     // Record<overlayAssetId, Record<textNodeId, string>>
+  textLayerLocks={textLayerLocks}     // Record<textNodeId, boolean>
+  setItemTextValue={setItemTextValue} // (overlayAssetId, textNodeId, value) => void
+  setTextLayerLock={setTextLayerLock} // (textNodeId, locked) => void
+/>
+```
+
+- **Locked layer** (`textLayerLocks[nodeId] === true`): input is disabled and shows the shared template `content`. The same value is used for every item when generating.
+- **Unlocked layer** (default): input is enabled and shows the per-item override (empty string when not yet set; template `content` shown as placeholder).
+- Lock toggle button fires `setTextLayerLock(nodeId, !locked)`. Per-layer — toggling a layer locks/unlocks it across all overlay cards simultaneously.
+- Presentational only — no hooks, no business logic. All state lives in `useBatchProject`.
 
 ### `CompareLayout` (`src/components/compare-layout.tsx`)
 
@@ -145,6 +183,31 @@ Wraps `@maga/editor` state mutations. Returns:
 - `updateTextNode(id, patch)` — immutably patches a TextNode
 - `removeNode(id)` — removes any node by id
 - `reorderNode(id, direction)` — swaps zIndex with adjacent node ('up'|'down')
+
+### `useItemText(args)` (`src/hooks/use-item-text.ts`)
+
+Thin accessor over the `useBatchProject` text-mutation API. Useful when a single-item context (e.g. a canvas overlay row) needs to read/write text values without knowing the full map shape.
+
+```ts
+const { getTextValue, setTextValue, isLocked, toggleLock } = useItemText({
+  itemTextValues,   // Record<overlayAssetId, Record<textNodeId, string>>
+  textLayerLocks,   // Record<textNodeId, boolean>
+  setItemTextValue, // (overlayAssetId, textNodeId, value) => void
+  setTextLayerLock, // (textNodeId, locked) => void
+});
+
+getTextValue(overlayAssetId, textNodeId): string
+// Per-item override for the given overlay + text node; "" when not yet set.
+
+setTextValue(overlayAssetId, textNodeId, value): void
+// Direct alias to the setItemTextValue callback.
+
+isLocked(textNodeId): boolean
+// Lock state for a text layer; defaults to false (per-item) when not yet set.
+
+toggleLock(textNodeId): void
+// Flips the lock state for a text layer.
+```
 
 ## Lib
 

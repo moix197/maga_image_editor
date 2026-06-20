@@ -65,9 +65,9 @@ describe("BulkTextPanel", () => {
   it("renders one card section per overlay", () => {
     const props = makeProps();
     render(<BulkTextPanel {...props} />);
-    // Each card has an aria-label containing the overlay filename
-    expect(screen.getByLabelText(/ov1\.png/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/ov2\.png/i)).toBeInTheDocument();
+    // Each card has an aria-label starting with "Text layers for <filename>"
+    expect(screen.getByLabelText(/text layers for ov1\.png/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/text layers for ov2\.png/i)).toBeInTheDocument();
   });
 
   // One input per text layer per overlay

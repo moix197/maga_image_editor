@@ -44,12 +44,6 @@ export function VariantStrip({ overlays, activeId, onSelect }: VariantStripProps
               className="h-full w-full object-cover"
               draggable={false}
             />
-            {isActive && (
-              <span
-                aria-hidden
-                className="absolute inset-0 rounded-[4px] ring-2 ring-inset ring-primary pointer-events-none"
-              />
-            )}
           </button>
         );
       })}

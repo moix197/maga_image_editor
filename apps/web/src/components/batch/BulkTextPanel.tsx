@@ -92,6 +92,7 @@ function OverlayTextCard({
         <TextLayerRow
           key={node.id}
           overlayAssetId={overlay.id}
+          overlayFilename={overlay.filename}
           node={node}
           index={i}
           locked={textLayerLocks[node.id] ?? false}
@@ -106,6 +107,7 @@ function OverlayTextCard({
 
 interface TextLayerRowProps {
   overlayAssetId: string;
+  overlayFilename: string;
   node: TextNode;
   index: number;
   locked: boolean;
@@ -116,6 +118,7 @@ interface TextLayerRowProps {
 
 function TextLayerRow({
   overlayAssetId,
+  overlayFilename,
   node,
   index,
   locked,
@@ -154,7 +157,7 @@ function TextLayerRow({
           placeholder={placeholder}
           className="flex-1 transition-colors duration-150"
           onChange={(e) => setItemTextValue(overlayAssetId, node.id, e.target.value)}
-          aria-label={`Text layer ${index + 1} for ${overlayAssetId}`}
+          aria-label={`Text layer ${index + 1} for ${overlayFilename}`}
         />
         <Button
           type="button"
