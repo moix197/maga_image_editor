@@ -19,8 +19,12 @@ vi.mock("@maga/editor", () => ({
   isOverlayNode: vi.fn((n: unknown) => (n as { overlayType?: string })?.overlayType === "image"),
 }));
 
+vi.mock("@/lib/capture-helpers", () => ({
+  waitTwoFrames: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { useBatchRender } from "@/hooks/use-batch-render";
-import type { EditorState } from "@maga/editor";
+import type { EditorState, NodeId, OverlayNode } from "@maga/editor";
 import type { ProjectAsset, VariableSlot } from "@maga/projects";
 
 type SlotLike = { overlayNodeId: VariableSlot["overlayNodeId"]; width: number; height: number };
@@ -73,14 +77,14 @@ describe("useBatchRender", () => {
   it("N overlays → N outputs appended in order", async () => {
     const overlays = [makeOverlay("a"), makeOverlay("b"), makeOverlay("c")];
     const { result } = renderHook(() =>
-      useBatchRender(canvasEl, overlays, template, slot as VariableSlot)
+      useBatchRender(overlays, template, slot as VariableSlot)
     );
 
     const mockAddOutput = vi.fn();
     const mockClearOutputs = vi.fn();
 
     await act(async () => {
-      await result.current.run(mockAddOutput, mockClearOutputs);
+      await result.current.run(mockAddOutput, mockClearOutputs, canvasEl, vi.fn().mockReturnValue(null), vi.fn());
     });
 
     expect(mockAddOutput).toHaveBeenCalledTimes(3);
@@ -93,13 +97,13 @@ describe("useBatchRender", () => {
   it("progress.current increments each step", async () => {
     const overlays = [makeOverlay("x"), makeOverlay("y"), makeOverlay("z")];
     const { result } = renderHook(() =>
-      useBatchRender(canvasEl, overlays, template, slot as VariableSlot)
+      useBatchRender(overlays, template, slot as VariableSlot)
     );
 
     const mockAddOutput = vi.fn();
 
     await act(async () => {
-      await result.current.run(mockAddOutput, vi.fn());
+      await result.current.run(mockAddOutput, vi.fn(), canvasEl, vi.fn().mockReturnValue(null), vi.fn());
     });
 
     // After run completes, progress.current should equal total
@@ -110,7 +114,7 @@ describe("useBatchRender", () => {
   it("cancel flag stops loop after current item completes", async () => {
     const overlays = [makeOverlay("1"), makeOverlay("2"), makeOverlay("3")];
     const { result } = renderHook(() =>
-      useBatchRender(canvasEl, overlays, template, slot as VariableSlot)
+      useBatchRender(overlays, template, slot as VariableSlot)
     );
 
     const mockAddOutput = vi.fn();
@@ -122,7 +126,7 @@ describe("useBatchRender", () => {
     });
 
     await act(async () => {
-      await result.current.run(mockAddOutput, vi.fn());
+      await result.current.run(mockAddOutput, vi.fn(), canvasEl, vi.fn().mockReturnValue(null), vi.fn());
     });
 
     // Item 0 completes (cancel fires after its composite resolves),
@@ -134,7 +138,7 @@ describe("useBatchRender", () => {
   it("compositeFromElement called serially, never concurrent", async () => {
     const overlays = [makeOverlay("p"), makeOverlay("q"), makeOverlay("r")];
     const { result } = renderHook(() =>
-      useBatchRender(canvasEl, overlays, template, slot as VariableSlot)
+      useBatchRender(overlays, template, slot as VariableSlot)
     );
 
     let maxConcurrent = 0;
@@ -149,7 +153,7 @@ describe("useBatchRender", () => {
     });
 
     await act(async () => {
-      await result.current.run(vi.fn(), vi.fn());
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn().mockReturnValue(null), vi.fn());
     });
 
     expect(mockCompositeFromElement).toHaveBeenCalledTimes(3);
@@ -158,37 +162,56 @@ describe("useBatchRender", () => {
 
   it("zero overlays → no outputs, compositeFromElement not called", async () => {
     const { result } = renderHook(() =>
-      useBatchRender(canvasEl, [], template, slot as VariableSlot)
+      useBatchRender([], template, slot as VariableSlot)
     );
 
     const mockAddOutput = vi.fn();
 
     await act(async () => {
-      await result.current.run(mockAddOutput, vi.fn());
+      await result.current.run(mockAddOutput, vi.fn(), canvasEl, vi.fn().mockReturnValue(null), vi.fn());
     });
 
     expect(mockAddOutput).not.toHaveBeenCalled();
     expect(mockCompositeFromElement).not.toHaveBeenCalled();
   });
 
-  it("event-loop yield (setTimeout) called once per iteration", async () => {
-    const overlays = [makeOverlay("u"), makeOverlay("v"), makeOverlay("w")];
-    const { result } = renderHook(() =>
-      useBatchRender(canvasEl, overlays, template, slot as VariableSlot)
-    );
-
-    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
-
+  it("compositeFromElement called with patched slot src; static overlay src unchanged", async () => {
+    const STATIC_NODE_ID = "static-node";
+    const multiTemplate: EditorState = {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        { id: STATIC_NODE_ID as NodeId, src: "data:static", x: 50, y: 50, width: 100, height: 100, opacity: 1, zIndex: 1, overlayType: "image" },
+      ],
+    };
+    const overlays = [makeOverlay("a")];
+    const { result } = renderHook(() => useBatchRender(overlays, multiTemplate, slot as VariableSlot));
     await act(async () => {
-      await result.current.run(vi.fn(), vi.fn());
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn().mockReturnValue(null), vi.fn());
     });
+    const patchedNodes = mockCompositeFromElement.mock.calls[0]![1] as OverlayNode[];
+    const slotNode = patchedNodes.find((n) => n.id === "node-1");
+    const staticNode = patchedNodes.find((n) => n.id === STATIC_NODE_ID);
+    expect(slotNode?.src).toBe(CROPPED);
+    expect(staticNode?.src).toBe("data:static");
+  });
 
-    // One setTimeout per non-cancelled iteration (3 overlays → 3 yields)
-    const yieldCalls = setTimeoutSpy.mock.calls.filter(
-      ([, delay]) => delay === 0,
-    );
-    expect(yieldCalls.length).toBe(3);
-
-    setTimeoutSpy.mockRestore();
+  it("onDeselectForCapture called before loop; onRestoreSelection called after loop", async () => {
+    const overlays = [makeOverlay("a"), makeOverlay("b")];
+    const { result } = renderHook(() => useBatchRender(overlays, template, slot as VariableSlot));
+    const onDeselect = vi.fn().mockReturnValue("prev-node");
+    const onRestore = vi.fn();
+    const callOrder: string[] = [];
+    onDeselect.mockImplementation(() => { callOrder.push("deselect"); return "prev-node"; });
+    mockCompositeFromElement.mockImplementation(async () => { callOrder.push("composite"); return OUTPUT; });
+    onRestore.mockImplementation(() => callOrder.push("restore"));
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, onDeselect, onRestore);
+    });
+    expect(onDeselect).toHaveBeenCalledTimes(1);
+    expect(onRestore).toHaveBeenCalledTimes(1);
+    expect(onRestore).toHaveBeenCalledWith("prev-node");
+    // deselect happens before any composite
+    expect(callOrder[0]).toBe("deselect");
+    expect(callOrder[callOrder.length - 1]).toBe("restore");
   });
 });

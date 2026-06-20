@@ -9,6 +9,7 @@ import { useRef, useState, useCallback } from "react";
 import { coverCropDataUrl } from "@/lib/cover-crop";
 import { compositeFromElement } from "@/lib/export-helpers";
 import { patchOverlays } from "@/lib/overlay-patch";
+import { waitTwoFrames } from "@/lib/capture-helpers";
 import type { EditorState } from "@maga/editor";
 import type { GeneratedOutput, ProjectAsset, VariableSlot } from "@maga/projects";
 
@@ -24,12 +25,14 @@ interface UseBatchRenderResult {
   run: (
     addOutput: (output: GeneratedOutput) => void,
     clearOutputs: () => void,
+    canvasEl: HTMLElement | null,
+    onDeselectForCapture: () => string | null,
+    onRestoreSelection: (prevId: string | null) => void,
   ) => Promise<void>;
   cancel: () => void;
 }
 
 export function useBatchRender(
-  canvasEl: HTMLElement | null,
   overlays: ProjectAsset[],
   template: EditorState,
   slot: VariableSlot,
@@ -42,8 +45,15 @@ export function useBatchRender(
   const run = useCallback(async (
     addOutput: (output: GeneratedOutput) => void,
     clearOutputs: () => void,
+    canvasEl: HTMLElement | null,
+    onDeselectForCapture: () => string | null,
+    onRestoreSelection: (prevId: string | null) => void,
   ) => {
-    if (!canvasEl || overlays.length === 0) return;
+    if (!canvasEl) {
+      console.warn("[useBatchRender] canvasEl is null — batch render skipped");
+      return;
+    }
+    if (overlays.length === 0) return;
 
     setIsRunning(true);
     setError(null);
@@ -51,12 +61,13 @@ export function useBatchRender(
     clearOutputs();
     setProgress({ current: 0, total: overlays.length });
 
+    const prevId = onDeselectForCapture();
     try {
       let index = 0;
       for (const overlay of overlays) {
         if (cancelRef.current) break;
 
-        await new Promise<void>((r) => setTimeout(r, 0));
+        await waitTwoFrames();
 
         const croppedSrc = await coverCropDataUrl(overlay.blobKey, slot.width, slot.height);
         const patchedOverlays = patchOverlays(template, slot.overlayNodeId, croppedSrc);
@@ -71,8 +82,9 @@ export function useBatchRender(
       setError(err instanceof Error ? err.message : "Batch render failed");
     } finally {
       setIsRunning(false);
+      onRestoreSelection(prevId);
     }
-  }, [canvasEl, overlays, template, slot]);
+  }, [overlays, template, slot]);
 
   const cancel = useCallback(() => {
     cancelRef.current = true;

@@ -8,6 +8,7 @@ import { useBatchRender } from "@/hooks/use-batch-render";
 import { useZipExport } from "@/hooks/use-zip-export";
 import { useProjectPersistence } from "@/hooks/use-project-persistence";
 import { fileToDataUrl } from "@/lib/image-helpers";
+import { canGenerateBatch } from "@/lib/batch-gating";
 import { AssetUploadZone } from "./AssetUploadZone";
 import { AssetList } from "./AssetList";
 import { BatchResultsGallery } from "./BatchResultsGallery";
@@ -64,7 +65,6 @@ export function BatchWorkspace() {
   const liveCanvasCallbackRef = useCallback((el: HTMLDivElement | null) => { liveCanvasRef.current = el; }, []);
 
   const batchRender = useBatchRender(
-    liveCanvasRef.current,
     overlays,
     template ?? { nodes: [] },
     variableSlot ?? { overlayNodeId: "" as never, width: 0, height: 0 },
@@ -152,9 +152,17 @@ export function BatchWorkspace() {
     );
   }
 
+  const canGenerate = canGenerateBatch(variableSlot, overlays.length);
+
   async function handleGenerateAll() {
-    if (!liveCanvasRef.current || !template || !variableSlot) return;
-    await batchRender.run(addOutput, clearOutputs);
+    if (!liveCanvasRef.current) return;
+    await batchRender.run(
+      addOutput,
+      clearOutputs,
+      liveCanvasRef.current,
+      () => { const prev = selectedNodeId; setSelectedNodeId(null); return prev; },
+      (id) => setSelectedNodeId(id),
+    );
   }
 
   async function handleExportZip() {
@@ -244,15 +252,24 @@ export function BatchWorkspace() {
                 {isRendering ? "Generating..." : "Generate Preview"}
               </Button>
             )}
-            {canGeneratePreview && (
+            {canGenerate ? (
               <Button
                 variant="default"
                 size="sm"
-                disabled={batchRender.isRunning || overlays.length === 0}
+                disabled={batchRender.isRunning}
                 onClick={handleGenerateAll}
               >
                 {batchRender.isRunning ? "Running..." : "Generate All"}
               </Button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button variant="default" size="sm" disabled aria-disabled="true">
+                  Generate All
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Select a variable slot and upload at least one overlay image
+                </span>
+              </div>
             )}
             {batchRender.isRunning && (
               <Button variant="ghost" size="sm" onClick={() => batchRender.cancel?.()}>
