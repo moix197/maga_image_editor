@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useBatchProject } from "@/hooks/use-batch-project";
 import { useEditorState } from "@/hooks/use-editor-state";
 import { useSingleComposite } from "@/hooks/use-single-composite";
@@ -16,19 +17,25 @@ import { TextOverlayCanvas } from "@/components/text-overlay-canvas";
 import { TextStylePanel } from "@/components/text-style-panel";
 import { OverlayControlsPanel } from "@/components/overlay-controls-panel";
 import { Button } from "@/components/ui/button";
+import { WorkspaceActionsBar } from "./WorkspaceActionsBar";
 import { SCHEMA_VERSION, type BatchProject } from "@maga/projects";
 import { isTextNode, isOverlayNode, isBorderOverlay } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
+import { resolveSection } from "./workspace-sections";
 
-export function BatchWorkspace() {
+const DISABLED_GENERATE_HINT =
+  "Select a variable slot and upload at least one overlay image to enable generation.";
+
+function BatchWorkspaceInner() {
+  const searchParams = useSearchParams();
+  const activeSection = resolveSection(searchParams.get("section"));
+
   const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, clearProject, setBackground, addOverlays, setEditorTemplate, setProject, setVariableSlot } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite();
   const { isExporting, error: exportError, exportZip } = useZipExport();
 
   const persistedProject = useMemo<BatchProject | null>(() => {
-    // Autosave as soon as a background exists; template/variableSlot are
-    // nullable so a background-only draft persists and survives reload.
     if (!background) return null;
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -52,6 +59,7 @@ export function BatchWorkspace() {
   const editorState = useEditorState(template ?? undefined);
   const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
   const overlayInputRef = useRef<HTMLInputElement | null>(null);
+  const zipInputRef = useRef<HTMLInputElement | null>(null);
   const [variableSlotNodeId, setVariableSlotNodeId] = useState<NodeId | null>(null);
   const originalSlotSrcRef = useRef<string | null>(null);
 
@@ -59,10 +67,6 @@ export function BatchWorkspace() {
     setEditorTemplate(editorState.state);
   }, [editorState.state, setEditorTemplate]);
 
-  // Seed the editor exactly once per distinct restore/import event (IDB load or
-  // ZIP import). pendingRestore is a one-time payload set by useProjectPersistence
-  // on each such event; consuming it immediately prevents live-sync updates
-  // (setEditorTemplate → project.template change) from re-triggering seeding.
   const { replace: replaceEditorState } = editorState;
   useEffect(() => {
     if (!pendingRestore) return;
@@ -75,6 +79,7 @@ export function BatchWorkspace() {
     const file = files[0];
     if (file) await importZip(file);
   }
+
   const liveCanvasRef = useRef<HTMLDivElement | null>(null);
   const liveCanvasCallbackRef = useCallback((el: HTMLDivElement | null) => { liveCanvasRef.current = el; }, []);
 
@@ -113,7 +118,6 @@ export function BatchWorkspace() {
     if (!node || !isOverlayNode(node)) return;
 
     if (variableSlotNodeId === nodeId) {
-      // toggle off — restore original src
       if (originalSlotSrcRef.current !== null) {
         editorState.updateOverlayNode(nodeId, { src: originalSlotSrcRef.current });
       }
@@ -123,7 +127,6 @@ export function BatchWorkspace() {
       return;
     }
 
-    // clearing previous slot if any
     if (variableSlotNodeId !== null) {
       const prevNode = editorState.state.nodes.find((n) => n.id === variableSlotNodeId);
       if (prevNode && isOverlayNode(prevNode) && originalSlotSrcRef.current !== null) {
@@ -131,7 +134,6 @@ export function BatchWorkspace() {
       }
     }
 
-    // set new slot
     const overlayNode = node as OverlayNode;
     originalSlotSrcRef.current = overlayNode.src;
     const placeholderSrc = overlays[0]?.blobKey;
@@ -209,194 +211,204 @@ export function BatchWorkspace() {
   const isSelectedOverlay = selectedNode !== null && isOverlayNode(selectedNode);
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Batch Compositing</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Upload a background and overlay images to batch-composite.
-        </p>
-      </div>
-
-      {restored && (
-        <div role="status" className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
-          Project restored
-        </div>
-      )}
-
-      {quotaWarning && (
-        <div role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          Storage quota exceeded — images will not be saved between sessions. Consider using smaller images.
-        </div>
-      )}
-
-      {importError && (
-        <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {importError}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AssetUploadZone label="Background" multiple={false} onFiles={handleBackgroundFiles} />
-        <AssetUploadZone label="Overlays" multiple onFiles={handleOverlayFiles} />
-      </div>
-
-      {!background && (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm text-muted-foreground">
-            Or resume a previously exported project:
-          </p>
-          <AssetUploadZone label="Import ZIP" multiple={false} accept=".zip,application/zip" onFiles={handleImportZipFiles} />
-        </div>
-      )}
-
-      <div className="flex flex-col gap-6">
-        {background && <AssetList label="Background" assets={[background]} />}
-        <AssetList label="Overlays" assets={overlays} />
-      </div>
-
-      {template !== null && overlays.length === 0 && (
-        <p className="text-sm text-amber-600 dark:text-amber-400">No overlay images uploaded</p>
-      )}
-
-      {background && (
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => editorState.addTextNode()}>Add Text</Button>
-            <Button variant="outline" size="sm" onClick={() => editorState.addBorderNode()}>Add Border</Button>
-            <Button variant="outline" size="sm" onClick={() => overlayInputRef.current?.click()}>Add Image Overlay</Button>
-            <input
-              ref={overlayInputRef}
-              type="file"
-              accept="image/png,image/svg+xml"
-              className="hidden"
-              aria-label="Upload image overlay"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (file) await handleOverlayFile(file);
-                e.target.value = "";
-              }}
-            />
-            {canGeneratePreview && (
-              <Button variant="default" size="sm" disabled={isRendering} onClick={handleGeneratePreview}>
-                {isRendering ? "Generating..." : "Generate Preview"}
-              </Button>
-            )}
-            {canGenerate ? (
-              <Button
-                variant="default"
-                size="sm"
-                disabled={batchRender.isRunning}
-                onClick={handleGenerateAll}
-              >
-                {batchRender.isRunning ? "Running..." : "Generate All"}
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Button variant="default" size="sm" disabled aria-disabled="true">
-                  Generate All
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  Select a variable slot and upload at least one overlay image
-                </span>
-              </div>
-            )}
-            {batchRender.isRunning && (
-              <Button variant="ghost" size="sm" onClick={() => batchRender.cancel?.()}>
-                Cancel
-              </Button>
-            )}
-          </div>
-
-          <div className="flex gap-4">
-            <div className="flex flex-col gap-3">
-              <div style={{ position: "relative" }} onPointerDown={() => setSelectedNodeId(null)}>
-                <TextOverlayCanvas
-                  state={editorState.state}
-                  imageSrc={background.blobKey}
-                  selectedNodeId={selectedNodeId}
-                  onNodeMove={handleNodeMove}
-                  onNodeResize={handleNodeResize}
-                  onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
-                  canvasCallbackRef={liveCanvasCallbackRef}
-                />
-              </div>
-            </div>
-
-            {(isSelectedText || isSelectedOverlay) && (
-              <div className="w-64 shrink-0">
-                {isSelectedText && (
-                  <TextStylePanel
-                    node={selectedNode as TextNode}
-                    onChange={(patch) => editorState.updateTextNode(selectedNodeId!, patch)}
-                    onDelete={() => { editorState.removeNode(selectedNodeId!); setSelectedNodeId(null); }}
-                    onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
-                  />
-                )}
-                {isSelectedOverlay && (
-                  <OverlayControlsPanel
-                    node={selectedNode as OverlayNode}
-                    onChange={(patch) => editorState.updateOverlayNode(selectedNodeId!, patch)}
-                    onDelete={() => handleDeleteOverlayNode(selectedNodeId!)}
-                    onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
-                    {...(!isBorderOverlay(selectedNode as OverlayNode) && {
-                      isVariableSlot: variableSlotNodeId === selectedNodeId,
-                      onToggleVariableSlot: () => handleToggleVariableSlot(selectedNodeId!),
-                    })}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {compositeError && (
-        <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {compositeError}
-        </div>
-      )}
-
-      {batchRender.error && (
-        <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {batchRender.error}
-        </div>
-      )}
-
-      {compositeDataUrl && <PreviewCard dataUrl={compositeDataUrl} />}
-
-      {outputs.length > 0 && (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="default"
-            size="sm"
-            disabled={isExporting}
-            onClick={handleExportZip}
-          >
-            {isExporting ? "Exporting..." : "Export ZIP"}
-          </Button>
-        </div>
-      )}
-
-      {hasProject && (
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void handleClearProject()}>
-            Clear Project
-          </Button>
-        </div>
-      )}
-
-      {exportError && (
-        <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {exportError}
-        </div>
-      )}
-
-      <BatchResultsGallery
-        outputs={outputs}
-        overlays={overlays}
-        progress={batchRender.progress}
-        isRunning={batchRender.isRunning}
+    <div className="flex flex-col">
+      <WorkspaceActionsBar
+        onGeneratePreview={() => void handleGeneratePreview()}
+        onGenerateAll={() => void handleGenerateAll()}
+        onCancel={() => batchRender.cancel?.()}
+        onImportZip={() => zipInputRef.current?.click()}
+        onExportZip={() => void handleExportZip()}
+        onClearProject={() => void handleClearProject()}
+        generatePreviewDisabled={!canGeneratePreview || isRendering}
+        generateAllDisabled={!canGenerate || batchRender.isRunning}
+        generatePreviewTitle={!canGeneratePreview ? DISABLED_GENERATE_HINT : undefined}
+        generateAllTitle={!canGenerate ? DISABLED_GENERATE_HINT : undefined}
+        cancelDisabled={!batchRender.isRunning}
+        importZipDisabled={false}
+        exportZipDisabled={isExporting || outputs.length === 0}
+        clearProjectDisabled={!hasProject}
       />
+
+      {/* Hidden ZIP file input for actions bar */}
+      <input
+        ref={zipInputRef}
+        type="file"
+        accept=".zip,application/zip"
+        className="hidden"
+        aria-label="Import ZIP file"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (file) await handleImportZipFiles([file]);
+          e.target.value = "";
+        }}
+      />
+
+      <div className="flex flex-col gap-6 p-6">
+        {/* Status banners — always visible */}
+        {restored && (
+          <div role="status" className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+            Project restored
+          </div>
+        )}
+        {quotaWarning && (
+          <div role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+            Storage quota exceeded — images will not be saved between sessions. Consider using smaller images.
+          </div>
+        )}
+        {importError && (
+          <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {importError}
+          </div>
+        )}
+        {compositeError && (
+          <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {compositeError}
+          </div>
+        )}
+        {batchRender.error && (
+          <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {batchRender.error}
+          </div>
+        )}
+        {exportError && (
+          <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {exportError}
+          </div>
+        )}
+
+        {/* Section content */}
+        {activeSection === "assets" && (
+          <div className="flex flex-col gap-6">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">Assets</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Upload background and overlay images.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AssetUploadZone label="Background" multiple={false} onFiles={handleBackgroundFiles} />
+              <AssetUploadZone label="Overlays" multiple onFiles={handleOverlayFiles} />
+            </div>
+            {!background && (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground">Or resume a previously exported project:</p>
+                <AssetUploadZone label="Import ZIP" multiple={false} accept=".zip,application/zip" onFiles={handleImportZipFiles} />
+              </div>
+            )}
+            <div className="flex flex-col gap-6">
+              {background && <AssetList label="Background" assets={[background]} />}
+              <AssetList label="Overlays" assets={overlays} />
+            </div>
+            {template !== null && overlays.length === 0 && (
+              <p className="text-sm text-amber-600 dark:text-amber-400">No overlay images uploaded</p>
+            )}
+          </div>
+        )}
+
+        {activeSection === "template" && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">Template</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Design the compositing template.</p>
+            </div>
+            {background ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => editorState.addTextNode()}>Add Text</Button>
+                  <Button variant="outline" size="sm" onClick={() => editorState.addBorderNode()}>Add Border</Button>
+                  <Button variant="outline" size="sm" onClick={() => overlayInputRef.current?.click()}>Add Image Overlay</Button>
+                  <input
+                    ref={overlayInputRef}
+                    type="file"
+                    accept="image/png,image/svg+xml"
+                    className="hidden"
+                    aria-label="Upload image overlay"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) await handleOverlayFile(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex flex-col gap-3">
+                    <div style={{ position: "relative" }} onPointerDown={() => setSelectedNodeId(null)}>
+                      <TextOverlayCanvas
+                        state={editorState.state}
+                        imageSrc={background.blobKey}
+                        selectedNodeId={selectedNodeId}
+                        onNodeMove={handleNodeMove}
+                        onNodeResize={handleNodeResize}
+                        onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
+                        canvasCallbackRef={liveCanvasCallbackRef}
+                      />
+                    </div>
+                  </div>
+                  {(isSelectedText || isSelectedOverlay) && (
+                    <div className="w-64 shrink-0">
+                      {isSelectedText && (
+                        <TextStylePanel
+                          node={selectedNode as TextNode}
+                          onChange={(patch) => editorState.updateTextNode(selectedNodeId!, patch)}
+                          onDelete={() => { editorState.removeNode(selectedNodeId!); setSelectedNodeId(null); }}
+                          onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
+                        />
+                      )}
+                      {isSelectedOverlay && (
+                        <OverlayControlsPanel
+                          node={selectedNode as OverlayNode}
+                          onChange={(patch) => editorState.updateOverlayNode(selectedNodeId!, patch)}
+                          onDelete={() => handleDeleteOverlayNode(selectedNodeId!)}
+                          onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
+                          {...(!isBorderOverlay(selectedNode as OverlayNode) && {
+                            isVariableSlot: variableSlotNodeId === selectedNodeId,
+                            onToggleVariableSlot: () => handleToggleVariableSlot(selectedNodeId!),
+                          })}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Upload a background image first in the Assets section.</p>
+            )}
+          </div>
+        )}
+
+        {activeSection === "text" && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">Text</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Edit text layer properties.</p>
+            </div>
+            {isSelectedText ? (
+              <TextStylePanel
+                node={selectedNode as TextNode}
+                onChange={(patch) => editorState.updateTextNode(selectedNodeId!, patch)}
+                onDelete={() => { editorState.removeNode(selectedNodeId!); setSelectedNodeId(null); }}
+                onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">Select a text layer on the canvas to edit its properties.</p>
+            )}
+          </div>
+        )}
+
+        {activeSection === "results" && (
+          <div className="flex flex-col gap-6">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">Results</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Generated composite images.</p>
+            </div>
+            {compositeDataUrl && <PreviewCard dataUrl={compositeDataUrl} />}
+            <BatchResultsGallery
+              outputs={outputs}
+              overlays={overlays}
+              progress={batchRender.progress}
+              isRunning={batchRender.isRunning}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -409,5 +421,13 @@ function PreviewCard({ dataUrl }: { dataUrl: string }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={dataUrl} alt="Composite preview" className="max-w-full rounded-md border border-border" style={{ maxHeight: 400, objectFit: "contain" }} />
     </div>
+  );
+}
+
+export function BatchWorkspace() {
+  return (
+    <Suspense fallback={null}>
+      <BatchWorkspaceInner />
+    </Suspense>
   );
 }

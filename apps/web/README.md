@@ -10,8 +10,29 @@ Without `DEEPAI_API_KEY` the Cartoonize button is disabled and all other editor 
 
 ## Routes
 
-- `/editor` — main image editor page (`src/app/editor/page.tsx`). Upload an image via drag-and-drop or file picker; add text/overlays; cartoonize; download the result.
-- `/batch` — batch compositing page (`src/app/batch/page.tsx`), linked from the home page. See **Batch compositing** below.
+- `/editor` — redirects to `/batch` (permanent redirect via `next/navigation` `redirect()`).
+- `/batch` — unified batch workspace (`src/app/batch/page.tsx`). Houses all compositing work in a single shell with a side-nav and consolidated actions bar.
+
+### Workspace sections (`?section=`)
+
+The batch workspace uses a URL search param to track the active section. Links are shareable.
+
+| `?section=` | Content |
+|-------------|---------|
+| `assets` (default) | Upload background / overlay images; import ZIP |
+| `template` | Canvas editor — add text, border, image overlay nodes |
+| `text` | Text layer property panel for the selected text node |
+| `results` | Preview card + generated output gallery |
+
+### Side-nav (`WorkspaceSideNav`)
+
+Rendered by `src/app/batch/layout.tsx`. Vertical on `md+`, horizontal tab strip on mobile. Navigation-only — no business logic.
+
+### Actions bar (`WorkspaceActionsBar`)
+
+Rendered at the top of `BatchWorkspace`. Six global actions in two semantic groups:
+- **Primary**: Generate Preview, Generate All, Cancel
+- **Secondary**: Import ZIP, Export ZIP, Clear Project
 
 ## image-helpers API (`src/lib/image-helpers.ts`)
 

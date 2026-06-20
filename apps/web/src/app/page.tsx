@@ -15,7 +15,7 @@ export default function Home() {
       </div>
       <div className="flex gap-3">
         <Button asChild size="lg">
-          <Link href="/editor">Open Editor</Link>
+          <Link href="/batch">Open Workspace</Link>
         </Button>
         <Button asChild size="lg" variant="outline">
           <Link href="/batch">Batch Compositing</Link>

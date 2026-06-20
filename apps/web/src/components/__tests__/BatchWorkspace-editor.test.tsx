@@ -1,6 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
+// Mock next/navigation — BatchWorkspace uses useSearchParams
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => ({
+    get: (key: string) => (key === "section" ? "template" : null),
+    toString: () => "section=template",
+  }),
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 // Mock all hooks used by BatchWorkspace
 vi.mock("@/hooks/use-batch-project", () => ({
   useBatchProject: () => ({
@@ -15,7 +24,9 @@ vi.mock("@/hooks/use-batch-project", () => ({
     setEditorTemplate: vi.fn(),
     addOutput: vi.fn(),
     clearOutputs: vi.fn(),
+    clearProject: vi.fn(),
     setProject: vi.fn(),
+    setVariableSlot: vi.fn(),
   }),
 }));
 
@@ -29,6 +40,7 @@ vi.mock("@/hooks/use-editor-state", () => ({
     updateOverlayNode: vi.fn(),
     removeNode: vi.fn(),
     reorderNode: vi.fn(),
+    replace: vi.fn(),
   }),
 }));
 
@@ -62,6 +74,9 @@ vi.mock("@/hooks/use-zip-export", () => ({
 vi.mock("@/hooks/use-project-persistence", () => ({
   useProjectPersistence: () => ({
     restored: false,
+    pendingRestore: null,
+    consumeRestore: vi.fn(),
+    clearPersisted: vi.fn(),
     importError: null,
     quotaWarning: false,
     importZip: vi.fn(),
