@@ -179,6 +179,7 @@ Awaits `document.fonts.ready`, calls `html-to-image.toPng` at 2× pixel ratio, d
 
 - **Cartoonize result is not persisted.** It lives in React state only — reloading the page clears it. Download the result before reloading.
 - **DeepAI free-tier rate limits.** The free tier has a limited number of API calls per month. Heavy usage will hit limits; check your DeepAI dashboard at https://deepai.org.
+- **DnD reorder is pointer-only.** The items list (`AssetList`) and layer stack (`LayerStackPanel`) use native HTML5 drag-and-drop, which has no keyboard path. Users who rely on keyboard navigation cannot reorder items. A planned follow-up will add move-up / move-down buttons that call the existing `onReorder` / `onReorderNode` callbacks, providing a fully keyboard-accessible reorder path.
 
 ## Editor Controls
 

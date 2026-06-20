@@ -14,6 +14,7 @@ import { fileToDataUrl } from "@/lib/image-helpers";
 import { canGenerateBatch } from "@/lib/batch-gating";
 import { AssetUploadZone } from "./AssetUploadZone";
 import { AssetList } from "./AssetList";
+import { LayerStackPanel } from "./LayerStackPanel";
 import { BatchResultsGallery } from "./BatchResultsGallery";
 import { VariantStrip } from "./VariantStrip";
 import { TextOverlayCanvas } from "@/components/text-overlay-canvas";
@@ -36,7 +37,7 @@ function BatchWorkspaceInner() {
   const searchParams = useSearchParams();
   const activeSection = resolveSection(searchParams.get("section"));
 
-  const { background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, addOutput, clearOutputs, clearProject, setBackground, addOverlays, setEditorTemplate, setProject, setVariableSlot, setItemTextValue, setTextLayerLock } =
+  const { background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, addOutput, clearOutputs, clearProject, setBackground, addOverlays, reorderOverlays, setEditorTemplate, setProject, setVariableSlot, setItemTextValue, setTextLayerLock } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite({ overlays });
   const { isExporting, error: exportError, exportZip } = useZipExport();
@@ -337,7 +338,7 @@ function BatchWorkspaceInner() {
             )}
             <div className="flex flex-col gap-6">
               {background && <AssetList label="Background" assets={[background]} />}
-              <AssetList label="Overlays" assets={overlays} />
+              <AssetList label="Overlays" assets={overlays} onReorder={reorderOverlays} />
             </div>
             {template !== null && overlays.length === 0 && (
               <p className="text-sm text-amber-600 dark:text-amber-400">No overlay images uploaded</p>
@@ -377,6 +378,14 @@ function BatchWorkspaceInner() {
                     overlays={overlays}
                     activeId={activeOverlayId}
                     onSelect={setActiveOverlayId}
+                  />
+                )}
+
+                {/* Layer stack reorder */}
+                {editorState.state.nodes.length > 0 && (
+                  <LayerStackPanel
+                    nodes={editorState.state.nodes}
+                    onReorderNode={(id, dir) => editorState.reorderNode(id, dir)}
                   />
                 )}
 

@@ -4,7 +4,7 @@ import { useBatchProject } from "@/hooks/use-batch-project";
 import { useItemText } from "@/hooks/use-item-text";
 import { useProjectPersistence } from "@/hooks/use-project-persistence";
 import { migrateToV2, SCHEMA_VERSION } from "@maga/projects";
-import type { BatchProject, VariableSlot } from "@maga/projects";
+import type { BatchProject, ProjectAsset, VariableSlot } from "@maga/projects";
 import type { NodeId, EditorState } from "@maga/editor";
 
 // ── mocks for useProjectPersistence ─────────────────────────────────────────
@@ -247,6 +247,27 @@ describe("useBatchProject", () => {
     });
 
     expect(result.current.textLayerLocks["t1"]).toBe(true);
+  });
+
+  it("reorderOverlays replaces overlays array in correct order", async () => {
+    const { result } = renderHook(() => useBatchProject());
+    const files = [makeFile("a.png"), makeFile("b.png"), makeFile("c.png")];
+
+    await act(async () => {
+      await result.current.addOverlays(files);
+    });
+
+    const [a, b, c] = result.current.overlays as [ProjectAsset, ProjectAsset, ProjectAsset];
+
+    act(() => {
+      result.current.reorderOverlays([c, a, b]);
+    });
+
+    expect(result.current.overlays.map((o) => o.filename)).toEqual([
+      "c.png",
+      "a.png",
+      "b.png",
+    ]);
   });
 });
 

@@ -26,6 +26,7 @@ interface UseBatchProjectResult {
   setVariableSlot: (slot: VariableSlot | null) => void;
   setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
   setTextLayerLock: (textNodeId: string, locked: boolean) => void;
+  reorderOverlays: (newOrder: ProjectAsset[]) => void;
 }
 
 export function useBatchProject(): UseBatchProjectResult {
@@ -56,6 +57,10 @@ export function useBatchProject(): UseBatchProjectResult {
       }))
     );
     setOverlays((prev) => [...prev, ...assets]);
+  }, []);
+
+  const reorderOverlays = useCallback((newOrder: ProjectAsset[]) => {
+    setOverlays(newOrder);
   }, []);
 
   const setTemplate = useCallback((editorState: EditorState, slot: VariableSlot) => {
@@ -132,5 +137,6 @@ export function useBatchProject(): UseBatchProjectResult {
     setVariableSlot,
     setItemTextValue,
     setTextLayerLock,
+    reorderOverlays,
   };
 }
