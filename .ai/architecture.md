@@ -23,9 +23,15 @@ Three packages in a pnpm workspace, each owning one responsibility.
 
 One-way, no cycles: **`@maga/web` → `@maga/editor` → `@maga/config`**.
 
-- `@maga/web` depends on `@maga/editor` (its domain) and `@maga/config` (build config).
-- `@maga/editor` depends only on `@maga/config` (build config); it never depends on web.
+- `@maga/web` depends on `@maga/editor` (its domain, a runtime dependency) and on
+  `@maga/config` (build config).
+- `@maga/editor` depends only on `@maga/config`, and only at **build time**
+  (a devDependency — tsconfig/ESLint/Tailwind); no `@maga/config` code ships in
+  the editor runtime. It never depends on web.
 - `@maga/config` depends on nothing in the workspace — it is the sink.
+
+The build-time nature of editor→config doesn't change the invariant: dependencies
+still flow one-way with no cycles.
 
 This realizes the CLAUDE.md Architecture rule (dependencies flow one direction; no
 circular dependencies between packages). UI and framework concerns may depend on the
@@ -33,7 +39,19 @@ domain, never the reverse.
 
 ## Data flow
 
-_Empty. Sketch the main flows (request → service → store, etc.) once they exist._
+### Canvas + DOM-overlay node model
+
+The editor renders the base image to a canvas, with text and image overlays
+living as **DOM elements in an overlay layer positioned over that canvas** —
+not painted into it. The source of truth is the editor package's **immutable
+node array** (`EditorState.nodes` in `@maga/editor`): each text/overlay/border
+node is one entry, and the overlay-layer DOM is a render of that array. Web
+mutates the array only through the pure transitions in
+`packages/editor/src/editor-state.ts` (see
+[[immutable-state-mutation-functions]]); the DOM overlay reflects the new state,
+it is never the state itself.
+
+_Other flows (export, cartoonize) sketched by later sections as they land._
 
 > Update via the `sync-knowledge` skill when an architectural boundary, package,
 > or flow is introduced or changed.
