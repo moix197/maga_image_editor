@@ -1,22 +1,26 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBatchProject } from "@/hooks/use-batch-project";
+import { useEditorState } from "@/hooks/use-editor-state";
 import { useSingleComposite } from "@/hooks/use-single-composite";
 import { useBatchRender } from "@/hooks/use-batch-render";
 import { useZipExport } from "@/hooks/use-zip-export";
 import { useProjectPersistence } from "@/hooks/use-project-persistence";
+import { fileToDataUrl } from "@/lib/image-helpers";
 import { AssetUploadZone } from "./AssetUploadZone";
 import { AssetList } from "./AssetList";
-import { TemplateEditor } from "./TemplateEditor";
 import { BatchResultsGallery } from "./BatchResultsGallery";
+import { TextOverlayCanvas } from "@/components/text-overlay-canvas";
+import { TextStylePanel } from "@/components/text-style-panel";
+import { OverlayControlsPanel } from "@/components/overlay-controls-panel";
 import { Button } from "@/components/ui/button";
 import { SCHEMA_VERSION, type BatchProject } from "@maga/projects";
-import type { EditorState } from "@maga/editor";
-import type { VariableSlot } from "@maga/projects";
+import { isTextNode, isOverlayNode } from "@maga/editor";
+import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
 
 export function BatchWorkspace() {
-  const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, setBackground, addOverlays, setTemplate, setProject } =
+  const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, setBackground, addOverlays, setEditorTemplate, setProject } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite();
   const { isExporting, error: exportError, exportZip } = useZipExport();
@@ -42,7 +46,13 @@ export function BatchWorkspace() {
     setProject,
   });
 
-  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+  const editorState = useEditorState(template ?? undefined);
+  const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
+  const overlayInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setEditorTemplate(editorState.state);
+  }, [editorState.state, setEditorTemplate]);
 
   async function handleImportZipFiles(files: File[]) {
     const file = files[0];
@@ -51,6 +61,9 @@ export function BatchWorkspace() {
   const [bgDimensions, setBgDimensions] = useState<{ w: number; h: number } | null>(null);
   const canvasElRef = useRef<HTMLDivElement | null>(null);
   const canvasCallbackRef = useCallback((el: HTMLDivElement | null) => { canvasElRef.current = el; }, []);
+
+  const liveCanvasRef = useRef<HTMLDivElement | null>(null);
+  const liveCanvasCallbackRef = useCallback((el: HTMLDivElement | null) => { liveCanvasRef.current = el; }, []);
 
   const batchRender = useBatchRender(
     canvasElRef.current,
@@ -68,9 +81,19 @@ export function BatchWorkspace() {
     await addOverlays(files);
   }
 
-  function handleTemplateSave(editorState: EditorState, slot: VariableSlot) {
-    setTemplate(editorState, slot);
-    setShowTemplateEditor(false);
+  async function handleOverlayFile(file: File) {
+    editorState.addOverlayNode({ src: await fileToDataUrl(file), x: 10, y: 10 });
+  }
+
+  function handleNodeMove(id: string, x: number, y: number) {
+    const node = editorState.state.nodes.find((n) => n.id === id);
+    if (!node) return;
+    if (isTextNode(node)) editorState.updateTextNode(id as NodeId, { x, y });
+    else editorState.updateOverlayNode(id as NodeId, { x, y });
+  }
+
+  function handleNodeResize(id: string, width: number, height: number) {
+    editorState.updateOverlayNode(id as NodeId, { width, height });
   }
 
   async function handleGeneratePreview() {
@@ -94,6 +117,10 @@ export function BatchWorkspace() {
     overlays.length > 0 &&
     template !== null &&
     variableSlot !== null;
+
+  const selectedNode = selectedNodeId ? (editorState.state.nodes.find((n) => n.id === selectedNodeId) ?? null) : null;
+  const isSelectedText = selectedNode !== null && isTextNode(selectedNode);
+  const isSelectedOverlay = selectedNode !== null && isOverlayNode(selectedNode);
 
   return (
     <div className="flex flex-col gap-8">
@@ -145,41 +172,82 @@ export function BatchWorkspace() {
         <p className="text-sm text-amber-600 dark:text-amber-400">No overlay images uploaded</p>
       )}
 
-      {background && !showTemplateEditor && (
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowTemplateEditor(true)}>
-            {template ? "Edit Template" : "Set Up Template"}
-          </Button>
-          {canGeneratePreview && (
-            <Button variant="default" size="sm" disabled={isRendering} onClick={handleGeneratePreview}>
-              {isRendering ? "Generating..." : "Generate Preview"}
-            </Button>
-          )}
-          {canGeneratePreview && (
-            <Button
-              variant="default"
-              size="sm"
-              disabled={batchRender.isRunning || overlays.length === 0}
-              onClick={handleGenerateAll}
-            >
-              {batchRender.isRunning ? "Running..." : "Generate All"}
-            </Button>
-          )}
-          {batchRender.isRunning && (
-            <Button variant="ghost" size="sm" onClick={() => batchRender.cancel?.()}>
-              Cancel
-            </Button>
-          )}
-        </div>
-      )}
-
-      {background && showTemplateEditor && (
+      {background && (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Template Editor</h2>
-            <Button variant="ghost" size="sm" onClick={() => setShowTemplateEditor(false)}>Cancel</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => editorState.addTextNode()}>Add Text</Button>
+            <Button variant="outline" size="sm" onClick={() => editorState.addBorderNode()}>Add Border</Button>
+            <Button variant="outline" size="sm" onClick={() => overlayInputRef.current?.click()}>Add Image Overlay</Button>
+            <input
+              ref={overlayInputRef}
+              type="file"
+              accept="image/png,image/svg+xml"
+              className="hidden"
+              aria-label="Upload image overlay"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) await handleOverlayFile(file);
+                e.target.value = "";
+              }}
+            />
+            {canGeneratePreview && (
+              <Button variant="default" size="sm" disabled={isRendering} onClick={handleGeneratePreview}>
+                {isRendering ? "Generating..." : "Generate Preview"}
+              </Button>
+            )}
+            {canGeneratePreview && (
+              <Button
+                variant="default"
+                size="sm"
+                disabled={batchRender.isRunning || overlays.length === 0}
+                onClick={handleGenerateAll}
+              >
+                {batchRender.isRunning ? "Running..." : "Generate All"}
+              </Button>
+            )}
+            {batchRender.isRunning && (
+              <Button variant="ghost" size="sm" onClick={() => batchRender.cancel?.()}>
+                Cancel
+              </Button>
+            )}
           </div>
-          <TemplateEditor backgroundSrc={background.blobKey} onSave={handleTemplateSave} />
+
+          <div className="flex gap-4">
+            <div className="flex flex-col gap-3">
+              <div style={{ position: "relative" }} onPointerDown={() => setSelectedNodeId(null)}>
+                <TextOverlayCanvas
+                  state={editorState.state}
+                  imageSrc={background.blobKey}
+                  selectedNodeId={selectedNodeId}
+                  onNodeMove={handleNodeMove}
+                  onNodeResize={handleNodeResize}
+                  onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
+                  canvasCallbackRef={liveCanvasCallbackRef}
+                />
+              </div>
+            </div>
+
+            {(isSelectedText || isSelectedOverlay) && (
+              <div className="w-64 shrink-0">
+                {isSelectedText && (
+                  <TextStylePanel
+                    node={selectedNode as TextNode}
+                    onChange={(patch) => editorState.updateTextNode(selectedNodeId!, patch)}
+                    onDelete={() => { editorState.removeNode(selectedNodeId!); setSelectedNodeId(null); }}
+                    onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
+                  />
+                )}
+                {isSelectedOverlay && (
+                  <OverlayControlsPanel
+                    node={selectedNode as OverlayNode}
+                    onChange={(patch) => editorState.updateOverlayNode(selectedNodeId!, patch)}
+                    onDelete={() => { editorState.removeNode(selectedNodeId!); setSelectedNodeId(null); }}
+                    onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

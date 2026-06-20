@@ -58,4 +58,27 @@ describe("useBatchProject", () => {
     expect(result.current.overlays).toHaveLength(2);
     expect(result.current.overlays[0]!.id).not.toBe(result.current.overlays[1]!.id);
   });
+
+  it("setEditorTemplate updates template without touching variableSlot", () => {
+    const { result } = renderHook(() => useBatchProject());
+    const editorState = { nodes: [{ id: "n1", type: "text" as const, x: 0, y: 0, zIndex: 0, text: "hi", fontSize: 14, fontFamily: "Arial", color: "#000", fontWeight: "normal" as const, fontStyle: "normal" as const, textDecoration: "none" as const, textAlign: "left" as const, opacity: 1 }] };
+
+    act(() => {
+      result.current.setEditorTemplate(editorState as never);
+    });
+
+    expect(result.current.template).toEqual(editorState);
+    // variableSlot was never set, must remain null
+    expect(result.current.variableSlot).toBeNull();
+  });
+
+  it("setEditorTemplate with undefined sets template to null", () => {
+    const { result } = renderHook(() => useBatchProject());
+
+    act(() => {
+      result.current.setEditorTemplate(undefined);
+    });
+
+    expect(result.current.template).toBeNull();
+  });
 });

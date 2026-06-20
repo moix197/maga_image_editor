@@ -60,6 +60,10 @@ The project JSON holds only `blobKey` refs, never absolute URLs or embedded byte
 
 The `template` field is `EditorState` from `@maga/editor`, reused via a type-only import. `EditorState` is owned by the shared `@maga/editor` package (not `apps/web`), so reusing it introduces no circular dependency and avoids redefining the model.
 
+## BatchWorkspace editor surface
+
+`TemplateEditor.tsx` was removed in the batch-editor-parity refactor. `BatchWorkspace` now embeds the real editor surface directly: `useEditorState` owns the template state, `TextOverlayCanvas` renders the live canvas, and `TextStylePanel` / `OverlayControlsPanel` handle per-node controls. Editor state is synced to `project.template` via `setEditorTemplate` in `use-batch-project`.
+
 ## Dependency rationale: JSZip
 
 `jszip` is the package's one runtime third-party dependency, used by `exportProjectZip`. Per CLAUDE.md's "build our own before installing" rule, building a ZIP encoder ourselves is impractical: it requires implementing the ZIP binary format spec (local file headers, central directory, end-of-central-directory record), DEFLATE compression (LZ77 + Huffman coding), and CRC-32 checksumming. That is squarely a "deep protocol/spec implementation" — the same category as cryptography — so a battle-tested library is the right call. `dataUrl → bytes` conversion is done in-package (`atob` + `Uint8Array`); only the ZIP container itself is delegated to JSZip.
