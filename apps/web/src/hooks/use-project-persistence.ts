@@ -7,6 +7,7 @@ import {
   saveProject,
   saveBlob,
   loadBlob,
+  deleteProject,
   dataUrlToBlob,
   importProjectZip,
   ZipImportError,
@@ -70,6 +71,8 @@ interface UseProjectPersistenceResult {
   /** Drains pendingRestore — call after seeding the editor so subsequent live-sync
    *  updates to `project` do not re-trigger seeding. */
   consumeRestore: () => void;
+  /** Permanently removes the active project record from IndexedDB. */
+  clearPersisted: () => Promise<void>;
   importError: string | null;
   quotaWarning: boolean;
   importZip: (file: File) => Promise<void>;
@@ -115,6 +118,11 @@ export function useProjectPersistence({
     setPendingRestore(null);
   }, []);
 
+  const clearPersisted = useCallback(async () => {
+    if (!db) return;
+    await deleteProject(db, ACTIVE_PROJECT_KEY);
+  }, [db]);
+
   const importZip = useCallback(
     async (file: File) => {
       setImportError(null);
@@ -135,7 +143,7 @@ export function useProjectPersistence({
     [setProject],
   );
 
-  return { restored, pendingRestore, consumeRestore, importError, quotaWarning, importZip };
+  return { restored, pendingRestore, consumeRestore, clearPersisted, importError, quotaWarning, importZip };
 }
 
 /** Loads each ref's blob from IDB and rehydrates the project with data URLs. */

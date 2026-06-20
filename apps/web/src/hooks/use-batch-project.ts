@@ -18,6 +18,7 @@ interface UseBatchProjectResult {
   setEditorTemplate: (editorState: EditorState | undefined) => void;
   addOutput: (output: GeneratedOutput) => void;
   clearOutputs: () => void;
+  clearProject: () => void;
   setProject: (project: BatchProject) => void;
   setVariableSlot: (slot: VariableSlot | null) => void;
 }
@@ -67,6 +68,14 @@ export function useBatchProject(): UseBatchProjectResult {
     setOutputs([]);
   }, []);
 
+  const clearProject = useCallback(() => {
+    setBackgroundState(null);
+    setOverlays([]);
+    setTemplateState(null);
+    setVariableSlotState(null);
+    setOutputs([]);
+  }, []);
+
   const setProject = useCallback((project: BatchProject) => {
     setBackgroundState(project.background);
     setOverlays(project.overlays);
@@ -91,6 +100,7 @@ export function useBatchProject(): UseBatchProjectResult {
     setEditorTemplate,
     addOutput,
     clearOutputs,
+    clearProject,
     setProject,
     setVariableSlot,
   };

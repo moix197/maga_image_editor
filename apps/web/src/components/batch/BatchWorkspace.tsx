@@ -21,7 +21,7 @@ import { isTextNode, isOverlayNode, isBorderOverlay } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
 
 export function BatchWorkspace() {
-  const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, setBackground, addOverlays, setEditorTemplate, setProject, setVariableSlot } =
+  const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, clearProject, setBackground, addOverlays, setEditorTemplate, setProject, setVariableSlot } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite();
   const { isExporting, error: exportError, exportZip } = useZipExport();
@@ -44,7 +44,7 @@ export function BatchWorkspace() {
     };
   }, [background, overlays, template, variableSlot, outputs]);
 
-  const { restored, pendingRestore, consumeRestore, importError, quotaWarning, importZip } = useProjectPersistence({
+  const { restored, pendingRestore, consumeRestore, clearPersisted, importError, quotaWarning, importZip } = useProjectPersistence({
     project: persistedProject,
     setProject,
   });
@@ -182,6 +182,21 @@ export function BatchWorkspace() {
   async function handleExportZip() {
     await exportZip({ background, overlays, template, variableSlot, outputs });
   }
+
+  async function handleClearProject() {
+    const confirmed = window.confirm(
+      "Clear this project? This permanently deletes the background, template, overlays, and generated outputs."
+    );
+    if (!confirmed) return;
+    await clearPersisted();
+    clearProject();
+    setSelectedNodeId(null);
+    setVariableSlotNodeId(null);
+    originalSlotSrcRef.current = null;
+    editorState.replace({ nodes: [] });
+  }
+
+  const hasProject = background !== null || overlays.length > 0 || outputs.length > 0;
 
   const canGeneratePreview =
     background !== null &&
@@ -358,6 +373,14 @@ export function BatchWorkspace() {
             onClick={handleExportZip}
           >
             {isExporting ? "Exporting..." : "Export ZIP"}
+          </Button>
+        </div>
+      )}
+
+      {hasProject && (
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => void handleClearProject()}>
+            Clear Project
           </Button>
         </div>
       )}

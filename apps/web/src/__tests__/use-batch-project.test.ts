@@ -145,6 +145,29 @@ describe("useBatchProject", () => {
 
     expect(result.current.variableSlot).toBeNull();
   });
+
+  it("clearProject resets background, template, variableSlot, overlays, and outputs to empty", async () => {
+    const { result } = renderHook(() => useBatchProject());
+    const slot: VariableSlot = { overlayNodeId: "node-1" as NodeId, width: 200, height: 100 };
+
+    await act(async () => {
+      await result.current.setBackground(makeFile("bg.png"));
+      await result.current.addOverlays([makeFile("a.png"), makeFile("b.png")]);
+    });
+    act(() => {
+      result.current.setVariableSlot(slot);
+    });
+
+    act(() => {
+      result.current.clearProject();
+    });
+
+    expect(result.current.background).toBeNull();
+    expect(result.current.overlays).toHaveLength(0);
+    expect(result.current.template).toBeNull();
+    expect(result.current.variableSlot).toBeNull();
+    expect(result.current.outputs).toHaveLength(0);
+  });
 });
 
 // ── useProjectPersistence: pendingRestore drain ──────────────────────────────

@@ -12,7 +12,7 @@ vi.mock("@/lib/image-helpers", () => ({
 // Mock the @maga/projects IDB + ZIP surface so the test exercises the hook's
 // orchestration (restore / debounced save / import hydration) without fighting
 // jsdom's Blob interop. The real adapter is covered by idb-adapter.test.ts.
-const { idbProjects, idbBlobs, mockOpenDb, mockLoadProject, mockSaveProject, mockSaveBlob, mockLoadBlob, mockImportProjectZip } =
+const { idbProjects, idbBlobs, mockOpenDb, mockLoadProject, mockSaveProject, mockSaveBlob, mockLoadBlob, mockDeleteProject, mockImportProjectZip } =
   vi.hoisted(() => {
     const idbProjects = new Map<string, BatchProject>();
     // Stub blob shape: only `type` + `arrayBuffer()` (what blobToDataUrl reads).
@@ -30,6 +30,9 @@ const { idbProjects, idbBlobs, mockOpenDb, mockLoadProject, mockSaveProject, moc
         idbBlobs.set(key, blob);
       }),
       mockLoadBlob: vi.fn(async (_db: IDBDatabase, key: string) => idbBlobs.get(key) ?? null),
+      mockDeleteProject: vi.fn(async (_db: IDBDatabase, id: string) => {
+        idbProjects.delete(id);
+      }),
       mockImportProjectZip: vi.fn(),
     };
   });
@@ -48,6 +51,7 @@ vi.mock("@maga/projects", async (importOriginal) => {
     saveProject: mockSaveProject,
     saveBlob: mockSaveBlob,
     loadBlob: mockLoadBlob,
+    deleteProject: mockDeleteProject,
     // data URL -> stub blob (preserves mime + bytes for round-trip)
     dataUrlToBlob: (dataUrl: string) => {
       const mime = dataUrl.slice(5, dataUrl.indexOf(";"));
@@ -120,6 +124,25 @@ describe("useProjectPersistence", () => {
     // Wait for mount openDb() to resolve and the debounced save to fire.
     await waitFor(() => expect(mockSaveProject).toHaveBeenCalled(), { timeout: 2000 });
     expect(idbProjects.get(ACTIVE_KEY)).toBeDefined();
+  });
+
+  it("clearPersisted calls deleteProject with ACTIVE_PROJECT_KEY", async () => {
+    // Stable setProject ref: the mount effect depends on it, so an inline
+    // vi.fn() (new ref each render) would re-fire the effect forever.
+    const setProject = vi.fn();
+    const { result } = renderHook(() =>
+      useProjectPersistence({ project: null, setProject }),
+    );
+    // Wait for the mount effect (openDb + loadProject) so db state is set.
+    await waitFor(() => expect(mockLoadProject).toHaveBeenCalled(), { timeout: 2000 });
+
+    await act(async () => {
+      await result.current.clearPersisted();
+    });
+
+    await waitFor(() => expect(mockDeleteProject).toHaveBeenCalledWith(expect.anything(), "active"), {
+      timeout: 2000,
+    });
   });
 
   it("importZip hydrates state from a ZIP", async () => {
