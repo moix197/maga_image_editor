@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { exportProjectZip } from "@maga/projects";
+import { safeRandomId } from "@/lib/id";
 import type {
   BatchProject,
   GeneratedOutput,
@@ -36,7 +37,7 @@ function assembleProject(
   const now = Date.now();
   return {
     schemaVersion: 1,
-    id: crypto.randomUUID(),
+    id: safeRandomId(),
     name: "Batch project",
     createdAt: now,
     updatedAt: now,

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { fileToDataUrl } from "@/lib/image-helpers";
+import { safeRandomId } from "@/lib/id";
 import type { BatchProject, GeneratedOutput, ProjectAsset, VariableSlot } from "@maga/projects";
 import type { EditorState } from "@maga/editor";
 
@@ -29,7 +30,7 @@ export function useBatchProject(): UseBatchProjectResult {
   const setBackground = useCallback(async (file: File) => {
     const blobKey = await fileToDataUrl(file);
     const asset: ProjectAsset = {
-      id: crypto.randomUUID(),
+      id: safeRandomId(),
       filename: file.name,
       blobKey,
     };
@@ -39,7 +40,7 @@ export function useBatchProject(): UseBatchProjectResult {
   const addOverlays = useCallback(async (files: File[]) => {
     const assets: ProjectAsset[] = await Promise.all(
       files.map(async (file) => ({
-        id: crypto.randomUUID(),
+        id: safeRandomId(),
         filename: file.name,
         blobKey: await fileToDataUrl(file),
       }))
