@@ -16,11 +16,11 @@ import { TextStylePanel } from "@/components/text-style-panel";
 import { OverlayControlsPanel } from "@/components/overlay-controls-panel";
 import { Button } from "@/components/ui/button";
 import { SCHEMA_VERSION, type BatchProject } from "@maga/projects";
-import { isTextNode, isOverlayNode } from "@maga/editor";
+import { isTextNode, isOverlayNode, isBorderOverlay } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
 
 export function BatchWorkspace() {
-  const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, setBackground, addOverlays, setEditorTemplate, setProject } =
+  const { background, overlays, template, variableSlot, outputs, addOutput, clearOutputs, setBackground, addOverlays, setEditorTemplate, setProject, setVariableSlot } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite();
   const { isExporting, error: exportError, exportZip } = useZipExport();
@@ -49,6 +49,8 @@ export function BatchWorkspace() {
   const editorState = useEditorState(template ?? undefined);
   const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
   const overlayInputRef = useRef<HTMLInputElement | null>(null);
+  const [variableSlotNodeId, setVariableSlotNodeId] = useState<NodeId | null>(null);
+  const originalSlotSrcRef = useRef<string | null>(null);
 
   useEffect(() => {
     setEditorTemplate(editorState.state);
@@ -94,6 +96,50 @@ export function BatchWorkspace() {
 
   function handleNodeResize(id: string, width: number, height: number) {
     editorState.updateOverlayNode(id as NodeId, { width, height });
+  }
+
+  function handleToggleVariableSlot(nodeId: NodeId) {
+    const node = editorState.state.nodes.find((n) => n.id === nodeId);
+    if (!node || !isOverlayNode(node)) return;
+
+    if (variableSlotNodeId === nodeId) {
+      // toggle off — restore original src
+      if (originalSlotSrcRef.current !== null) {
+        editorState.updateOverlayNode(nodeId, { src: originalSlotSrcRef.current });
+      }
+      originalSlotSrcRef.current = null;
+      setVariableSlotNodeId(null);
+      setVariableSlot(null);
+      return;
+    }
+
+    // clearing previous slot if any
+    if (variableSlotNodeId !== null) {
+      const prevNode = editorState.state.nodes.find((n) => n.id === variableSlotNodeId);
+      if (prevNode && isOverlayNode(prevNode) && originalSlotSrcRef.current !== null) {
+        editorState.updateOverlayNode(variableSlotNodeId, { src: originalSlotSrcRef.current });
+      }
+    }
+
+    // set new slot
+    const overlayNode = node as OverlayNode;
+    originalSlotSrcRef.current = overlayNode.src;
+    const placeholderSrc = overlays[0]?.blobKey;
+    if (placeholderSrc) {
+      editorState.updateOverlayNode(nodeId, { src: placeholderSrc });
+    }
+    setVariableSlotNodeId(nodeId);
+    setVariableSlot({ overlayNodeId: nodeId, width: overlayNode.width, height: overlayNode.height });
+  }
+
+  function handleDeleteOverlayNode(nodeId: NodeId) {
+    if (nodeId === variableSlotNodeId) {
+      originalSlotSrcRef.current = null;
+      setVariableSlotNodeId(null);
+      setVariableSlot(null);
+    }
+    editorState.removeNode(nodeId);
+    setSelectedNodeId(null);
   }
 
   async function handleGeneratePreview() {
@@ -241,8 +287,12 @@ export function BatchWorkspace() {
                   <OverlayControlsPanel
                     node={selectedNode as OverlayNode}
                     onChange={(patch) => editorState.updateOverlayNode(selectedNodeId!, patch)}
-                    onDelete={() => { editorState.removeNode(selectedNodeId!); setSelectedNodeId(null); }}
+                    onDelete={() => handleDeleteOverlayNode(selectedNodeId!)}
                     onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
+                    {...(!isBorderOverlay(selectedNode as OverlayNode) && {
+                      isVariableSlot: variableSlotNodeId === selectedNodeId,
+                      onToggleVariableSlot: () => handleToggleVariableSlot(selectedNodeId!),
+                    })}
                   />
                 )}
               </div>

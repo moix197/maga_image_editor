@@ -19,6 +19,20 @@ interface OverlayControlsPanelProps {
   onChange: (patch: Partial<Omit<OverlayNode, "id">>) => void;
   onDelete: () => void;
   onReorder: (direction: "up" | "down") => void;
+  /**
+   * Whether this overlay node is currently the variable slot.
+   * Provided only by BatchWorkspace for image overlay nodes; absent on all other
+   * call sites (text/border nodes). The component renders the toggle UI only when
+   * this prop is supplied — it contains no business logic and calls
+   * onToggleVariableSlot on change.
+   */
+  isVariableSlot?: boolean;
+  /**
+   * Callback-only: called when the user clicks the variable-slot toggle.
+   * All state mutations live in the caller (BatchWorkspace); this component
+   * neither reads nor writes variableSlot state directly.
+   */
+  onToggleVariableSlot?: () => void;
 }
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -48,7 +62,7 @@ export function applyAspectRatioLock(patch: OverlayPatch, currentNode: OverlayNo
   return patch;
 }
 
-export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: OverlayControlsPanelProps) {
+export function OverlayControlsPanel({ node, onChange, onDelete, onReorder, isVariableSlot, onToggleVariableSlot }: OverlayControlsPanelProps) {
   const border: BorderOverlay | null = isBorderOverlay(node) ? node : null;
 
   return (
@@ -289,6 +303,21 @@ export function OverlayControlsPanel({ node, onChange, onDelete, onReorder }: Ov
               </div>
             )}
           </FieldRow>
+
+          {onToggleVariableSlot !== undefined && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="variable-slot-toggle"
+                checked={isVariableSlot ?? false}
+                onChange={onToggleVariableSlot}
+                className="h-4 w-4 cursor-pointer rounded"
+              />
+              <label htmlFor="variable-slot-toggle" className="cursor-pointer text-xs">
+                Use as variable slot
+              </label>
+            </div>
+          )}
         </>
       )}
 

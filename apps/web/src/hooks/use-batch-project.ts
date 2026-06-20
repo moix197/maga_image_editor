@@ -19,6 +19,7 @@ interface UseBatchProjectResult {
   addOutput: (output: GeneratedOutput) => void;
   clearOutputs: () => void;
   setProject: (project: BatchProject) => void;
+  setVariableSlot: (slot: VariableSlot | null) => void;
 }
 
 export function useBatchProject(): UseBatchProjectResult {
@@ -74,6 +75,10 @@ export function useBatchProject(): UseBatchProjectResult {
     setOutputs(project.outputs);
   }, []);
 
+  const setVariableSlot = useCallback((slot: VariableSlot | null) => {
+    setVariableSlotState(slot);
+  }, []);
+
   return {
     background,
     overlays,
@@ -87,5 +92,6 @@ export function useBatchProject(): UseBatchProjectResult {
     addOutput,
     clearOutputs,
     setProject,
+    setVariableSlot,
   };
 }

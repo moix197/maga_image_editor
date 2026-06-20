@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useBatchProject } from "@/hooks/use-batch-project";
+import type { VariableSlot } from "@maga/projects";
+import type { NodeId } from "@maga/editor";
 
 vi.mock("@/lib/image-helpers", () => ({
   fileToDataUrl: vi.fn((file: File) =>
@@ -80,5 +82,30 @@ describe("useBatchProject", () => {
     });
 
     expect(result.current.template).toBeNull();
+  });
+
+  it("setVariableSlot sets variableSlot", () => {
+    const { result } = renderHook(() => useBatchProject());
+    const slot: VariableSlot = { overlayNodeId: "node-1" as NodeId, width: 200, height: 100 };
+
+    act(() => {
+      result.current.setVariableSlot(slot);
+    });
+
+    expect(result.current.variableSlot).toEqual(slot);
+  });
+
+  it("setVariableSlot with null clears variableSlot", () => {
+    const { result } = renderHook(() => useBatchProject());
+    const slot: VariableSlot = { overlayNodeId: "node-1" as NodeId, width: 200, height: 100 };
+
+    act(() => {
+      result.current.setVariableSlot(slot);
+    });
+    act(() => {
+      result.current.setVariableSlot(null);
+    });
+
+    expect(result.current.variableSlot).toBeNull();
   });
 });
