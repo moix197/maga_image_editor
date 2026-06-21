@@ -10,6 +10,7 @@ Without `DEEPAI_API_KEY` the Cartoonize button is disabled and all other editor 
 
 ## Routes
 
+- `/` — redirects to `/batch` (the workspace is the product entry point; no separate landing page).
 - `/editor` — redirects to `/batch` (permanent redirect via `next/navigation` `redirect()`).
 - `/batch` — unified batch workspace (`src/app/batch/page.tsx`). Houses all compositing work in a single shell with a side-nav and consolidated actions bar.
 
@@ -26,7 +27,7 @@ The batch workspace uses a URL search param to track the active section. Links a
 
 ### Side-nav (`WorkspaceSideNav`)
 
-Rendered by `src/app/batch/layout.tsx`. Vertical on `md+`, horizontal tab strip on mobile. Navigation-only — no business logic.
+Rendered by `src/app/batch/layout.tsx`. Vertical on `md+`, horizontal tab strip on mobile (the layout stacks `flex-col` on mobile so the tab strip sits above the content; `md:flex-row` puts the nav beside it). Navigation-only — no business logic; hosts the `ThemeToggle` in its footer (bottom on `md+`, end of the strip on mobile).
 
 ### Actions bar (`WorkspaceActionsBar`)
 

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function BatchLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col md:flex-row">
       <WorkspaceSideNav />
       <main className="flex-1 overflow-y-auto">
         {children}

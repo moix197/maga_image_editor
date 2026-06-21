@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { SECTIONS, resolveSection } from "./workspace-sections";
 import type { WorkspaceSection } from "./workspace-sections";
 
@@ -60,6 +61,9 @@ function WorkspaceSideNavInner() {
           );
         })}
       </ul>
+      <div className="ml-auto self-center p-1 md:ml-0 md:mt-auto md:self-start">
+        <ThemeToggle />
+      </div>
     </nav>
   );
 }
