@@ -82,6 +82,31 @@ outputs/              # one composite per generated output: outputs/<i>-<stem>.<
 
 The project model (`BatchProject`, `ProjectAsset`, `VariableSlot`, `GeneratedOutput`), the IndexedDB adapter, and the ZIP export/import logic all live in the `@maga/projects` package — see [`packages/projects/README.md`](../../packages/projects/README.md) for the API.
 
+#### Results section preview behavior
+
+The **Results** section contains a big preview block above the output gallery:
+
+- **After Generate All:** the big preview automatically shows the first generated output image — no manual action required. The `selectedOutputId` state in `BatchWorkspace` auto-sets to `outputs[0].overlayAssetId` on the empty→non-empty transition.
+- **Click-to-select:** clicking any thumbnail in `BatchResultsGallery` swaps the big preview to that output. The selected thumbnail is highlighted with a ring (Tailwind `ring-primary`).
+- **Generate Preview fallback:** if no batch outputs exist yet (`outputs` is empty), the big preview shows `compositeDataUrl` from the single-composite Generate Preview flow — the existing behavior is unchanged.
+- **Three-level fallback order:** `selectedOutput.outputBlobKey` → `outputs[0].outputBlobKey` → `compositeDataUrl` → nothing (block hidden).
+- **Stale-id guard:** if `selectedOutputId` points to an id that no longer exists in `outputs` (e.g., after clearing and regenerating), the preview falls back to `outputs[0]` then `compositeDataUrl`.
+- **Clear resets selection:** when `outputs` is cleared, `selectedOutputId` resets to `null`; the big preview falls back to `compositeDataUrl` or hides.
+
+#### `OutputCard` props (`src/components/batch/OutputCard.tsx`)
+
+```tsx
+<OutputCard
+  output={output}            // GeneratedOutput — the rendered composite
+  overlays={overlays}        // ProjectAsset[] — to resolve filename from overlayAssetId
+  isSelected={boolean}       // highlights the card with a ring when true
+  onClick={() => void}       // optional; when present, card is keyboard-focusable (role="button", tabIndex=0, Enter/Space)
+/>
+```
+
+- When `onClick` is provided: `role="button"`, `tabIndex={0}`, `aria-pressed={isSelected}`, keyboard Enter/Space trigger.
+- Download button `stopPropagation` so clicking it never fires the card's `onClick`.
+
 #### Key client helpers
 
 - `coverCropDataUrl(src, slotW, slotH)` (`src/lib/cover-crop.ts`) — center-crops a source image to exactly `slotW × slotH` using cover-fit math, returning a fitted data URL so the composite post-pass blits it 1:1 without distortion.

@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WorkspaceActionsBar } from "./WorkspaceActionsBar";
 import { BulkTextPanel } from "./BulkTextPanel";
-import { SCHEMA_VERSION, type BatchProject } from "@maga/projects";
+import { SCHEMA_VERSION, type BatchProject, type GeneratedOutput, type ProjectAsset } from "@maga/projects";
 import { isTextNode, isOverlayNode, isBorderOverlay } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
 import { resolveSection } from "./workspace-sections";
@@ -47,6 +47,22 @@ function BatchWorkspaceInner() {
   const [activeOverlayId, setActiveOverlayId] = useState<string | null>(
     overlays[0]?.id ?? null,
   );
+
+  // Track which generated output is highlighted in the Results big preview.
+  // Auto-selects the first output when outputs go from empty to non-empty.
+  // Resets to null when outputs are cleared.
+  const [selectedOutputId, setSelectedOutputId] = useState<string | null>(null);
+  const prevOutputsLengthRef = useRef<number>(outputs.length);
+  useEffect(() => {
+    const prevLen = prevOutputsLengthRef.current;
+    const curLen = outputs.length;
+    prevOutputsLengthRef.current = curLen;
+    if (curLen === 0) {
+      setSelectedOutputId(null);
+    } else if (prevLen === 0 && curLen > 0) {
+      setSelectedOutputId(outputs[0]!.overlayAssetId);
+    }
+  }, [outputs]);
 
   useEffect(() => {
     setActiveOverlayId((prev) => {
@@ -465,19 +481,14 @@ function BatchWorkspaceInner() {
         )}
 
         {activeSection === "results" && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Results</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Generated composite images.</p>
-            </div>
-            {compositeDataUrl && <PreviewCard dataUrl={compositeDataUrl} />}
-            <BatchResultsGallery
-              outputs={outputs}
-              overlays={overlays}
-              progress={batchRender.progress}
-              isRunning={batchRender.isRunning}
-            />
-          </div>
+          <ResultsSection
+            outputs={outputs}
+            overlays={overlays}
+            batchRender={batchRender}
+            compositeDataUrl={compositeDataUrl}
+            selectedOutputId={selectedOutputId}
+            onSelectOutput={setSelectedOutputId}
+          />
         )}
       </div>
     </div>
@@ -531,6 +542,49 @@ function ItemTextPanel({ overlayAssetId, overlayLabel, textNodes, itemText }: It
           </div>
         );
       })}
+    </div>
+  );
+}
+
+interface ResultsSectionProps {
+  outputs: GeneratedOutput[];
+  overlays: ProjectAsset[];
+  batchRender: ReturnType<typeof useBatchRender>;
+  compositeDataUrl: string | null;
+  selectedOutputId: string | null;
+  onSelectOutput: (id: string) => void;
+}
+
+function ResultsSection({
+  outputs,
+  overlays,
+  batchRender,
+  compositeDataUrl,
+  selectedOutputId,
+  onSelectOutput,
+}: ResultsSectionProps) {
+  // Three-level fallback: selected output → first output → compositeDataUrl
+  const selectedOutput = selectedOutputId != null
+    ? outputs.find((o) => o.overlayAssetId === selectedOutputId) ?? null
+    : null;
+  const previewDataUrl =
+    (selectedOutput?.outputBlobKey ?? outputs[0]?.outputBlobKey ?? compositeDataUrl) || null;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Results</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Generated composite images.</p>
+      </div>
+      {previewDataUrl && <PreviewCard dataUrl={previewDataUrl} />}
+      <BatchResultsGallery
+        outputs={outputs}
+        overlays={overlays}
+        progress={batchRender.progress}
+        isRunning={batchRender.isRunning}
+        selectedOutputId={selectedOutputId}
+        onSelectOutput={onSelectOutput}
+      />
     </div>
   );
 }

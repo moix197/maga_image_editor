@@ -343,6 +343,37 @@ describe("useBatchRender", () => {
     expect(updateTextNode).not.toHaveBeenCalled();
   });
 
+  it("batch run produces non-empty outputs — addOutput called at least once per overlay", async () => {
+    // Phase 1: Generate All fills outputs[] via addOutput; it does NOT touch
+    // compositeDataUrl. The Results section big preview is driven by
+    // outputs[0].outputBlobKey (not compositeDataUrl) after a batch run.
+    const overlays = [makeOverlay("a"), makeOverlay("b")];
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot)
+    );
+
+    const collectedOutputs: { overlayAssetId: string; outputBlobKey: string }[] = [];
+    const mockAddOutput = vi.fn((o: { overlayAssetId: string; outputBlobKey: string }) => {
+      collectedOutputs.push(o);
+    });
+
+    await act(async () => {
+      await result.current.run(
+        mockAddOutput,
+        vi.fn(),
+        canvasEl,
+        vi.fn<() => NodeId | null>().mockReturnValue(null),
+        vi.fn(),
+      );
+    });
+
+    // outputs is non-empty after a batch run
+    expect(collectedOutputs.length).toBeGreaterThan(0);
+    // one output per overlay
+    expect(collectedOutputs).toHaveLength(overlays.length);
+    // compositeDataUrl is NOT asserted here — Generate All never sets it
+  });
+
   it("iterates ALL overlays regardless of any external activeOverlayId — batch loop is unaffected by preview selection", async () => {
     // activeOverlayId lives in BatchWorkspace state and controls only the
     // preview canvas; useBatchRender receives the full list and must produce
