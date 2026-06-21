@@ -71,13 +71,13 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 
 **Steps:**
 
-- [ ] Add `selectedOutputId` state to `BatchWorkspace.tsx`; write `useEffect` that sets it to `outputs[0]?.overlayAssetId ?? null` when `outputs` goes from 0 to non-zero (do not reset on every render — only the empty→non-empty transition); reset to `null` when `outputs` is cleared
-- [ ] Derive `previewDataUrl` with the three-level fallback (selected → first → compositeDataUrl) as a `useMemo` or inline derived variable; if `selectedOutputId` is non-null but not found in the current `outputs` array (stale id after regeneration), fall back to `outputs[0]` then `compositeDataUrl`; replace the big preview block's `src` binding
-- [ ] Extend `OutputCard` to accept `onClick`, `isSelected`; add accessible keyboard handler; style selected state with a ring or border using Tailwind utilities
-- [ ] Extend `BatchResultsGallery` to accept and thread `onSelectOutput` + `selectedOutputId`; pass per-card `isSelected={card.overlayAssetId === selectedOutputId}` and `onClick={() => onSelectOutput(card.overlayAssetId)}`
-- [ ] Wire `onSelectOutput` from `BatchWorkspace` → `BatchResultsGallery` → `OutputCard`
-- [ ] Verify: Generate Preview still works (sets `compositeDataUrl`; if no output selected yet, big block uses it)
-- [ ] Update `apps/web/README.md`: document Results section preview behavior
+- [x] Add `selectedOutputId` state to `BatchWorkspace.tsx`; write `useEffect` that sets it to `outputs[0]?.overlayAssetId ?? null` when `outputs` goes from 0 to non-zero (do not reset on every render — only the empty→non-empty transition); reset to `null` when `outputs` is cleared
+- [x] Derive `previewDataUrl` with the three-level fallback (selected → first → compositeDataUrl) as a `useMemo` or inline derived variable; if `selectedOutputId` is non-null but not found in the current `outputs` array (stale id after regeneration), fall back to `outputs[0]` then `compositeDataUrl`; replace the big preview block's `src` binding
+- [x] Extend `OutputCard` to accept `onClick`, `isSelected`; add accessible keyboard handler; style selected state with a ring or border using Tailwind utilities
+- [x] Extend `BatchResultsGallery` to accept and thread `onSelectOutput` + `selectedOutputId`; pass per-card `isSelected={card.overlayAssetId === selectedOutputId}` and `onClick={() => onSelectOutput(card.overlayAssetId)}`
+- [x] Wire `onSelectOutput` from `BatchWorkspace` → `BatchResultsGallery` → `OutputCard`
+- [x] Verify: Generate Preview still works (sets `compositeDataUrl`; if no output selected yet, big block uses it)
+- [x] Update `apps/web/README.md`: document Results section preview behavior
 
 **Tests:**
 
@@ -88,7 +88,7 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test`
+- [x] Automated tests pass: `pnpm test`
 - [ ] Manual: run Generate All with 3 overlays → big preview immediately shows output 1 without any click
 - [ ] Manual: click thumbnail 2 → big preview swaps to output 2; click thumbnail 3 → swaps to output 3
 - [ ] Manual: run Generate Preview (single composite) with no outputs → big preview still shows composite URL
@@ -100,12 +100,12 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 - [ ] All Steps and Verification checkboxes above ticked in the plan file
 - [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
-- [ ] Documentation updated (see Documentation section)
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
+- [x] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(workspace): results preview — auto-show first output + click-to-select thumbnail`
+- [x] Changes committed: `feat(workspace): results preview — auto-show first output + click-to-select thumbnail`
 - [ ] Phase marked complete
 
 ---
