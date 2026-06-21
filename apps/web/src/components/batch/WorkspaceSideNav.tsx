@@ -34,7 +34,7 @@ function WorkspaceSideNavInner() {
         "overflow-x-auto md:overflow-x-visible",
       )}
     >
-      <ul role="tablist" aria-orientation="vertical" className="flex flex-row md:flex-col w-full p-1 gap-1">
+      <ul role="tablist" aria-orientation="vertical" className="flex flex-row md:flex-col flex-1 md:flex-none md:w-full p-1 gap-1">
         {SECTIONS.map(({ id, label, Icon }) => {
           const isActive = activeSection === id;
           return (
@@ -61,7 +61,7 @@ function WorkspaceSideNavInner() {
           );
         })}
       </ul>
-      <div className="ml-auto self-center p-1 md:ml-0 md:mt-auto md:self-start">
+      <div className="shrink-0 self-center p-1 md:mt-auto md:self-start">
         <ThemeToggle />
       </div>
     </nav>
