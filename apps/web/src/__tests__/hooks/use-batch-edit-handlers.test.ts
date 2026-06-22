@@ -116,4 +116,33 @@ describe("makeTextEditHandlers", () => {
     expect(updateTextNode).toHaveBeenCalledWith(NODE_1, { content: "template value" });
     expect(setItemTextValue).not.toHaveBeenCalled();
   });
+
+  // Test case 5 (plan requirement): null/undefined activeOverlayId scenario.
+  //
+  // The factory accepts `overlayAssetId` per-call (not at construction time), so
+  // there is no early-return null guard inside makeTextEditHandlers itself.
+  // The null guard lives entirely in BatchWorkspace:
+  //   - ItemTextPanel is only rendered when `activeOverlay && textNodes.length > 0`
+  //     (BatchWorkspace.tsx line ~472), so routedSetItemTextValue / routedSetItemTextStyle
+  //     are never invoked with a null overlayAssetId from that path.
+  //   - BulkTextPanel iterates overlays explicitly and always passes a real id.
+  //
+  // If a caller somehow passes null, the factory forwards it to setItemTextValue /
+  // setItemTextStyle unchanged (unlocked) or ignores it entirely (locked → updateTextNode).
+  // Both outcomes are safe; this test documents the forwarding behavior.
+  it("(5) null overlayAssetId is forwarded to setItemTextValue when layer is unlocked (guard is in BatchWorkspace, not this factory)", () => {
+    const { routedSetItemTextValue, routedSetItemTextStyle, setItemTextValue, setItemTextStyle, updateTextNode } =
+      makeHandlers({ [NODE_1]: false });
+
+    // Cast null to satisfy the string type — simulates a caller bypassing the
+    // BatchWorkspace guard. The factory has no internal null check.
+    routedSetItemTextValue(null as unknown as string, NODE_1, "value");
+    routedSetItemTextStyle(null as unknown as string, NODE_1, { fontSize: 12 });
+
+    // Unlocked: both per-item setters are called (with the null id forwarded).
+    // updateTextNode must NOT be called.
+    expect(setItemTextValue).toHaveBeenCalledWith(null, NODE_1, "value");
+    expect(setItemTextStyle).toHaveBeenCalledWith(null, NODE_1, { fontSize: 12 });
+    expect(updateTextNode).not.toHaveBeenCalled();
+  });
 });

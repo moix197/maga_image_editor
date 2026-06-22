@@ -2,19 +2,23 @@ import { newTextLayerLockDefault } from "@maga/projects";
 import type { TextStyle } from "@maga/projects";
 import type { NodeId, TextNode } from "@maga/editor";
 
-interface MakeTextEditHandlersArgs {
+// --- type declarations ---
+
+export interface MakeTextEditHandlersArgs {
   textLayerLocks: Record<string, boolean>;
   setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
   setItemTextStyle: (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) => void;
   updateTextNode: (id: NodeId, patch: Partial<Omit<TextNode, "id">>) => void;
 }
 
-interface TextEditHandlers {
+export interface TextEditHandlers {
   /** Same signature as setItemTextValue — drop-in replacement that routes by lock state. */
   routedSetItemTextValue: (overlayAssetId: string, nodeId: string, value: string) => void;
   /** Same signature as setItemTextStyle — drop-in replacement that routes by lock state. */
   routedSetItemTextStyle: (overlayAssetId: string, nodeId: string, patch: Partial<TextStyle>) => void;
 }
+
+// --- factory logic ---
 
 /**
  * Pure factory — no React, no side effects beyond calling the passed callbacks.
