@@ -134,7 +134,7 @@ Pure presentational thumbnail strip for switching the active overlay item in the
 
 ### `BulkTextPanel` (`src/components/batch/BulkTextPanel.tsx`)
 
-All-items × text-layers stacked editor rendered in the **Text** workspace section. One card per overlay, one input row per text layer — so N overlays × M text layers = N×M inputs.
+Text workspace section editor supporting both a stacked per-item view and a multi-select bulk edit mode. One card per overlay; when items are selected via checkboxes a Bulk Edit row appears per text layer above the cards.
 
 ```tsx
 <BulkTextPanel
@@ -147,10 +147,33 @@ All-items × text-layers stacked editor rendered in the **Text** workspace secti
 />
 ```
 
-- **Locked layer** (`textLayerLocks[nodeId] === true`): input is disabled and shows the shared template `content`. The same value is used for every item when generating.
-- **Unlocked layer** (default): input is enabled and shows the per-item override (empty string when not yet set; template `content` shown as placeholder).
-- Lock toggle button fires `setTextLayerLock(nodeId, !locked)`. Per-layer — toggling a layer locks/unlocks it across all overlay cards simultaneously.
-- Presentational only — no hooks, no business logic. All state lives in `useBatchProject`.
+#### Multi-select UX
+
+- **Select-all checkbox** in the panel header toggles all overlay items in/out of the selection. Shows an indeterminate state when only some items are selected.
+- **Per-card checkbox** (next to each overlay filename) toggles that item's selection individually.
+- **Selection count** ("2 of 3 selected") is displayed in the header when at least one item is selected.
+
+#### Bulk Edit mode (`selectedOverlayIds.size > 0`)
+
+When one or more items are selected, a **Bulk Edit** section appears above the stacked cards:
+
+- One row per text node, labeled "Text layer N".
+- Typing in a bulk row calls `setItemTextValue(id, nodeId, value)` for **every selected overlay** whose text layer is **unlocked**. Locked layers are skipped.
+- **Diverging values**: when selected items have different existing values for a node, the bulk input shows `value=""` with `placeholder="(multiple values)"`. First keystroke replaces all selected items' values.
+- **Identical values**: when all selected items share the same value, the bulk input shows that value.
+- **Locked layers**: bulk row is disabled; no `setItemTextValue` call is made for that node.
+
+#### No-selection mode (default stacked view)
+
+When `selectedOverlayIds.size === 0` (initial state), the panel renders the original stacked view: one card per overlay, one input per text layer. No regression from the pre-multi-select behavior.
+
+#### Lock model
+
+- Lock toggle button fires `setTextLayerLock(nodeId, !locked)`. Per-layer — toggling locks/unlocks across all overlay cards simultaneously.
+- Locked layer: input disabled, shows shared template `content`.
+- Unlocked layer: per-item override; falls back to template `content` as placeholder.
+
+Internal selection state (`selectedOverlayIds: Set<string>`) is local to `BulkTextPanel` — no lifting to `BatchWorkspace` (no cross-cutting need yet).
 
 ### `CompareLayout` (`src/components/compare-layout.tsx`)
 

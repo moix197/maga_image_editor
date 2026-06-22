@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from "react";
 import { Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +17,41 @@ interface BulkTextPanelProps {
   setTextLayerLock: (textNodeId: string, locked: boolean) => void;
 }
 
+// Returns a new Set with id added if missing, or removed if present.
+function toggleId(set: Set<string>, id: string): Set<string> {
+  const next = new Set(set);
+  if (next.has(id)) {
+    next.delete(id);
+  } else {
+    next.add(id);
+  }
+  return next;
+}
+
+// Collects the per-item value for nodeId across all selectedIds.
+// If all values are identical → { value: thatValue, isMultiple: false }
+// If values differ → { value: "", isMultiple: true }
+function getBulkValue(
+  selectedIds: Set<string>,
+  nodeId: string,
+  itemTextValues: Record<string, Record<string, string>>,
+): { value: string; isMultiple: boolean } {
+  const values = Array.from(selectedIds).map((id) => itemTextValues[id]?.[nodeId] ?? "");
+  const first = values[0] ?? "";
+  const allSame = values.every((v) => v === first);
+  if (allSame) {
+    return { value: first, isMultiple: false };
+  }
+  return { value: "", isMultiple: true };
+}
+
 /**
  * Bulk text editor: one card per overlay item, one row per text layer.
  * Locked rows show the shared template value (input disabled).
  * Unlocked rows show per-item overrides (falling back to template value as placeholder).
  *
- * Presentational only — no hooks, no business logic. All data and callbacks come from props.
+ * When overlays are selected via checkboxes, a Bulk Edit section appears above
+ * the stacked cards to apply the same value to all selected items at once.
  */
 export function BulkTextPanel({
   overlays,
@@ -29,6 +61,8 @@ export function BulkTextPanel({
   setItemTextValue,
   setTextLayerLock,
 }: BulkTextPanelProps) {
+  const [selectedOverlayIds, setSelectedOverlayIds] = useState<Set<string>>(new Set());
+
   if (overlays.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -45,8 +79,90 @@ export function BulkTextPanel({
     );
   }
 
+  const allSelected = overlays.length > 0 && selectedOverlayIds.size === overlays.length;
+  const someSelected = selectedOverlayIds.size > 0 && !allSelected;
+
+  function handleSelectAll() {
+    if (allSelected) {
+      setSelectedOverlayIds(new Set());
+    } else {
+      setSelectedOverlayIds(new Set(overlays.map((o) => o.id)));
+    }
+  }
+
+  function handleToggleOverlay(id: string) {
+    setSelectedOverlayIds((prev) => toggleId(prev, id));
+  }
+
+  function handleBulkChange(nodeId: string, value: string) {
+    for (const id of selectedOverlayIds) {
+      if (!(textLayerLocks[nodeId] ?? false)) {
+        setItemTextValue(id, nodeId, value);
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Panel header: select-all + selection count */}
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          aria-label="Select all"
+          checked={allSelected}
+          ref={(el) => {
+            if (el) el.indeterminate = someSelected;
+          }}
+          onChange={handleSelectAll}
+          className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
+        />
+        <span className="text-sm font-medium">Select all</span>
+        {selectedOverlayIds.size > 0 && (
+          <span className="text-xs text-muted-foreground ml-auto">
+            {selectedOverlayIds.size} of {overlays.length} selected
+          </span>
+        )}
+      </div>
+
+      {/* Bulk edit section — only when something is selected */}
+      {selectedOverlayIds.size > 0 && (
+        <div
+          className="flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-4"
+          aria-label="Bulk edit section"
+        >
+          <h3 className="text-sm font-semibold tracking-tight">Bulk Edit</h3>
+          {textNodes.map((node, i) => {
+            const locked = textLayerLocks[node.id] ?? false;
+            const { value, isMultiple } = getBulkValue(selectedOverlayIds, node.id, itemTextValues);
+            const bulkInputId = `bulk-edit-${node.id}`;
+            return (
+              <div key={node.id} className="flex flex-col gap-1.5">
+                <Label htmlFor={bulkInputId} className="text-xs text-muted-foreground shrink-0">
+                  Text layer {i + 1}
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id={bulkInputId}
+                    value={value}
+                    disabled={locked}
+                    placeholder={isMultiple ? "(multiple values)" : node.content}
+                    className="flex-1 transition-colors duration-150"
+                    onChange={(e) => handleBulkChange(node.id, e.target.value)}
+                    aria-label={
+                      locked
+                        ? `Bulk edit text layer ${i + 1} (locked)`
+                        : `Bulk edit text layer ${i + 1}`
+                    }
+                  />
+                  {locked && <Lock className="size-4 text-muted-foreground shrink-0" />}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Stacked cards — always visible */}
       {overlays.map((overlay) => (
         <OverlayTextCard
           key={overlay.id}
@@ -54,6 +170,8 @@ export function BulkTextPanel({
           textNodes={textNodes}
           itemTextValues={itemTextValues}
           textLayerLocks={textLayerLocks}
+          selected={selectedOverlayIds.has(overlay.id)}
+          onToggleSelect={() => handleToggleOverlay(overlay.id)}
           setItemTextValue={setItemTextValue}
           setTextLayerLock={setTextLayerLock}
         />
@@ -67,6 +185,8 @@ interface OverlayTextCardProps {
   textNodes: TextNode[];
   itemTextValues: Record<string, Record<string, string>>;
   textLayerLocks: Record<string, boolean>;
+  selected: boolean;
+  onToggleSelect: () => void;
   setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
   setTextLayerLock: (textNodeId: string, locked: boolean) => void;
 }
@@ -76,6 +196,8 @@ function OverlayTextCard({
   textNodes,
   itemTextValues,
   textLayerLocks,
+  selected,
+  onToggleSelect,
   setItemTextValue,
   setTextLayerLock,
 }: OverlayTextCardProps) {
@@ -84,9 +206,18 @@ function OverlayTextCard({
       className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
       aria-label={`Text layers for ${overlay.filename}`}
     >
-      <h3 className="text-sm font-semibold tracking-tight truncate" title={overlay.filename}>
-        {overlay.filename}
-      </h3>
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          aria-label={`Select ${overlay.filename}`}
+          checked={selected}
+          onChange={onToggleSelect}
+          className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
+        />
+        <h3 className="text-sm font-semibold tracking-tight truncate" title={overlay.filename}>
+          {overlay.filename}
+        </h3>
+      </div>
 
       {textNodes.map((node, i) => (
         <TextLayerRow

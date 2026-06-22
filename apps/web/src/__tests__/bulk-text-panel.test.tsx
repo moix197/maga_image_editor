@@ -210,4 +210,103 @@ describe("BulkTextPanel", () => {
     expect((inputs[0] as HTMLInputElement).value).toBe("");
     expect((inputs[0] as HTMLInputElement).placeholder).toBe("Hello");
   });
+
+  // ── Phase 2: multi-select + bulk edit ──────────────────────────────────────
+
+  describe("BulkTextPanel — multi-select + bulk edit", () => {
+    it("no-selection renders stacked view (no bulk edit section)", () => {
+      const props = makeProps();
+      render(<BulkTextPanel {...props} />);
+      expect(screen.queryByLabelText(/bulk edit section/i)).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/text layers for ov1\.png/i)).toBeInTheDocument();
+    });
+
+    it("checkbox toggles selection — selecting ov1 shows bulk edit section", () => {
+      const props = makeProps();
+      render(<BulkTextPanel {...props} />);
+      const checkbox = screen.getByLabelText(/select ov1\.png/i);
+      fireEvent.click(checkbox);
+      expect(screen.getByLabelText(/bulk edit section/i)).toBeInTheDocument();
+    });
+
+    it("select-all checkbox selects all overlays", () => {
+      const props = makeProps();
+      render(<BulkTextPanel {...props} />);
+      const selectAll = screen.getByLabelText(/select all/i);
+      fireEvent.click(selectAll);
+      expect(screen.getByLabelText(/bulk edit section/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/select ov1\.png/i)).toBeChecked();
+      expect(screen.getByLabelText(/select ov2\.png/i)).toBeChecked();
+    });
+
+    it("select-all when all selected deselects all", () => {
+      const props = makeProps();
+      render(<BulkTextPanel {...props} />);
+      const selectAll = screen.getByLabelText(/select all/i);
+      fireEvent.click(selectAll); // select all
+      fireEvent.click(selectAll); // deselect all
+      expect(screen.queryByLabelText(/bulk edit section/i)).not.toBeInTheDocument();
+    });
+
+    it("bulk edit: typing calls setItemTextValue for all selected unlocked items", () => {
+      const setItemTextValue = vi.fn();
+      const props = makeProps({ setItemTextValue });
+      render(<BulkTextPanel {...props} />);
+
+      fireEvent.click(screen.getByLabelText(/select ov1\.png/i));
+      fireEvent.click(screen.getByLabelText(/select ov2\.png/i));
+
+      const bulkInput = screen.getByLabelText(/bulk edit text layer 1$/i);
+      fireEvent.change(bulkInput, { target: { value: "Bulk text" } });
+
+      expect(setItemTextValue).toHaveBeenCalledTimes(2);
+      expect(setItemTextValue).toHaveBeenCalledWith("ov1", "tn1", "Bulk text");
+      expect(setItemTextValue).toHaveBeenCalledWith("ov2", "tn1", "Bulk text");
+    });
+
+    it("bulk edit: locked node input is disabled and setItemTextValue NOT called", () => {
+      const setItemTextValue = vi.fn();
+      const props = makeProps({
+        setItemTextValue,
+        textLayerLocks: { tn1: true },
+      });
+      render(<BulkTextPanel {...props} />);
+
+      fireEvent.click(screen.getByLabelText(/select ov1\.png/i));
+      fireEvent.click(screen.getByLabelText(/select ov2\.png/i));
+
+      const bulkInput = screen.getByLabelText(/bulk edit text layer 1/i);
+      expect(bulkInput).toBeDisabled();
+
+      fireEvent.change(bulkInput, { target: { value: "Should not apply" } });
+      expect(setItemTextValue).not.toHaveBeenCalled();
+    });
+
+    it("bulk edit: diverging values shows (multiple values) placeholder", () => {
+      const props = makeProps({
+        itemTextValues: { ov1: { tn1: "Apple" }, ov2: { tn1: "Banana" } },
+      });
+      render(<BulkTextPanel {...props} />);
+
+      fireEvent.click(screen.getByLabelText(/select ov1\.png/i));
+      fireEvent.click(screen.getByLabelText(/select ov2\.png/i));
+
+      const bulkInput = screen.getByLabelText(/bulk edit text layer 1$/i) as HTMLInputElement;
+      expect(bulkInput.value).toBe("");
+      expect(bulkInput.placeholder).toBe("(multiple values)");
+    });
+
+    it("bulk edit: identical values across selected items shows the shared value", () => {
+      const props = makeProps({
+        itemTextValues: { ov1: { tn1: "Same" }, ov2: { tn1: "Same" } },
+      });
+      render(<BulkTextPanel {...props} />);
+
+      fireEvent.click(screen.getByLabelText(/select ov1\.png/i));
+      fireEvent.click(screen.getByLabelText(/select ov2\.png/i));
+
+      const bulkInput = screen.getByLabelText(/bulk edit text layer 1$/i) as HTMLInputElement;
+      expect(bulkInput.value).toBe("Same");
+    });
+  });
 });
