@@ -2,7 +2,7 @@
 
 import type { RefObject } from "react";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
-import { isTextNode, isOverlayNode, isBorderOverlay } from "@maga/editor";
+import { isBorderOverlay } from "@maga/editor";
 import type { ProjectAsset } from "@maga/projects";
 import type { TextStyle } from "@maga/projects";
 import type { WorkspaceSection } from "./workspace-sections";
