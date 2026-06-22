@@ -1,6 +1,6 @@
 import { newTextLayerLockDefault } from "@maga/projects";
 import type { TextStyle } from "@maga/projects";
-import type { NodeId, TextNode } from "@maga/editor";
+import type { NodeId } from "@maga/editor";
 
 // --- type declarations ---
 
@@ -8,7 +8,8 @@ export interface MakeTextEditHandlersArgs {
   textLayerLocks: Record<string, boolean>;
   setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
   setItemTextStyle: (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) => void;
-  updateTextNode: (id: NodeId, patch: Partial<Omit<TextNode, "id">>) => void;
+  /** Accepts both content patches and style patches — both are valid subsets of TextNode. */
+  updateTextNode: (id: NodeId, patch: { content: string } | Partial<TextStyle>) => void;
 }
 
 export interface TextEditHandlers {
@@ -55,7 +56,7 @@ export function makeTextEditHandlers({
     patch: Partial<TextStyle>,
   ): void {
     if (isLocked(nodeId)) {
-      updateTextNode(nodeId as NodeId, patch as Partial<Omit<TextNode, "id">>);
+      updateTextNode(nodeId as NodeId, patch);
     } else {
       setItemTextStyle(overlayAssetId, nodeId, patch);
     }
