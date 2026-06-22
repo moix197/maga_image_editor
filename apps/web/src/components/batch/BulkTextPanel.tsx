@@ -232,12 +232,10 @@ export function BulkTextPanel({
                   onDelete={() => undefined}
                   onReorder={() => undefined}
                   hideControls
-                  className={
-                    locked
-                      ? "pointer-events-none opacity-50 flex flex-col gap-4 rounded-lg border border-border bg-card p-4"
-                      : "flex flex-col gap-4 rounded-lg border border-border bg-card p-4"
-                  }
-                  aria-disabled={locked}
+                  disabled={locked}
+                  className={`flex flex-col gap-4 rounded-lg border border-border bg-card p-4${
+                    locked ? " pointer-events-none opacity-50" : ""
+                  }`}
                 />
               </div>
             );

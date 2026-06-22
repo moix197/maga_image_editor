@@ -255,13 +255,13 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 
 **Steps:**
 
-- [ ] **Remove the Phase 3a temporary dev button** from `BulkTextPanel` (the `// TODO: remove in Phase 3b` override button) — this is the first step of 3b so it is never left in a shipped build
-- [ ] Identify the exact component used for text styling in the Template section (likely `TextStylePanel` in `apps/web/src/components/text-style-panel.tsx` per the `.ai` index; confirm file path). This component must be reused without modification — if it requires refactoring to accept callbacks, scope refactoring to callback prop extraction only (CLAUDE.md: minimal changes, preserve existing behavior)
-- [ ] Confirm `TextStylePanel` (or equivalent) is generic enough to accept callbacks — it should already accept style values + onChange callbacks since it's used in the Template editor. If it has hard-wired state or side effects, extract the pure presentational layer as a thin wrapper; do NOT duplicate it
-- [ ] Wire `TextStylePanel` in the bulk edit area of `BulkTextPanel`: compute display style as the style of the first selected item's text node (or merged/mixed where divergent); on `onChange`, call `setTextStyle` for all selected unlocked items
-- [ ] "Mixed" state: when selected items have different style values for a field, show placeholder or empty input (do not pick one arbitrarily); first user change in that field applies the new value to all selected items
-- [ ] Locked layers: style panel row for a locked layer is disabled (same as content row); consistent with Phase 2's lock behavior
-- [ ] Update `apps/web/README.md`: document per-variant text styling, lock model covering both content and style
+- [x] **Remove the Phase 3a temporary dev button** from `BulkTextPanel` (the `// TODO: remove in Phase 3b` override button) — this is the first step of 3b so it is never left in a shipped build
+- [x] Identify the exact component used for text styling in the Template section — confirmed `TextStylePanel` at `apps/web/src/components/text-style-panel.tsx`. Reused with minimal presentational-only additions (`hideControls`, `className`, `disabled` props); existing Template usage unchanged (defaults preserve old behavior)
+- [x] Confirm `TextStylePanel` is generic enough to accept callbacks — it already accepts `node` + `onChange`; no business logic added to the shared component
+- [x] Wire `TextStylePanel` in the bulk edit area of `BulkTextPanel`: display style computed via `getMergedStyle`/`buildDisplayNode` (first selected item's style, merged across selection); on `onChange`, call `setItemTextStyle` for all selected unlocked items
+- [x] "Mixed" state: divergent style fields across selected items are omitted from the merged display (fall back to template value since the controls can't render truly empty); first change in a field applies the new value to all selected items
+- [x] Locked layers: style panel for a locked layer is disabled (`pointer-events-none opacity-50` + `aria-disabled`); mutation guard blocks changes; consistent with Phase 2's lock behavior
+- [x] Update `apps/web/README.md`: document per-variant text styling, lock model covering both content and style
 
 **Tests:**
 
@@ -271,7 +271,7 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test`
+- [x] Automated tests pass: `pnpm test`
 - [ ] Manual: select 2 variants → style panel appears; change font size → both selected variants update; unselected variant unaffected
 - [ ] Manual: generate All → selected variants render at overridden font size; others at template size
 - [ ] Manual: lock a layer → style panel disabled for that layer's row; unlocking re-enables it
@@ -282,12 +282,12 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 - [ ] All Steps and Verification checkboxes above ticked in the plan file
 - [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
-- [ ] Documentation updated (see Documentation section)
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
+- [x] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(workspace): per-variant text styling — full style controls in text tab multi-select`
+- [x] Changes committed: `feat(workspace): per-variant text styling — full style controls in text tab multi-select`
 - [ ] Phase marked complete
 
 ---
