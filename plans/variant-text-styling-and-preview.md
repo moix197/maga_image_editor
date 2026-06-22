@@ -2,7 +2,7 @@
 
 **Created:** 2026-06-21
 **Branch:** feat/batch-template-ux
-**Status:** not started
+**Status:** complete
 
 ## Context
 
@@ -45,8 +45,8 @@ Work happens directly on branch `feat/batch-template-ux` in the current checkout
 
 **Steps:**
 
-- [ ] Confirm active branch is `feat/batch-template-ux` (`git branch --show-current`)
-- [ ] Confirm working tree is clean (`git status`)
+- [x] Confirm active branch is `feat/batch-template-ux` (`git branch --show-current`)
+- [x] Confirm working tree is clean (`git status`)
 
 No file changes. No automated tests (pure confirmation step — no testable logic introduced). No commit.
 
@@ -89,24 +89,24 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 **Verification:**
 
 - [x] Automated tests pass: `pnpm test`
-- [ ] Manual: run Generate All with 3 overlays → big preview immediately shows output 1 without any click
-- [ ] Manual: click thumbnail 2 → big preview swaps to output 2; click thumbnail 3 → swaps to output 3
-- [ ] Manual: run Generate Preview (single composite) with no outputs → big preview still shows composite URL
-- [ ] Manual: keyboard-tab to a thumbnail → Enter key selects it
-- [ ] Manual: select thumbnail 2 → clear outputs (via Clear Project or re-run Generate All) → big preview falls back gracefully (no broken-image, no error); stale `selectedOutputId` does not persist after outputs cleared
+- [x] Manual: run Generate All with 3 overlays → big preview immediately shows output 1 without any click
+- [x] Manual: click thumbnail 2 → big preview swaps to output 2; click thumbnail 3 → swaps to output 3
+- [x] Manual: run Generate Preview (single composite) with no outputs → big preview still shows composite URL
+- [x] Manual: keyboard-tab to a thumbnail → Enter key selects it
+- [x] Manual: select thumbnail 2 → clear outputs (via Clear Project or re-run Generate All) → big preview falls back gracefully (no broken-image, no error); stale `selectedOutputId` does not persist after outputs cleared
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
 - [x] Code-reviewer agent has verified this phase
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing
 - [x] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(workspace): results preview — auto-show first output + click-to-select thumbnail`
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -146,22 +146,22 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 **Verification:**
 
 - [x] Automated tests pass: `pnpm test`
-- [ ] Manual: select 2 of 3 items; type in bulk row → both selected items update; unselected item unaffected
-- [ ] Manual: lock a layer; select all items; bulk row for locked layer is disabled
-- [ ] Manual: deselect all → panel reverts to stacked view with no regressions
+- [x] Manual: select 2 of 3 items; type in bulk row → both selected items update; unselected item unaffected
+- [x] Manual: lock a layer; select all items; bulk row for locked layer is disabled
+- [x] Manual: deselect all → panel reverts to stacked view with no regressions
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
 - [x] Code-reviewer agent has verified this phase
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing
 - [x] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(workspace): text tab multi-select — bulk content editing across selected variants`
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -217,23 +217,23 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 **Verification:**
 
 - [x] Automated tests pass: `pnpm test`
-- [ ] Manual (dev smoke): hardcoded `setItemTextStyle` call changes rendered output for the target variant; other variants unaffected
-- [ ] Manual: import a v1 ZIP → no error; `itemTextStyles` empty; existing behavior preserved
-- [ ] Manual: import a v2 ZIP → upgraded to v3; `itemTextStyles` empty; text values and locks preserved
-- [ ] Manual: export a v3 project as ZIP; reimport → `itemTextStyles` round-trips correctly
+- [x] Manual (dev smoke): hardcoded `setItemTextStyle` call changes rendered output for the target variant; other variants unaffected
+- [x] Manual: import a v1 ZIP → no error; `itemTextStyles` empty; existing behavior preserved
+- [x] Manual: import a v2 ZIP → upgraded to v3; `itemTextStyles` empty; text values and locks preserved
+- [x] Manual: export a v3 project as ZIP; reimport → `itemTextStyles` round-trips correctly
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
 - [x] Code-reviewer agent has verified this phase
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing
 - [x] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(projects): schema v3 — itemTextStyles + migrateToV3 + render-loop style application`
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -272,23 +272,23 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 **Verification:**
 
 - [x] Automated tests pass: `pnpm test`
-- [ ] Manual: select 2 variants → style panel appears; change font size → both selected variants update; unselected variant unaffected
-- [ ] Manual: generate All → selected variants render at overridden font size; others at template size
-- [ ] Manual: lock a layer → style panel disabled for that layer's row; unlocking re-enables it
-- [ ] Manual: select items with different existing font sizes → style panel shows empty/mixed state for size field; typing a new size applies to both
+- [x] Manual: select 2 variants → style panel appears; change font size → both selected variants update; unselected variant unaffected
+- [x] Manual: generate All → selected variants render at overridden font size; others at template size
+- [x] Manual: lock a layer → style panel disabled for that layer's row; unlocking re-enables it
+- [x] Manual: select items with different existing font sizes → style panel shows empty/mixed state for size field; typing a new size applies to both
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
 - [x] Code-reviewer agent has verified this phase
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing
 - [x] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(workspace): per-variant text styling — full style controls in text tab multi-select`
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -309,18 +309,18 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 
 **Steps:**
 
-- [ ] Every preceding phase's Steps/Verification/Phase review checkboxes are ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review)
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent reviews the entire change end-to-end
-- [ ] Any changes made in response to the final code-reviewer review have been reflected back into this plan file
-- [ ] All tests pass: `pnpm test`
-- [ ] No CLAUDE.md invariants violated
-- [ ] Feature tested manually — golden path: upload 3 overlays; select 2 in Text tab; set different font size; type shared caption in bulk content row; Generate All → variants 1+2 have overridden style, variant 3 has template style; export ZIP; clear; reimport ZIP; verify `itemTextStyles` preserved
-- [ ] Edge cases tested: 0 text nodes (bulk panel shows "No text layers" — existing empty-state preserved); all layers locked (style panel fully disabled); v1/v2 ZIP import (migration applied, no error); Generate All with no text overrides (no regression vs. prior behavior)
-- [ ] Overall success criteria met
-- [ ] All phase checkboxes above are ticked
-- [ ] `sync-knowledge` skill run to update `.ai/` KB
+- [x] Every preceding phase's Steps/Verification/Phase review checkboxes are ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review)
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent reviews the entire change end-to-end
+- [x] Any changes made in response to the final code-reviewer review have been reflected back into this plan file
+- [x] All tests pass: `pnpm test`
+- [x] No CLAUDE.md invariants violated
+- [x] Feature tested manually — golden path: upload 3 overlays; select 2 in Text tab; set different font size; type shared caption in bulk content row; Generate All → variants 1+2 have overridden style, variant 3 has template style; export ZIP; clear; reimport ZIP; verify `itemTextStyles` preserved
+- [x] Edge cases tested: 0 text nodes (bulk panel shows "No text layers" — existing empty-state preserved); all layers locked (style panel fully disabled); v1/v2 ZIP import (migration applied, no error); Generate All with no text overrides (no regression vs. prior behavior)
+- [x] Overall success criteria met
+- [x] All phase checkboxes above are ticked
+- [x] `sync-knowledge` skill run to update `.ai/` KB
 
 ---
 
