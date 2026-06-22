@@ -278,6 +278,8 @@ function BatchWorkspaceInner() {
     itemTextValues ?? {},
     itemTextStyles ?? {},
     textLayerLocks ?? {},
+    variableSlotNodeId,
+    activeOverlay?.blobKey ?? null,
   );
 
   const { routedSetItemTextValue, routedSetItemTextStyle } = useMemo(

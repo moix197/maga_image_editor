@@ -33,6 +33,64 @@ function makeBase(...textNodes: { id: string; content: string; fontSize?: number
   };
 }
 
+/** Makes a minimal EditorState with one overlay node (non-text) at the given id/src. */
+function makeBaseWithOverlayNode(id: string, src: string): EditorState {
+  return {
+    nodes: [
+      {
+        id: makeNodeId(id),
+        src,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        rotation: 0,
+        zIndex: 0,
+        opacity: 1,
+        feather: 0,
+        cornerRadius: 0,
+      } as unknown as EditorState["nodes"][number],
+    ],
+  };
+}
+
+/** Makes an EditorState with one overlay node + one text node. */
+function makeBaseWithMixedNodes(slotId: string, slotSrc: string, textId: string, textContent: string): EditorState {
+  return {
+    nodes: [
+      {
+        id: makeNodeId(slotId),
+        src: slotSrc,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        rotation: 0,
+        zIndex: 0,
+        opacity: 1,
+        feather: 0,
+        cornerRadius: 0,
+      } as unknown as EditorState["nodes"][number],
+      {
+        id: makeNodeId(textId),
+        content: textContent,
+        x: 0,
+        y: 0,
+        rotation: 0,
+        zIndex: 1,
+        fontSize: 16,
+        color: "#000000",
+        opacity: 1,
+        fontFamily: "Arial",
+        fontWeight: "400",
+        fontStyle: "normal",
+        shadow: null,
+        textBackground: null,
+      } as unknown as EditorState["nodes"][number],
+    ],
+  };
+}
+
 const OVERLAY_A = "overlay-a";
 const NODE_1 = "node-1";
 const NODE_2 = "node-2";
@@ -194,5 +252,197 @@ describe("usePreviewEditorState", () => {
     const n2 = result.current.nodes.find((n) => n.id === NODE_2)!;
     expect(n1).toHaveProperty("content", "locked-template");
     expect(n2).toHaveProperty("content", "override");
+  });
+
+  // --- Variable-slot overlay-image swap (Change 1) ---
+
+  it("(slot-a) slot node src is swapped to activeOverlayBlobKey when variableSlotNodeId matches", () => {
+    const SLOT_ID = "slot-node";
+    const OLD_SRC = "blob:old-key";
+    const NEW_SRC = "blob:new-key";
+    const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
+    const itemTextValues: Record<string, Record<string, string>> = {};
+    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const textLayerLocks: Record<string, boolean> = {};
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(
+        base,
+        OVERLAY_A,
+        itemTextValues,
+        itemTextStyles,
+        textLayerLocks,
+        makeNodeId(SLOT_ID),
+        NEW_SRC,
+      ),
+    );
+
+    const node = result.current.nodes.find((n) => n.id === SLOT_ID)!;
+    expect((node as unknown as { src: string }).src).toBe(NEW_SRC);
+  });
+
+  it("(slot-b) non-slot overlay nodes are left unchanged", () => {
+    const SLOT_ID = "slot-node";
+    const OTHER_ID = "other-node";
+    const base: EditorState = {
+      nodes: [
+        {
+          id: makeNodeId(SLOT_ID),
+          src: "blob:new-key",
+          x: 0, y: 0, width: 100, height: 100, rotation: 0, zIndex: 0, opacity: 1, feather: 0, cornerRadius: 0,
+        } as unknown as EditorState["nodes"][number],
+        {
+          id: makeNodeId(OTHER_ID),
+          src: "blob:other-original",
+          x: 0, y: 0, width: 100, height: 100, rotation: 0, zIndex: 1, opacity: 1, feather: 0, cornerRadius: 0,
+        } as unknown as EditorState["nodes"][number],
+      ],
+    };
+    const itemTextValues: Record<string, Record<string, string>> = {};
+    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const textLayerLocks: Record<string, boolean> = {};
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(
+        base,
+        OVERLAY_A,
+        itemTextValues,
+        itemTextStyles,
+        textLayerLocks,
+        makeNodeId(SLOT_ID),
+        "blob:new-key",
+      ),
+    );
+
+    const other = result.current.nodes.find((n) => n.id === OTHER_ID)!;
+    expect((other as unknown as { src: string }).src).toBe("blob:other-original");
+  });
+
+  it("(slot-c) when variableSlotNodeId is null, no overlay node src is changed", () => {
+    const SLOT_ID = "slot-node";
+    const OLD_SRC = "blob:old-key";
+    const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
+    const itemTextValues: Record<string, Record<string, string>> = {};
+    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const textLayerLocks: Record<string, boolean> = {};
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(
+        base,
+        OVERLAY_A,
+        itemTextValues,
+        itemTextStyles,
+        textLayerLocks,
+        null,
+        "blob:new-key",
+      ),
+    );
+
+    // No text overrides and no slot swap — base returned as-is
+    expect(result.current).toBe(base);
+  });
+
+  it("(slot-d) slot swap applies even when there are NO text overrides", () => {
+    const SLOT_ID = "slot-node";
+    const OLD_SRC = "blob:old-key";
+    const NEW_SRC = "blob:new-key";
+    const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
+    const itemTextValues: Record<string, Record<string, string>> = {};
+    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const textLayerLocks: Record<string, boolean> = {};
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(
+        base,
+        null,  // no active overlay id — but slot swap should still apply
+        itemTextValues,
+        itemTextStyles,
+        textLayerLocks,
+        makeNodeId(SLOT_ID),
+        NEW_SRC,
+      ),
+    );
+
+    const node = result.current.nodes.find((n) => n.id === SLOT_ID)!;
+    expect((node as unknown as { src: string }).src).toBe(NEW_SRC);
+  });
+
+  it("(slot-e) purity — base is not mutated by a slot swap", () => {
+    const SLOT_ID = "slot-node";
+    const OLD_SRC = "blob:old-key";
+    const NEW_SRC = "blob:new-key";
+    const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
+    const originalNode = base.nodes[0]!;
+    const itemTextValues: Record<string, Record<string, string>> = {};
+    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const textLayerLocks: Record<string, boolean> = {};
+
+    renderHook(() =>
+      usePreviewEditorState(
+        base,
+        OVERLAY_A,
+        itemTextValues,
+        itemTextStyles,
+        textLayerLocks,
+        makeNodeId(SLOT_ID),
+        NEW_SRC,
+      ),
+    );
+
+    // The original node in base must not be touched
+    expect((originalNode as unknown as { src: string }).src).toBe(OLD_SRC);
+  });
+
+  it("(slot-f) memoization — same slot params in → same derived object out", () => {
+    const SLOT_ID = "slot-node";
+    const NEW_SRC = "blob:new-key";
+    const base = makeBaseWithOverlayNode(SLOT_ID, "blob:old-key");
+    const itemTextValues: Record<string, Record<string, string>> = {};
+    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const textLayerLocks: Record<string, boolean> = {};
+    const slotNodeId = makeNodeId(SLOT_ID);
+
+    const { result, rerender } = renderHook(() =>
+      usePreviewEditorState(
+        base,
+        OVERLAY_A,
+        itemTextValues,
+        itemTextStyles,
+        textLayerLocks,
+        slotNodeId,
+        NEW_SRC,
+      ),
+    );
+
+    const first = result.current;
+    rerender();
+    expect(result.current).toBe(first);
+  });
+
+  it("(slot-g) slot swap and unlocked text override both apply in one derived state", () => {
+    const SLOT_ID = "slot-node";
+    const TEXT_ID = "text-node";
+    const NEW_SRC = "blob:new-key";
+    const base = makeBaseWithMixedNodes(SLOT_ID, "blob:old-key", TEXT_ID, "template text");
+    const itemTextValues = { [OVERLAY_A]: { [TEXT_ID]: "per-item text" } };
+    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const textLayerLocks: Record<string, boolean> = {};
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(
+        base,
+        OVERLAY_A,
+        itemTextValues,
+        itemTextStyles,
+        textLayerLocks,
+        makeNodeId(SLOT_ID),
+        NEW_SRC,
+      ),
+    );
+
+    const slot = result.current.nodes.find((n) => n.id === makeNodeId(SLOT_ID))!;
+    const text = result.current.nodes.find((n) => n.id === makeNodeId(TEXT_ID))!;
+    expect(slot).toHaveProperty("src", NEW_SRC);
+    expect(text).toHaveProperty("content", "per-item text");
   });
 });

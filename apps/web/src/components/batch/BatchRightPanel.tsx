@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock, Unlock } from "lucide-react";
+import { Collapsible } from "@/components/ui/collapsible";
 
 interface BatchRightPanelProps {
   activeSection: WorkspaceSection;
@@ -139,44 +140,54 @@ export function BatchRightPanel({
             </div>
 
             {editorState.state.nodes.length > 0 && (
-              <LayerStackPanel
-                nodes={editorState.state.nodes}
-                onReorderNode={(id, dir) => editorState.reorderNode(id, dir)}
-              />
+              <Collapsible title="Layers">
+                <div className="pt-2">
+                  <LayerStackPanel
+                    nodes={editorState.state.nodes}
+                    onReorderNode={(id, dir) => editorState.reorderNode(id, dir)}
+                  />
+                </div>
+              </Collapsible>
             )}
 
             {(isSelectedText || isSelectedOverlay) && (
-              <div className="flex flex-col gap-3">
-                {isSelectedText && (
-                  <TextStylePanel
-                    node={selectedNode as TextNode}
-                    onChange={(patch) => editorState.updateTextNode(selectedNodeId!, patch)}
-                    onDelete={() => { editorState.removeNode(selectedNodeId!); onSetSelectedNodeId(null); }}
-                    onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
-                  />
-                )}
-                {isSelectedOverlay && (
-                  <OverlayControlsPanel
-                    node={selectedNode as OverlayNode}
-                    onChange={(patch) => editorState.updateOverlayNode(selectedNodeId!, patch)}
-                    onDelete={() => onDeleteOverlayNode(selectedNodeId!)}
-                    onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
-                    {...(!isBorderOverlay(selectedNode as OverlayNode) && {
-                      isVariableSlot: variableSlotNodeId === selectedNodeId,
-                      onToggleVariableSlot: () => onToggleVariableSlot(selectedNodeId!),
-                    })}
-                  />
-                )}
-              </div>
+              <Collapsible title="Layer properties">
+                <div className="flex flex-col gap-3 pt-2">
+                  {isSelectedText && (
+                    <TextStylePanel
+                      node={selectedNode as TextNode}
+                      onChange={(patch) => editorState.updateTextNode(selectedNodeId!, patch)}
+                      onDelete={() => { editorState.removeNode(selectedNodeId!); onSetSelectedNodeId(null); }}
+                      onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
+                    />
+                  )}
+                  {isSelectedOverlay && (
+                    <OverlayControlsPanel
+                      node={selectedNode as OverlayNode}
+                      onChange={(patch) => editorState.updateOverlayNode(selectedNodeId!, patch)}
+                      onDelete={() => onDeleteOverlayNode(selectedNodeId!)}
+                      onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
+                      {...(!isBorderOverlay(selectedNode as OverlayNode) && {
+                        isVariableSlot: variableSlotNodeId === selectedNodeId,
+                        onToggleVariableSlot: () => onToggleVariableSlot(selectedNodeId!),
+                      })}
+                    />
+                  )}
+                </div>
+              </Collapsible>
             )}
 
             {activeOverlay && textNodes.length > 0 && (
-              <ItemTextPanel
-                overlayAssetId={activeOverlay.id}
-                overlayLabel={activeOverlay.filename}
-                textNodes={textNodes}
-                itemText={itemText}
-              />
+              <Collapsible title="Variant text">
+                <div className="pt-2">
+                  <ItemTextPanel
+                    overlayAssetId={activeOverlay.id}
+                    overlayLabel={activeOverlay.filename}
+                    textNodes={textNodes}
+                    itemText={itemText}
+                  />
+                </div>
+              </Collapsible>
             )}
           </div>
         ) : (

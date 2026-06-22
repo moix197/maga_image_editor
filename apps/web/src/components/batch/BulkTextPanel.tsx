@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Lock, Unlock } from "lucide-react";
+import { Collapsible } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -282,12 +283,10 @@ function OverlayTextCard({
   setItemTextValue,
   setTextLayerLock,
 }: OverlayTextCardProps) {
-  return (
-    <div
-      className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
-      aria-label={`Text layers for ${overlay.filename}`}
-    >
-      <div className="flex items-center gap-2">
+  const header = (
+    <div className="flex items-center gap-2 min-w-0">
+      {/* Stop propagation so clicking the checkbox doesn't toggle the collapsible */}
+      <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <input
           type="checkbox"
           aria-label={`Select ${overlay.filename}`}
@@ -295,24 +294,35 @@ function OverlayTextCard({
           onChange={onToggleSelect}
           className="h-4 w-4 cursor-pointer rounded border-border accent-primary"
         />
-        <h3 className="text-sm font-semibold tracking-tight truncate" title={overlay.filename}>
-          {overlay.filename}
-        </h3>
-      </div>
+      </span>
+      <span className="text-sm font-semibold tracking-tight truncate" title={overlay.filename}>
+        {overlay.filename}
+      </span>
+    </div>
+  );
 
-      {textNodes.map((node, i) => (
-        <TextLayerRow
-          key={node.id}
-          overlayAssetId={overlay.id}
-          overlayFilename={overlay.filename}
-          node={node}
-          index={i}
-          locked={textLayerLocks[node.id] ?? false}
-          perItemValue={itemTextValues[overlay.id]?.[node.id] ?? ""}
-          setItemTextValue={setItemTextValue}
-          setTextLayerLock={setTextLayerLock}
-        />
-      ))}
+  return (
+    <div
+      className="flex flex-col rounded-lg border border-border bg-card shadow-sm"
+      aria-label={`Text layers for ${overlay.filename}`}
+    >
+      <Collapsible title={header} defaultOpen className="px-4 pt-3 pb-3">
+        <div className="flex flex-col gap-3 pt-2">
+          {textNodes.map((node, i) => (
+            <TextLayerRow
+              key={node.id}
+              overlayAssetId={overlay.id}
+              overlayFilename={overlay.filename}
+              node={node}
+              index={i}
+              locked={textLayerLocks[node.id] ?? false}
+              perItemValue={itemTextValues[overlay.id]?.[node.id] ?? ""}
+              setItemTextValue={setItemTextValue}
+              setTextLayerLock={setTextLayerLock}
+            />
+          ))}
+        </div>
+      </Collapsible>
     </div>
   );
 }
