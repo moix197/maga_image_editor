@@ -30,6 +30,7 @@ import { SCHEMA_VERSION, type BatchProject, type GeneratedOutput, type ProjectAs
 import { isTextNode, isOverlayNode, isBorderOverlay } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
 import { resolveSection } from "./workspace-sections";
+import { makeTextEditHandlers } from "./make-text-edit-handlers";
 
 const DISABLED_GENERATE_HINT =
   "Select a variable slot and upload at least one overlay image to enable generation.";
@@ -280,6 +281,17 @@ function BatchWorkspaceInner() {
     textLayerLocks,
   );
 
+  const { routedSetItemTextValue, routedSetItemTextStyle } = useMemo(
+    () =>
+      makeTextEditHandlers({
+        textLayerLocks,
+        setItemTextValue,
+        setItemTextStyle,
+        updateTextNode: editorState.updateTextNode,
+      }),
+    [textLayerLocks, setItemTextValue, setItemTextStyle, editorState.updateTextNode],
+  );
+
   return (
     <div className="flex flex-col">
       <WorkspaceActionsBar
@@ -486,8 +498,8 @@ function BatchWorkspaceInner() {
               itemTextValues={itemTextValues}
               itemTextStyles={itemTextStyles}
               textLayerLocks={textLayerLocks}
-              setItemTextValue={setItemTextValue}
-              setItemTextStyle={setItemTextStyle}
+              setItemTextValue={routedSetItemTextValue}
+              setItemTextStyle={routedSetItemTextStyle}
               setTextLayerLock={setTextLayerLock}
             />
           </div>
