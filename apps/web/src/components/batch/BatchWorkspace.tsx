@@ -475,6 +475,7 @@ function BatchWorkspaceInner() {
               overlays={overlays}
               textNodes={textNodes}
               itemTextValues={itemTextValues}
+              itemTextStyles={itemTextStyles}
               textLayerLocks={textLayerLocks}
               setItemTextValue={setItemTextValue}
               setItemTextStyle={setItemTextStyle}

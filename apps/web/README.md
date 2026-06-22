@@ -141,8 +141,10 @@ Text workspace section editor supporting both a stacked per-item view and a mult
   overlays={overlays}                 // ProjectAsset[]
   textNodes={textNodes}               // TextNode[] from the active template
   itemTextValues={itemTextValues}     // Record<overlayAssetId, Record<textNodeId, string>>
+  itemTextStyles={itemTextStyles}     // Record<overlayAssetId, Record<textNodeId, Partial<TextStyle>>>
   textLayerLocks={textLayerLocks}     // Record<textNodeId, boolean>
   setItemTextValue={setItemTextValue} // (overlayAssetId, textNodeId, value) => void
+  setItemTextStyle={setItemTextStyle} // (overlayAssetId, textNodeId, style) => void
   setTextLayerLock={setTextLayerLock} // (textNodeId, locked) => void
 />
 ```
@@ -167,11 +169,23 @@ When one or more items are selected, a **Bulk Edit** section appears above the s
 
 When `selectedOverlayIds.size === 0` (initial state), the panel renders the original stacked view: one card per overlay, one input per text layer. No regression from the pre-multi-select behavior.
 
-#### Lock model
+#### Per-variant text styling (`selectedOverlayIds.size > 0`)
+
+When one or more items are selected, a `TextStylePanel` appears below each text node's bulk content row. The style panel exposes the full set of style controls (font family, weight, style, size, color, opacity, rotation, shadow, text background) at full parity with the Template editor.
+
+- **onChange**: calls `setItemTextStyle(id, nodeId, patch)` for every selected overlay whose text layer is **unlocked**. Locked layers are skipped.
+- **Merged/mixed state**: when selected items have different existing style values for a field, that field is omitted from the merged node passed to `TextStylePanel` (the control shows its empty/placeholder state). First user change in that field applies the new value to all selected items.
+- **Identical values**: when all selected items share the same style value for a field, that value is shown in the control.
+- **Locked layers**: the style panel for a locked layer is rendered with `pointer-events-none opacity-50` (visually disabled); `setItemTextStyle` is never called for locked nodes.
+
+**Generate All** renders each variant with its per-item style override applied on top of the template node values.
+
+#### Lock model (content + style)
 
 - Lock toggle button fires `setTextLayerLock(nodeId, !locked)`. Per-layer — toggling locks/unlocks across all overlay cards simultaneously.
-- Locked layer: input disabled, shows shared template `content`.
-- Unlocked layer: per-item override; falls back to template `content` as placeholder.
+- Locked layer: content input disabled, shows shared template `content`; style panel disabled (`pointer-events-none`).
+- Unlocked layer: per-item content override (falls back to template `content` as placeholder); style panel fully editable.
+- Style overrides are stored separately from content overrides in `itemTextStyles` — locking/unlocking does not clear existing style overrides; it only controls whether new overrides can be written.
 
 Internal selection state (`selectedOverlayIds: Set<string>`) is local to `BulkTextPanel` — no lifting to `BatchWorkspace` (no cross-cutting need yet).
 

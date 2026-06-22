@@ -5,6 +5,7 @@ import { Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TextStylePanel } from "@/components/text-style-panel";
 import type { TextNode } from "@maga/editor";
 import type { ProjectAsset, TextStyle } from "@maga/projects";
 
@@ -12,6 +13,7 @@ interface BulkTextPanelProps {
   overlays: ProjectAsset[];
   textNodes: TextNode[];
   itemTextValues: Record<string, Record<string, string>>;
+  itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
   textLayerLocks: Record<string, boolean>;
   setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
   setItemTextStyle: (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) => void;
@@ -47,17 +49,72 @@ function getBulkValue(
 }
 
 /**
+ * Merges per-item TextStyle overrides for a text node across selected overlay ids.
+ *
+ * For each field of TextStyle: if all selected items share the same value (or all
+ * lack an override) → use that value. If values diverge → omit the field so the
+ * style panel shows an empty / placeholder state for that control.
+ *
+ * Returns a Partial<TextStyle> — fields present = agreed value; fields absent = mixed.
+ */
+function getMergedStyle(
+  selectedIds: Set<string>,
+  nodeId: string,
+  itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>,
+  baseNode: TextNode,
+): Partial<TextStyle> {
+  if (selectedIds.size === 0) return {};
+
+  const ids = Array.from(selectedIds);
+  const styleFields: (keyof TextStyle)[] = [
+    "fontSize", "color", "opacity", "fontFamily", "fontWeight",
+    "fontStyle", "rotation", "shadow", "textBackground",
+  ];
+
+  const merged: Partial<TextStyle> = {};
+  for (const field of styleFields) {
+    // Each item's effective value: override if present, else base node value.
+    const values = ids.map((id) => {
+      const override = itemTextStyles[id]?.[nodeId];
+      return override !== undefined && field in override
+        ? override[field]
+        : baseNode[field];
+    });
+    const first = values[0];
+    const allSame = values.every((v) => JSON.stringify(v) === JSON.stringify(first));
+    if (allSame) {
+      // Safe: field is a key of TextStyle which is a subset of TextNode fields
+      (merged as Record<string, unknown>)[field] = first;
+    }
+    // Mixed: omit — style panel will show empty/uncontrolled state for that field
+  }
+  return merged;
+}
+
+/**
+ * Builds a synthetic TextNode for the style panel display by merging the base
+ * node with the merged per-item style override. Fields absent from the merged
+ * style fall back to the base node's value.
+ */
+function buildDisplayNode(baseNode: TextNode, mergedStyle: Partial<TextStyle>): TextNode {
+  return { ...baseNode, ...mergedStyle };
+}
+
+/**
  * Bulk text editor: one card per overlay item, one row per text layer.
  * Locked rows show the shared template value (input disabled).
  * Unlocked rows show per-item overrides (falling back to template value as placeholder).
  *
  * When overlays are selected via checkboxes, a Bulk Edit section appears above
  * the stacked cards to apply the same value to all selected items at once.
+ * A per-node TextStylePanel appears in bulk edit mode to apply style overrides
+ * to all selected unlocked items.
  */
 export function BulkTextPanel({
   overlays,
   textNodes,
   itemTextValues,
+  itemTextStyles,
   textLayerLocks,
   setItemTextValue,
   setItemTextStyle,
@@ -103,6 +160,14 @@ export function BulkTextPanel({
     }
   }
 
+  function handleBulkStyleChange(nodeId: string, patch: Partial<TextNode>) {
+    if (textLayerLocks[nodeId] ?? false) return;
+    // TextStyle is a strict subset of TextNode — the patch only ever carries TextStyle fields.
+    for (const id of selectedOverlayIds) {
+      setItemTextStyle(id, nodeId, patch as Partial<TextStyle>);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Panel header: select-all + selection count */}
@@ -123,16 +188,6 @@ export function BulkTextPanel({
             {selectedOverlayIds.size} of {overlays.length} selected
           </span>
         )}
-        {/* TODO: remove in Phase 3b — vertical-slice smoke test for per-item style override */}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="ml-auto"
-          onClick={() => setItemTextStyle(overlays[0]!.id, textNodes[0]!.id, { fontSize: 28 })}
-        >
-          Override Style
-        </Button>
       </div>
 
       {/* Bulk edit section — only when something is selected */}
@@ -146,27 +201,44 @@ export function BulkTextPanel({
             const locked = textLayerLocks[node.id] ?? false;
             const { value, isMultiple } = getBulkValue(selectedOverlayIds, node.id, itemTextValues);
             const bulkInputId = `bulk-edit-${node.id}`;
+            const mergedStyle = getMergedStyle(selectedOverlayIds, node.id, itemTextStyles, node);
+            const displayNode = buildDisplayNode(node, mergedStyle);
             return (
-              <div key={node.id} className="flex flex-col gap-1.5">
-                <Label htmlFor={bulkInputId} className="text-xs text-muted-foreground shrink-0">
-                  Text layer {i + 1}
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id={bulkInputId}
-                    value={value}
-                    disabled={locked}
-                    placeholder={isMultiple ? "(multiple values)" : node.content}
-                    className="flex-1 transition-colors duration-150"
-                    onChange={(e) => handleBulkChange(node.id, e.target.value)}
-                    aria-label={
-                      locked
-                        ? `Bulk edit text layer ${i + 1} (locked)`
-                        : `Bulk edit text layer ${i + 1}`
-                    }
-                  />
-                  {locked && <Lock className="size-4 text-muted-foreground shrink-0" />}
+              <div key={node.id} className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={bulkInputId} className="text-xs text-muted-foreground shrink-0">
+                    Text layer {i + 1}
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id={bulkInputId}
+                      value={value}
+                      disabled={locked}
+                      placeholder={isMultiple ? "(multiple values)" : node.content}
+                      className="flex-1 transition-colors duration-150"
+                      onChange={(e) => handleBulkChange(node.id, e.target.value)}
+                      aria-label={
+                        locked
+                          ? `Bulk edit text layer ${i + 1} (locked)`
+                          : `Bulk edit text layer ${i + 1}`
+                      }
+                    />
+                    {locked && <Lock className="size-4 text-muted-foreground shrink-0" />}
+                  </div>
                 </div>
+                <TextStylePanel
+                  node={displayNode}
+                  onChange={(patch) => handleBulkStyleChange(node.id, patch)}
+                  onDelete={() => undefined}
+                  onReorder={() => undefined}
+                  hideControls
+                  className={
+                    locked
+                      ? "pointer-events-none opacity-50 flex flex-col gap-4 rounded-lg border border-border bg-card p-4"
+                      : "flex flex-col gap-4 rounded-lg border border-border bg-card p-4"
+                  }
+                  aria-disabled={locked}
+                />
               </div>
             );
           })}

@@ -4,6 +4,26 @@ import { BulkTextPanel } from "@/components/batch/BulkTextPanel";
 import type { TextNode, NodeId } from "@maga/editor";
 import type { ProjectAsset } from "@maga/projects";
 
+// Mock TextStylePanel so Radix/Slider portals don't interfere with jsdom tests.
+// The mock exposes a data-testid per node (using aria-label) and fires onChange on click.
+vi.mock("@/components/text-style-panel", () => ({
+  TextStylePanel: ({
+    node,
+    onChange,
+    className,
+  }: {
+    node: { id: string };
+    onChange: (patch: Record<string, unknown>) => void;
+    className?: string;
+  }) => (
+    <div
+      data-testid={`text-style-panel-${node.id}`}
+      data-classname={className}
+      onClick={() => onChange({ fontSize: 42 })}
+    />
+  ),
+}));
+
 // ── fixtures ────────────────────────────────────────────────────────────────
 
 function makeOverlay(id: string, filename = `${id}.png`): ProjectAsset {
@@ -34,6 +54,7 @@ function makeProps(overrides: Partial<Parameters<typeof BulkTextPanel>[0]> = {})
     overlays: [makeOverlay("ov1"), makeOverlay("ov2")],
     textNodes: [makeTextNode("tn1", "Hello"), makeTextNode("tn2", "World")],
     itemTextValues: {},
+    itemTextStyles: {},
     textLayerLocks: {},
     setItemTextValue: vi.fn(),
     setItemTextStyle: vi.fn(),
@@ -308,6 +329,76 @@ describe("BulkTextPanel", () => {
 
       const bulkInput = screen.getByLabelText(/bulk edit text layer 1$/i) as HTMLInputElement;
       expect(bulkInput.value).toBe("Same");
+    });
+  });
+
+  // ── Phase 3b: per-variant text styling ────────────────────────────────────
+
+  describe("BulkTextPanel — per-variant text styling", () => {
+    it("no-selection hides the style panel", () => {
+      const props = makeProps();
+      render(<BulkTextPanel {...props} />);
+      expect(screen.queryByTestId("text-style-panel-tn1")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("text-style-panel-tn2")).not.toBeInTheDocument();
+    });
+
+    it("selecting items shows a style panel per text node", () => {
+      const props = makeProps();
+      render(<BulkTextPanel {...props} />);
+      fireEvent.click(screen.getByLabelText(/select ov1\.png/i));
+      expect(screen.getByTestId("text-style-panel-tn1")).toBeInTheDocument();
+      expect(screen.getByTestId("text-style-panel-tn2")).toBeInTheDocument();
+    });
+
+    it("style panel onChange calls setItemTextStyle for all selected unlocked items", () => {
+      const setItemTextStyle = vi.fn();
+      const props = makeProps({ setItemTextStyle });
+      render(<BulkTextPanel {...props} />);
+
+      fireEvent.click(screen.getByLabelText(/select ov1\.png/i));
+      fireEvent.click(screen.getByLabelText(/select ov2\.png/i));
+
+      // Clicking the mock panel for tn1 fires onChange({ fontSize: 42 })
+      fireEvent.click(screen.getByTestId("text-style-panel-tn1"));
+
+      expect(setItemTextStyle).toHaveBeenCalledTimes(2);
+      expect(setItemTextStyle).toHaveBeenCalledWith("ov1", "tn1", { fontSize: 42 });
+      expect(setItemTextStyle).toHaveBeenCalledWith("ov2", "tn1", { fontSize: 42 });
+    });
+
+    it("locked node style panel is visually disabled (opacity class) and setItemTextStyle NOT called", () => {
+      const setItemTextStyle = vi.fn();
+      const props = makeProps({
+        setItemTextStyle,
+        textLayerLocks: { tn1: true },
+      });
+      render(<BulkTextPanel {...props} />);
+
+      fireEvent.click(screen.getByLabelText(/select ov1\.png/i));
+      fireEvent.click(screen.getByLabelText(/select ov2\.png/i));
+
+      const panel = screen.getByTestId("text-style-panel-tn1");
+      // Locked panels receive the disabled class string containing pointer-events-none
+      expect(panel.dataset.classname).toMatch(/pointer-events-none/);
+
+      // Clicking it still fires the DOM event, but the handler guards against locked layers
+      fireEvent.click(panel);
+      expect(setItemTextStyle).not.toHaveBeenCalled();
+    });
+
+    it("unlocked node style panel onChange is not guarded — setItemTextStyle called", () => {
+      const setItemTextStyle = vi.fn();
+      const props = makeProps({
+        setItemTextStyle,
+        textLayerLocks: { tn1: true }, // tn1 locked, tn2 unlocked
+      });
+      render(<BulkTextPanel {...props} />);
+
+      fireEvent.click(screen.getByLabelText(/select ov1\.png/i));
+
+      // tn2 is unlocked — onChange should fire through
+      fireEvent.click(screen.getByTestId("text-style-panel-tn2"));
+      expect(setItemTextStyle).toHaveBeenCalledWith("ov1", "tn2", { fontSize: 42 });
     });
   });
 });

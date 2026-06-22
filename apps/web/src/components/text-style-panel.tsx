@@ -19,6 +19,10 @@ interface TextStylePanelProps {
   onChange: (patch: Partial<TextNode>) => void;
   onDelete: () => void;
   onReorder: (direction: "up" | "down") => void;
+  /** When true, hides the Move Up/Down and Delete controls (for embedded bulk-edit use). */
+  hideControls?: boolean;
+  /** Additional class names applied to the root <aside> element. */
+  className?: string;
 }
 
 const DEFAULT_SHADOW: TextShadow = { color: "#000000", blur: 4, offsetX: 2, offsetY: 2 };
@@ -33,27 +37,29 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-export function TextStylePanel({ node, onChange, onDelete, onReorder }: TextStylePanelProps) {
+export function TextStylePanel({ node, onChange, onDelete, onReorder, hideControls = false, className }: TextStylePanelProps) {
   return (
     <aside
       aria-label="Text style panel"
-      className="flex w-64 flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm"
+      className={className ?? "flex w-64 flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm"}
     >
       <h2 className="text-sm font-semibold tracking-tight">Text Style</h2>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => onReorder("up")}>
-            Move Up
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => onReorder("down")}>
-            Move Down
+      {!hideControls && (
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => onReorder("up")}>
+              Move Up
+            </Button>
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => onReorder("down")}>
+              Move Down
+            </Button>
+          </div>
+          <Button variant="destructive" size="sm" className="w-full" onClick={() => onDelete()}>
+            Delete
           </Button>
         </div>
-        <Button variant="destructive" size="sm" className="w-full" onClick={() => onDelete()}>
-          Delete
-        </Button>
-      </div>
+      )}
 
       <FieldRow label="Font Family">
         <Select value={node.fontFamily} onValueChange={(v) => onChange({ fontFamily: v })}>
