@@ -411,7 +411,7 @@ function BatchWorkspaceInner() {
 
         {/* RIGHT: section-specific panel — hidden for Results */}
         {activeSection !== "results" && (
-          <aside className="w-80 shrink-0 overflow-y-auto border-l border-border md:block">
+          <aside className="w-80 shrink-0 overflow-y-auto border-l border-border">
             <BatchRightPanel
               activeSection={activeSection}
               // assets props

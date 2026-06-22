@@ -49,7 +49,7 @@ interface BatchRightPanelProps {
   itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
   textLayerLocks: Record<string, boolean>;
   setItemTextValue: (overlayId: string, nodeId: string, value: string) => void;
-  setItemTextStyle: (nodeId: string, overlayId: string, patch: Partial<TextStyle>) => void;
+  setItemTextStyle: (overlayId: string, nodeId: string, patch: Partial<TextStyle>) => void;
   setTextLayerLock: (nodeId: string, locked: boolean) => void;
 }
 
