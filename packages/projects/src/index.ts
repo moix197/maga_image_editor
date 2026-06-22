@@ -4,6 +4,7 @@ export type {
   VariableSlot,
   GeneratedOutput,
   SchemaVersion,
+  TextStyle,
 } from "./schema";
 export {
   SCHEMA_VERSION,
@@ -11,6 +12,8 @@ export {
   migratedTextLayerLockDefault,
   migratedTextLayerLocks,
   migrateToV2,
+  migrateToV3,
+  migrateProject,
 } from "./schema";
 export { exportProjectZip, dataUrlToBlob } from "./zip-export";
 export {

@@ -108,7 +108,7 @@ function serializeProjectJson(
 
   const portable: BatchProject = {
     ...project,
-    // Always emit the current schema version so reimport sees a v2 record.
+    // Always emit the current schema version so reimport sees a v3 record.
     schemaVersion: SCHEMA_VERSION,
     background: { ...project.background, blobKey: backgroundPath(backgroundDataUrl) },
     overlays,
@@ -120,6 +120,8 @@ function serializeProjectJson(
     // Per-item text overrides + layer locks (schema v2).
     itemTextValues: project.itemTextValues,
     textLayerLocks: project.textLayerLocks,
+    // Per-item text style overrides (schema v3).
+    itemTextStyles: project.itemTextStyles,
   };
 
   return JSON.stringify(portable, null, 2);

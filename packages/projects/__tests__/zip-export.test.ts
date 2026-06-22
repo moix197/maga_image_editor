@@ -22,6 +22,7 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     outputs: [],
     itemTextValues: {},
     textLayerLocks: {},
+    itemTextStyles: {},
     ...overrides,
   };
 }
@@ -40,29 +41,31 @@ describe("exportProjectZip", () => {
     expect(blob.size).toBeGreaterThan(0);
 
     const { parsed } = await readProjectJson(blob);
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(3);
     expect(parsed.id).toBe("project-1");
     expect(parsed.background).toBeDefined();
   });
 
-  it("writes schemaVersion 2 and the v2 fields (itemTextValues + textLayerLocks)", async () => {
+  it("writes schemaVersion 3 and the v3 field (itemTextStyles) alongside v2 fields", async () => {
     const project = makeProject({
       itemTextValues: { "ov-1": { "node-1": "hello" } },
       textLayerLocks: { "node-1": false },
+      itemTextStyles: { "ov-1": { "node-1": { fontSize: 32 } } },
     });
     const blob = await exportProjectZip(project, PNG_DATA_URL, [], []);
     const { parsed } = await readProjectJson(blob);
 
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(3);
     expect(parsed.itemTextValues).toEqual({ "ov-1": { "node-1": "hello" } });
     expect(parsed.textLayerLocks).toEqual({ "node-1": false });
+    expect(parsed.itemTextStyles).toEqual({ "ov-1": { "node-1": { fontSize: 32 } } });
   });
 
-  it("forces schemaVersion 2 on export even if the in-memory record is older", async () => {
+  it("forces schemaVersion 3 on export even if the in-memory record is older", async () => {
     const stale = { ...makeProject(), schemaVersion: 1 as unknown as BatchProject["schemaVersion"] };
     const blob = await exportProjectZip(stale, PNG_DATA_URL, [], []);
     const { parsed } = await readProjectJson(blob);
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(3);
   });
 
   it("includes one entry per overlay and per output", async () => {
@@ -113,7 +116,7 @@ describe("exportProjectZip", () => {
     expect(blob.size).toBeGreaterThan(0);
 
     const { raw, parsed } = await readProjectJson(blob);
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(3);
     expect(parsed.template).toBeNull();
     expect(parsed.variableSlot).toBeNull();
     // null fields are written natively as JSON null

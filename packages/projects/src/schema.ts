@@ -1,12 +1,31 @@
 import { isTextNode } from "@maga/editor";
-import type { EditorState, NodeId } from "@maga/editor";
+import type { EditorState, NodeId, TextNode } from "@maga/editor";
+
+/**
+ * The styleable subset of a {@link TextNode}: every field a per-item override
+ * may carry except identity/content/position. Used as the value type of
+ * {@link BatchProject.itemTextStyles} so callers (and the render loop) can
+ * apply a `Partial<TextStyle>` without reaching across to `@maga/editor`.
+ */
+export type TextStyle = Pick<
+  TextNode,
+  | "fontSize"
+  | "color"
+  | "opacity"
+  | "fontFamily"
+  | "fontWeight"
+  | "fontStyle"
+  | "rotation"
+  | "shadow"
+  | "textBackground"
+>;
 
 /**
  * Schema version for {@link BatchProject}. Bump on any breaking change to the
  * project JSON shape; consumers (ZIP import, IDB restore) gate on this literal
  * to reject incompatible projects.
  */
-export const SCHEMA_VERSION = 2 as const;
+export const SCHEMA_VERSION = 3 as const;
 
 /** Numeric literal type for the current schema version. */
 export type SchemaVersion = typeof SCHEMA_VERSION;
@@ -121,6 +140,15 @@ export interface BatchProject {
    * v1-migrated layers default to {@link migratedTextLayerLockDefault}.
    */
   textLayerLocks: Record<string, boolean>;
+  /**
+   * Per-item text STYLE overrides keyed `overlayAssetId → textNodeId → style
+   * partial` (schema v3). Mirrors {@link itemTextValues} but carries a
+   * {@link TextStyle} partial instead of a string. Only UNLOCKED layers consult
+   * it at render time (same {@link textLayerLocks} that govern content govern
+   * style too — there is no separate style lock); a missing/empty entry falls
+   * back to the template node's own style. Empty `{}` means no style overrides.
+   */
+  itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
 }
 
 /**
@@ -139,19 +167,58 @@ export function migratedTextLayerLocks(template: EditorState | null): Record<str
 /**
  * Upgrades a project record missing the v2 fields (`schemaVersion < 2` or
  * absent) to v2: empty `itemTextValues` and an all-locked `textLayerLocks`
- * derived from the template. A record already at v2 is returned unchanged.
- * Shared by ZIP import and IDB load so both apply identical defaults.
+ * derived from the template. A record already at v2-or-newer is returned with
+ * those fields intact. This step is the FIRST link in the {@link migrateProject}
+ * chain and intentionally gates on the v2 literal (`2`), not `SCHEMA_VERSION`,
+ * so bumping the current version never causes it to re-stamp a v2 record.
  */
 export function migrateToV2<T extends { schemaVersion: number; template: EditorState | null }>(
   project: T,
-): T & Pick<BatchProject, "schemaVersion" | "itemTextValues" | "textLayerLocks"> {
-  if (project.schemaVersion >= SCHEMA_VERSION) {
-    return project as T & Pick<BatchProject, "schemaVersion" | "itemTextValues" | "textLayerLocks">;
+): T & { schemaVersion: number } & Pick<BatchProject, "itemTextValues" | "textLayerLocks"> {
+  if (project.schemaVersion >= 2) {
+    return project as T &
+      { schemaVersion: number } &
+      Pick<BatchProject, "itemTextValues" | "textLayerLocks">;
   }
   return {
     ...project,
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: 2,
     itemTextValues: {},
     textLayerLocks: migratedTextLayerLocks(project.template),
   };
+}
+
+/**
+ * Upgrades a v2 record to v3 by adding an empty {@link BatchProject.itemTextStyles}
+ * map. Idempotent: a record already carrying `itemTextStyles` keeps it (never
+ * reset), so re-running the chain on a v3 record is a no-op for style overrides.
+ * Run after {@link migrateToV2} via {@link migrateProject}.
+ */
+export function migrateToV3<
+  T extends { schemaVersion: number; itemTextStyles?: BatchProject["itemTextStyles"] },
+>(project: T): T & Pick<BatchProject, "schemaVersion" | "itemTextStyles"> {
+  return {
+    ...project,
+    schemaVersion: SCHEMA_VERSION,
+    itemTextStyles: project.itemTextStyles ?? {},
+  };
+}
+
+/**
+ * Single forward-migration entry point: chains v1→v2→v3 by composing
+ * {@link migrateToV2} then {@link migrateToV3}. Idempotent on an already-current
+ * record (existing `itemTextValues` / `textLayerLocks` / `itemTextStyles` are
+ * preserved, never reset). Shared by ZIP import and IDB load so both apply an
+ * identical migration path — no forked copies.
+ */
+export function migrateProject<
+  T extends {
+    schemaVersion: number;
+    template: EditorState | null;
+    itemTextStyles?: BatchProject["itemTextStyles"];
+  },
+>(
+  project: T,
+): T & Pick<BatchProject, "schemaVersion" | "itemTextValues" | "textLayerLocks" | "itemTextStyles"> {
+  return migrateToV3(migrateToV2(project));
 }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { TextNode } from "@maga/editor";
-import type { ProjectAsset } from "@maga/projects";
+import type { ProjectAsset, TextStyle } from "@maga/projects";
 
 interface BulkTextPanelProps {
   overlays: ProjectAsset[];
@@ -14,6 +14,7 @@ interface BulkTextPanelProps {
   itemTextValues: Record<string, Record<string, string>>;
   textLayerLocks: Record<string, boolean>;
   setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
+  setItemTextStyle: (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) => void;
   setTextLayerLock: (textNodeId: string, locked: boolean) => void;
 }
 
@@ -59,6 +60,7 @@ export function BulkTextPanel({
   itemTextValues,
   textLayerLocks,
   setItemTextValue,
+  setItemTextStyle,
   setTextLayerLock,
 }: BulkTextPanelProps) {
   const [selectedOverlayIds, setSelectedOverlayIds] = useState<Set<string>>(new Set());
@@ -121,6 +123,16 @@ export function BulkTextPanel({
             {selectedOverlayIds.size} of {overlays.length} selected
           </span>
         )}
+        {/* TODO: remove in Phase 3b — vertical-slice smoke test for per-item style override */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="ml-auto"
+          onClick={() => setItemTextStyle(overlays[0]!.id, textNodes[0]!.id, { fontSize: 28 })}
+        >
+          Override Style
+        </Button>
       </div>
 
       {/* Bulk edit section — only when something is selected */}

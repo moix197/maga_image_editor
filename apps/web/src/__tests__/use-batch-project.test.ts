@@ -3,7 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 import { useBatchProject } from "@/hooks/use-batch-project";
 import { useItemText } from "@/hooks/use-item-text";
 import { useProjectPersistence } from "@/hooks/use-project-persistence";
-import { migrateToV2, SCHEMA_VERSION } from "@maga/projects";
+import { migrateProject, SCHEMA_VERSION } from "@maga/projects";
 import type { BatchProject, ProjectAsset, VariableSlot } from "@maga/projects";
 import type { NodeId, EditorState } from "@maga/editor";
 
@@ -192,6 +192,56 @@ describe("useBatchProject", () => {
     });
   });
 
+  it("itemTextStyles starts empty", () => {
+    const { result } = renderHook(() => useBatchProject());
+    expect(result.current.itemTextStyles).toEqual({});
+  });
+
+  it("setItemTextStyle merges a partial style keyed by overlay then node", () => {
+    const { result } = renderHook(() => useBatchProject());
+
+    act(() => {
+      result.current.setItemTextStyle("ov-1", "node-1", { fontSize: 28 });
+    });
+
+    expect(result.current.itemTextStyles).toEqual({
+      "ov-1": { "node-1": { fontSize: 28 } },
+    });
+  });
+
+  it("a subsequent setItemTextStyle merges (not replaces) the previous partial", () => {
+    const { result } = renderHook(() => useBatchProject());
+
+    act(() => {
+      result.current.setItemTextStyle("ov-1", "node-1", { fontSize: 28 });
+    });
+    act(() => {
+      result.current.setItemTextStyle("ov-1", "node-1", { color: "#ff0000" });
+    });
+
+    // fontSize from the first call survives the second.
+    expect(result.current.itemTextStyles["ov-1"]?.["node-1"]).toEqual({
+      fontSize: 28,
+      color: "#ff0000",
+    });
+  });
+
+  it("setItemTextStyle overrides a field on a repeat call while keeping siblings", () => {
+    const { result } = renderHook(() => useBatchProject());
+
+    act(() => {
+      result.current.setItemTextStyle("ov-1", "node-1", { fontSize: 28, color: "#000000" });
+    });
+    act(() => {
+      result.current.setItemTextStyle("ov-1", "node-1", { fontSize: 40 });
+    });
+
+    expect(result.current.itemTextStyles["ov-1"]?.["node-1"]).toEqual({
+      fontSize: 40,
+      color: "#000000",
+    });
+  });
+
   it("setTextLayerLock toggles a layer's lock state", () => {
     const { result } = renderHook(() => useBatchProject());
 
@@ -213,7 +263,9 @@ describe("useBatchProject", () => {
       useItemText({
         itemTextValues: result.current.itemTextValues,
         textLayerLocks: result.current.textLayerLocks,
+        itemTextStyles: result.current.itemTextStyles,
         setItemTextValue: result.current.setItemTextValue,
+        setItemTextStyle: result.current.setItemTextStyle,
         setTextLayerLock: result.current.setTextLayerLock,
       })
     );
@@ -239,7 +291,7 @@ describe("useBatchProject", () => {
       variableSlot: null,
       outputs: [],
     } as unknown as BatchProject;
-    const migrated = migrateToV2(v1);
+    const migrated = migrateProject(v1);
     expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
 
     act(() => {
@@ -297,6 +349,7 @@ function makeProject(templateNodeId: string): BatchProject {
     outputs: [],
     itemTextValues: {},
     textLayerLocks: {},
+    itemTextStyles: {},
   };
 }
 

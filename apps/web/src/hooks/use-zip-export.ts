@@ -7,6 +7,7 @@ import type {
   BatchProject,
   GeneratedOutput,
   ProjectAsset,
+  TextStyle,
   VariableSlot,
 } from "@maga/projects";
 import type { EditorState } from "@maga/editor";
@@ -19,6 +20,7 @@ interface ProjectState {
   outputs: GeneratedOutput[];
   itemTextValues?: Record<string, Record<string, string>>;
   textLayerLocks?: Record<string, boolean>;
+  itemTextStyles?: Record<string, Record<string, Partial<TextStyle>>>;
 }
 
 interface UseZipExportResult {
@@ -54,6 +56,7 @@ function assembleProject(
     outputs: state.outputs,
     itemTextValues: state.itemTextValues ?? {},
     textLayerLocks: state.textLayerLocks ?? {},
+    itemTextStyles: state.itemTextStyles ?? {},
   };
 }
 

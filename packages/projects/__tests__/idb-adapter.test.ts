@@ -26,6 +26,7 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     outputs: [],
     itemTextValues: {},
     textLayerLocks: {},
+    itemTextStyles: {},
     ...overrides,
   };
 }
@@ -94,9 +95,9 @@ describe("idb-adapter", () => {
     expect(await loadProject(db, futuristic.id)).toBeNull();
   });
 
-  it("loadProject migrates a stored v1 record to v2 (itemTextValues {}, all layers locked)", async () => {
+  it("loadProject migrates a stored v1 record to v3 (itemTextValues {}, all layers locked, itemTextStyles {})", async () => {
     const db = await openDb();
-    // A legacy v1 record: schemaVersion 1, no v2 fields, two text layers.
+    // A legacy v1 record: schemaVersion 1, no v2/v3 fields, two text layers.
     const v1 = {
       schemaVersion: 1,
       id: "legacy",
@@ -121,5 +122,43 @@ describe("idb-adapter", () => {
     expect(loaded!.schemaVersion).toBe(SCHEMA_VERSION);
     expect(loaded!.itemTextValues).toEqual({});
     expect(loaded!.textLayerLocks).toEqual({ t1: true, t2: true });
+    expect(loaded!.itemTextStyles).toEqual({});
+  });
+
+  it("loadProject migrates a stored v2 record to v3 (preserves values + locks, adds itemTextStyles {})", async () => {
+    const db = await openDb();
+    const v2 = {
+      schemaVersion: 2,
+      id: "v2rec",
+      name: "V2",
+      createdAt: 0,
+      updatedAt: 0,
+      background: { id: "bg", filename: "bg.png", blobKey: "bg-key" },
+      overlays: [],
+      template: { nodes: [] },
+      variableSlot: null,
+      outputs: [],
+      itemTextValues: { "ov-1": { t1: "kept" } },
+      textLayerLocks: { t1: false },
+    } as unknown as BatchProject;
+    await saveProject(db, v2);
+
+    const loaded = await loadProject(db, "v2rec");
+    expect(loaded).not.toBeNull();
+    expect(loaded!.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(loaded!.itemTextValues).toEqual({ "ov-1": { t1: "kept" } });
+    expect(loaded!.textLayerLocks).toEqual({ t1: false });
+    expect(loaded!.itemTextStyles).toEqual({});
+  });
+
+  it("loadProject is idempotent on an already-v3 record (itemTextStyles preserved)", async () => {
+    const db = await openDb();
+    const v3 = makeProject({ itemTextStyles: { "ov-1": { t1: { fontSize: 19 } } } });
+    await saveProject(db, v3);
+
+    const loaded = await loadProject(db, v3.id);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(loaded!.itemTextStyles).toEqual({ "ov-1": { t1: { fontSize: 19 } } });
   });
 });

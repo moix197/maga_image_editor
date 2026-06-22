@@ -22,6 +22,7 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     outputs: [],
     itemTextValues: {},
     textLayerLocks: {},
+    itemTextStyles: {},
     ...overrides,
   };
 }
@@ -50,7 +51,7 @@ describe("importProjectZip", () => {
 
     const { project: imported, blobs } = await importProjectZip(zipBlob);
 
-    expect(imported.schemaVersion).toBe(2);
+    expect(imported.schemaVersion).toBe(3);
     expect(imported.background.blobKey).toBe("background.png");
     expect(imported.overlays.map((o) => o.blobKey)).toEqual([
       "overlays/0-a.png",
@@ -79,9 +80,10 @@ describe("importProjectZip", () => {
     await expect(importProjectZip(zipBlob)).rejects.toThrow("Incompatible project version");
   });
 
-  it("migrates a v1 ZIP to v2: itemTextValues {} and all text nodes locked", async () => {
-    // A legacy v1 project: schemaVersion 1, no v2 fields, template with two text
-    // layers. Migration must default itemTextValues to {} and lock every layer.
+  it("migrates a v1 ZIP to v3: itemTextValues {}, all text nodes locked, itemTextStyles {}", async () => {
+    // A legacy v1 project: schemaVersion 1, no v2/v3 fields, template with two
+    // text layers. Migration must default itemTextValues + itemTextStyles to {}
+    // and lock every layer.
     const v1 = {
       schemaVersion: 1,
       id: "legacy",
@@ -103,9 +105,61 @@ describe("importProjectZip", () => {
 
     const { project: imported } = await importProjectZip(zipBlob);
 
-    expect(imported.schemaVersion).toBe(2);
+    expect(imported.schemaVersion).toBe(3);
     expect(imported.itemTextValues).toEqual({});
     expect(imported.textLayerLocks).toEqual({ t1: true, t2: true });
+    expect(imported.itemTextStyles).toEqual({});
+  });
+
+  it("migrates a v2 ZIP to v3: preserves itemTextValues + locks, adds itemTextStyles {}", async () => {
+    // A v2 project (schemaVersion 2, no itemTextStyles). Migration must keep its
+    // text values + locks and add an empty itemTextStyles map.
+    const v2 = {
+      schemaVersion: 2,
+      id: "v2",
+      name: "V2",
+      createdAt: 0,
+      updatedAt: 0,
+      background: { id: "bg", filename: "bg.png", blobKey: PNG_DATA_URL },
+      overlays: [],
+      template: { nodes: [] },
+      variableSlot: null,
+      outputs: [],
+      itemTextValues: { "ov-1": { t1: "kept" } },
+      textLayerLocks: { t1: false },
+    };
+    const zipBlob = await zipWithProjectJson(JSON.stringify(v2));
+
+    const { project: imported } = await importProjectZip(zipBlob);
+
+    expect(imported.schemaVersion).toBe(3);
+    expect(imported.itemTextValues).toEqual({ "ov-1": { t1: "kept" } });
+    expect(imported.textLayerLocks).toEqual({ t1: false });
+    expect(imported.itemTextStyles).toEqual({});
+  });
+
+  it("round-trips a v3 project's itemTextStyles", async () => {
+    const project = makeProject({
+      itemTextStyles: { "ov-1": { t1: { fontSize: 30, color: "#ff0000" } } },
+    });
+    const zipBlob = await exportProjectZip(project, PNG_DATA_URL, [], []);
+
+    const { project: imported } = await importProjectZip(zipBlob);
+    expect(imported.schemaVersion).toBe(3);
+    expect(imported.itemTextStyles).toEqual({ "ov-1": { t1: { fontSize: 30, color: "#ff0000" } } });
+  });
+
+  it("re-importing a v3 ZIP does not re-migrate (idempotent)", async () => {
+    const project = makeProject({
+      itemTextStyles: { "ov-1": { t1: { fontSize: 22 } } },
+    });
+    const firstZip = await exportProjectZip(project, PNG_DATA_URL, [], []);
+    const { project: once } = await importProjectZip(firstZip);
+    const secondZip = await exportProjectZip(once, PNG_DATA_URL, [], []);
+    const { project: twice } = await importProjectZip(secondZip);
+
+    expect(twice.schemaVersion).toBe(3);
+    expect(twice.itemTextStyles).toEqual({ "ov-1": { t1: { fontSize: 22 } } });
   });
 
   it("sets template to null (no throw) when project.json omits it", async () => {

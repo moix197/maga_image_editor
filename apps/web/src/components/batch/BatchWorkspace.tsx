@@ -37,7 +37,7 @@ function BatchWorkspaceInner() {
   const searchParams = useSearchParams();
   const activeSection = resolveSection(searchParams.get("section"));
 
-  const { background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, addOutput, clearOutputs, clearProject, setBackground, addOverlays, reorderOverlays, setEditorTemplate, setProject, setVariableSlot, setItemTextValue, setTextLayerLock } =
+  const { background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, itemTextStyles, addOutput, clearOutputs, clearProject, setBackground, addOverlays, reorderOverlays, setEditorTemplate, setProject, setVariableSlot, setItemTextValue, setItemTextStyle, setTextLayerLock } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite({ overlays });
   const { isExporting, error: exportError, exportZip } = useZipExport();
@@ -93,8 +93,9 @@ function BatchWorkspaceInner() {
       outputs,
       itemTextValues,
       textLayerLocks,
+      itemTextStyles,
     };
-  }, [background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks]);
+  }, [background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, itemTextStyles]);
 
   const { restored, pendingRestore, consumeRestore, clearPersisted, importError, quotaWarning, importZip } = useProjectPersistence({
     project: persistedProject,
@@ -135,6 +136,7 @@ function BatchWorkspaceInner() {
     itemTextValues,
     textLayerLocks,
     editorState.updateTextNode,
+    itemTextStyles,
   );
 
   async function handleBackgroundFiles(files: File[]) {
@@ -235,7 +237,7 @@ function BatchWorkspaceInner() {
   }
 
   async function handleExportZip() {
-    await exportZip({ background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks });
+    await exportZip({ background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, itemTextStyles });
   }
 
   async function handleClearProject() {
@@ -263,7 +265,7 @@ function BatchWorkspaceInner() {
   const isSelectedText = selectedNode !== null && isTextNode(selectedNode);
   const isSelectedOverlay = selectedNode !== null && isOverlayNode(selectedNode);
 
-  const itemText = useItemText({ itemTextValues, textLayerLocks, setItemTextValue, setTextLayerLock });
+  const itemText = useItemText({ itemTextValues, textLayerLocks, itemTextStyles, setItemTextValue, setItemTextStyle, setTextLayerLock });
   const textNodes = useMemo(
     () => editorState.state.nodes.filter((n): n is TextNode => isTextNode(n)),
     [editorState.state.nodes],
@@ -475,6 +477,7 @@ function BatchWorkspaceInner() {
               itemTextValues={itemTextValues}
               textLayerLocks={textLayerLocks}
               setItemTextValue={setItemTextValue}
+              setItemTextStyle={setItemTextStyle}
               setTextLayerLock={setTextLayerLock}
             />
           </div>

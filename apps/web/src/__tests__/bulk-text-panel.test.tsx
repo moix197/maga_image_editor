@@ -36,6 +36,7 @@ function makeProps(overrides: Partial<Parameters<typeof BulkTextPanel>[0]> = {})
     itemTextValues: {},
     textLayerLocks: {},
     setItemTextValue: vi.fn(),
+    setItemTextStyle: vi.fn(),
     setTextLayerLock: vi.fn(),
     ...overrides,
   };

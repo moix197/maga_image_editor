@@ -14,12 +14,15 @@ Import only from `@maga/projects` — internal files are not part of the public 
 | `ProjectAsset` | type | Binary asset ref (`id`, `filename`, `blobKey`) — bytes live out-of-band |
 | `VariableSlot` | type | The variable image slot (`overlayNodeId` + cover-fit `width`/`height`) |
 | `GeneratedOutput` | type | One rendered composite (`overlayAssetId`, `outputBlobKey`, `timestamp`) |
-| `SchemaVersion` | type | Numeric literal type of the current schema version (`2`) |
-| `SCHEMA_VERSION` | const | The current schema version literal (`2`) |
+| `TextStyle` | type | Styleable subset of a `TextNode` (font, size, color, weight, style, opacity, rotation, shadow, text background) — value type of `itemTextStyles`; reexported so callers don't reach into `@maga/editor` |
+| `SchemaVersion` | type | Numeric literal type of the current schema version (`3`) |
+| `SCHEMA_VERSION` | const | The current schema version literal (`3`) |
 | `newTextLayerLockDefault` | const | Lock default for a text layer added in a v2 project (`false`, per-image) |
 | `migratedTextLayerLockDefault` | const | Lock default applied to every layer during v1→v2 migration (`true`, shared) |
 | `migratedTextLayerLocks` | fn | Builds the all-locked `textLayerLocks` map from a template (v1→v2 default) |
-| `migrateToV2` | fn | Upgrades a record missing the v2 fields: empty `itemTextValues` + all-locked `textLayerLocks` |
+| `migrateToV2` | fn | First link in the chain: upgrades a `< 2` record to v2 (empty `itemTextValues` + all-locked `textLayerLocks`). Gates on the v2 literal, not `SCHEMA_VERSION` |
+| `migrateToV3` | fn | Second link: adds empty `itemTextStyles` to a v2 record; idempotent (never resets an existing map) |
+| `migrateProject` | fn | Single forward-migration entry point — chains v1→v2→v3. Idempotent on a current record. Used by both ZIP import and IDB load |
 | `exportProjectZip` | fn | Builds a portable project ZIP (`Promise<Blob>`) — see below |
 | `dataUrlToBlob` | fn | `data:<mime>;base64,...` → `Blob` (pure `atob` + `Uint8Array`) |
 | `openDb` | fn | Opens/creates the `maga-batch` IndexedDB (`projects` + `blobs` stores) |
@@ -35,7 +38,7 @@ Single database `maga-batch` (v1), two object stores: `projects` (keyed by proje
 
 ## ZIP import
 
-`importProjectZip(zipBlob)` reverses `exportProjectZip`: it parses `project.json`, validates `schemaVersion <= SCHEMA_VERSION` immediately (throwing `ZipImportError("Incompatible project version")` only for a version **newer** than this build, or a corruption message on missing/invalid JSON). A v1 (or version-less) project is **migrated to v2 on load** rather than rejected (see Schema versioning). It returns the project plus a `Map` of blobs **keyed by the same ZIP-relative paths the project refs use** (`background.<ext>`, `overlays/<i>-...`, `outputs/<i>-...`) so callers can reconcile bytes to refs directly.
+`importProjectZip(zipBlob)` reverses `exportProjectZip`: it parses `project.json`, validates `schemaVersion <= SCHEMA_VERSION` immediately (throwing `ZipImportError("Incompatible project version")` only for a version **newer** than this build, or a corruption message on missing/invalid JSON). Any older project (v1 or v2, or version-less) is **migrated forward to v3 on load** via the shared `migrateProject` chain rather than rejected (see Schema versioning). It returns the project plus a `Map` of blobs **keyed by the same ZIP-relative paths the project refs use** (`background.<ext>`, `overlays/<i>-...`, `outputs/<i>-...`) so callers can reconcile bytes to refs directly.
 
 Nullable-field handling: `template` and `variableSlot` are optional in the JSON. Import never hard-throws on a missing field — an absent `template`/`variableSlot` is normalized to `null` (background-only drafts), while a legacy project that carries a non-null value keeps it as-is. Only `schemaVersion` mismatch and missing/corrupt JSON reject.
 
@@ -58,7 +61,7 @@ Nullable-field handling: a background-only draft carries `template: null` and `v
 
 ## Schema versioning
 
-`BatchProject.schemaVersion` is the `2` literal. ZIP import and IDB restore gate on it: a record **newer** than the current version is rejected as incompatible, while an **older** record is migrated forward on load. Bump `SCHEMA_VERSION` only on a breaking change to the project JSON shape.
+`BatchProject.schemaVersion` is the `3` literal. ZIP import and IDB restore gate on it: a record **newer** than the current version is rejected as incompatible, while an **older** record is migrated forward on load. Bump `SCHEMA_VERSION` only on a breaking change to the project JSON shape.
 
 `template` (`EditorState | null`) and `variableSlot` (`VariableSlot | null`) are nullable: a background-only draft is a valid project with both `null`. The IDB adapter and ZIP serialize/deserialize all tolerate `null` natively.
 
@@ -76,7 +79,26 @@ v2 adds two fields to `BatchProject`:
 
 ### Migration path (v1 → v2)
 
-`migrateToV2(project)` upgrades any record with `schemaVersion < 2` (or a missing version): it sets `itemTextValues: {}` and an all-locked `textLayerLocks` derived from the template (`migratedTextLayerLocks`). A record already at v2 passes through unchanged. The **same** helper runs in both `zip-import.ts` (`normalizeNullableFields`) and `idb-adapter.ts` (`loadProject`), so legacy ZIPs and legacy IDB records load identically — without error, all layers locked, no overrides. `exportProjectZip` always writes `schemaVersion: 2` plus both new fields.
+`migrateToV2(project)` upgrades any record with `schemaVersion < 2` (or a missing version): it sets `itemTextValues: {}` and an all-locked `textLayerLocks` derived from the template (`migratedTextLayerLocks`). A record already at v2-or-newer passes through unchanged. It now gates on the **v2 literal (`2`)** rather than `SCHEMA_VERSION`, so bumping the current version never causes it to re-stamp a genuine v2 record. It is the first link of the `migrateProject` chain (below) — call `migrateProject`, not `migrateToV2`, at load sites.
+
+### Schema v3: per-item text styles
+
+v3 adds one field to `BatchProject`:
+
+- `itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>` — per-item text **style** overrides keyed `overlayAssetId → textNodeId → style partial`. Mirrors `itemTextValues` but the value is a `Partial<TextStyle>` (font, size, color, weight, style, opacity, rotation, shadow, text background). A missing/empty entry falls back to the template node's own style. Empty `{}` means no style overrides.
+
+**One lock governs content AND style.** There is no separate style lock: the existing `textLayerLocks` entry for a layer controls both its content and its style overrides. `locked = true` → the layer renders the template's content + style for every item; `locked = false` → each item may override both independently. The render loop applies content and style in a **single merged `updateTextNode` call** per layer and restores both (the full template style snapshot, not just the overridden keys) in an exception-safe `finally` — a partial restore would leak a per-item style into the shared template, so the entire style snapshot is rewritten.
+
+**Orphaned keys.** When a text node is deleted from the template or an overlay is removed, its key in `itemTextStyles` (or `itemTextValues`) may go stale. Stale keys are **silently ignored** by the render loop — there is no matching live node, so no mutation happens. No cleanup is performed on load or save (cheap to leak, expensive to coordinate); revisit only if ZIP size becomes a concern.
+
+### Migration chain (v1 → v2 → v3)
+
+`migrateProject(project)` is the single forward-migration entry point. It chains `migrateToV2` then `migrateToV3`:
+
+- `migrateToV3` adds `itemTextStyles: {}` to a v2 record and stamps `schemaVersion: 3`. It is **idempotent** — an existing `itemTextStyles` is preserved, never reset.
+- `migrateProject` is therefore idempotent on an already-current record: existing `itemTextValues`, `textLayerLocks`, and `itemTextStyles` all pass through unchanged.
+
+The **same** `migrateProject` helper runs in both `zip-import.ts` (`normalizeNullableFields`) and `idb-adapter.ts` (`loadProject`) — no forked copies — so legacy v1 ZIPs/records, legacy v2 ZIPs/records, and current v3 ones all load identically. `exportProjectZip` always writes `schemaVersion: 3` plus all three override/lock fields.
 
 ## Asset refs are out-of-band
 

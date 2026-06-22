@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { SCHEMA_VERSION, migrateToV2, type BatchProject } from "./schema";
+import { SCHEMA_VERSION, migrateProject, type BatchProject } from "./schema";
 
 /**
  * Thrown when a ZIP cannot be imported: missing/corrupt `project.json` or an
@@ -20,12 +20,13 @@ export class ZipImportError extends Error {
  * This replaces the previous hard-throw-on-missing behavior so incomplete and
  * pre-refactor projects import without crashing.
  *
- * Also applies the v1→v2 schema migration: a project with `schemaVersion < 2`
- * (or a missing version) gains an empty `itemTextValues` and an all-locked
- * `textLayerLocks` derived from its template (see {@link migrateToV2}).
+ * Also applies the full v1→v2→v3 schema migration via {@link migrateProject}:
+ * a record below the current version gains the v2 fields (`itemTextValues` +
+ * all-locked `textLayerLocks`) and the v3 field (`itemTextStyles: {}`); a record
+ * already current passes through with those fields intact (idempotent).
  */
 function normalizeNullableFields(project: BatchProject): BatchProject {
-  return migrateToV2({
+  return migrateProject({
     ...project,
     template: project.template ?? null,
     variableSlot: project.variableSlot ?? null,

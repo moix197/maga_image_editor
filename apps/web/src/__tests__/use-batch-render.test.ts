@@ -374,6 +374,148 @@ describe("useBatchRender", () => {
     // compositeDataUrl is NOT asserted here — Generate All never sets it
   });
 
+  // ── Phase 3a: per-item STYLE overrides ─────────────────────────────────────
+
+  /** A template with one image slot + one text node (style fields included). */
+  function styleTemplate(textId: string): EditorState {
+    return {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        { id: textId as NodeId, content: "TEMPLATE", x: 0, y: 0, rotation: 0, zIndex: 1, fontSize: 12, color: "#000000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null } as unknown as EditorState["nodes"][0],
+      ],
+    };
+  }
+
+  it("applies a per-item style override for unlocked layers in a single merged call", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID);
+    const overlays = [makeOverlay("a")];
+    const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
+    const textLayerLocks = { [TEXT_ID]: false };
+    const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28 } } };
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemTextValues, textLayerLocks, updateTextNode, itemTextStyles),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // First call = apply: a single merged patch carrying BOTH content and style.
+    const applyPatch = updateTextNode.mock.calls[0]![1] as { content: string; fontSize?: number };
+    expect(applyPatch.content).toBe("A-text");
+    expect(applyPatch.fontSize).toBe(28);
+  });
+
+  it("locked layers receive no per-item style — updateTextNode never called", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID);
+    const overlays = [makeOverlay("a")];
+    const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28 } } };
+    const textLayerLocks = { [TEXT_ID]: true }; // locked → template style, no patch
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, {}, textLayerLocks, updateTextNode, itemTextStyles),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    expect(updateTextNode).not.toHaveBeenCalled();
+  });
+
+  it("restore patch carries the template STYLE fields, not only content", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID);
+    const overlays = [makeOverlay("a")];
+    const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28, color: "#ff0000" } } };
+    const textLayerLocks = { [TEXT_ID]: false };
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, {}, textLayerLocks, updateTextNode, itemTextStyles),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Restore = the last call. It must reset BOTH content AND the full style
+    // snapshot back to the template values (partial restore = regression).
+    const restorePatch = updateTextNode.mock.calls.at(-1)![1] as {
+      content: string;
+      fontSize: number;
+      color: string;
+    };
+    expect(restorePatch.content).toBe("TEMPLATE");
+    expect(restorePatch.fontSize).toBe(12);
+    expect(restorePatch.color).toBe("#000000");
+  });
+
+  it("template STYLE fields are unchanged after a full batch run (immutability guard)", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID);
+    const overlays = [makeOverlay("a"), makeOverlay("b")];
+    const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28 } }, b: { [TEXT_ID]: { fontSize: 40 } } };
+    const textLayerLocks = { [TEXT_ID]: false };
+
+    // Simulate live editor mutation so we can assert the template arg is never
+    // permanently changed.
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, {}, textLayerLocks, updateTextNode, itemTextStyles),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    const textNode = template.nodes.find((n) => n.id === TEXT_ID) as unknown as { fontSize: number };
+    expect(textNode.fontSize).toBe(12);
+  });
+
+  it("THROW-RESTORE: finally restores BOTH content AND style when capture throws", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID);
+    const overlays = [makeOverlay("a")];
+    const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28, color: "#ff0000" } } };
+    const textLayerLocks = { [TEXT_ID]: false };
+
+    // Track the live style as updateTextNode mutates it.
+    let liveFontSize = 12;
+    let liveColor = "#000000";
+    const updateTextNode = vi.fn<(id: NodeId, patch: { fontSize?: number; color?: string }) => void>(
+      (_id, patch) => {
+        if (patch.fontSize !== undefined) liveFontSize = patch.fontSize;
+        if (patch.color !== undefined) liveColor = patch.color;
+      },
+    );
+
+    mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, {}, textLayerLocks, updateTextNode, itemTextStyles),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Despite the throw, the live style ends on the template values.
+    expect(liveFontSize).toBe(12);
+    expect(liveColor).toBe("#000000");
+    // The restore call (last) includes the style fields, not just content.
+    const restorePatch = updateTextNode.mock.calls.at(-1)![1] as { fontSize: number; color: string };
+    expect(restorePatch.fontSize).toBe(12);
+    expect(restorePatch.color).toBe("#000000");
+    expect(result.current.error).toBe("composite boom");
+  });
+
   it("iterates ALL overlays regardless of any external activeOverlayId — batch loop is unaffected by preview selection", async () => {
     // activeOverlayId lives in BatchWorkspace state and controls only the
     // preview canvas; useBatchRender receives the full list and must produce

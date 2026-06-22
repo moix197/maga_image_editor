@@ -84,6 +84,7 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     outputs: [],
     itemTextValues: {},
     textLayerLocks: {},
+    itemTextStyles: {},
     ...overrides,
   };
 }
