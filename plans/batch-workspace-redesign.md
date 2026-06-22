@@ -43,20 +43,20 @@ Layout restructure touches BatchWorkspace (the main wiring component) but leaves
 
 **Steps:**
 
-- [ ] Read `apps/web/src/hooks/use-editor-state.ts` and `packages/editor/src/editor-state.ts` to understand EditorState shape and `updateTextNode` signature
-- [ ] Read `apps/web/src/hooks/use-batch-project.ts` to understand `itemTextValues`, `itemTextStyles`, `textLayerLocks` types and map shapes
-- [ ] Read `apps/web/src/hooks/use-item-text.ts` to understand `getTextValue` / `getTextStyle` retrieval pattern
-- [ ] Create `apps/web/src/hooks/use-preview-editor-state.ts`:
+- [x] Read `apps/web/src/hooks/use-editor-state.ts` and `packages/editor/src/editor-state.ts` to understand EditorState shape and `updateTextNode` signature
+- [x] Read `apps/web/src/hooks/use-batch-project.ts` to understand `itemTextValues`, `itemTextStyles`, `textLayerLocks` types and map shapes
+- [x] Read `apps/web/src/hooks/use-item-text.ts` to understand `getTextValue` / `getTextStyle` retrieval pattern
+- [x] Create `apps/web/src/hooks/use-preview-editor-state.ts`:
   - Accept `(base, activeOverlayId, itemTextValues, itemTextStyles, textLayerLocks)`
   - Early-return `base` (memoized) when `activeOverlayId` is null
   - For each text node in `base.nodes`: if `textLayerLocks[nodeId]` is falsy, apply `itemTextValues[activeOverlayId]?.[nodeId]` (content) and `itemTextStyles[activeOverlayId]?.[nodeId]` (style patch) via the same pure transition used by updateTextNode; otherwise leave the node untouched
   - Wrap entire computation in `useMemo` with deps `[base, activeOverlayId, itemTextValues, itemTextStyles, textLayerLocks]` — dep array must be minimal so unrelated `editorState` changes (e.g. `selectedNodeId` updates) do NOT re-derive the preview
-- [ ] In `BatchWorkspace.tsx`, add `activeOverlayId` state (`useState<string | null>(null)`)
-- [ ] Add `useEffect` that sets `activeOverlayId` to `overlays[0]?.id ?? null` on mount and whenever `overlays` changes (only update if the current `activeOverlayId` is no longer in `overlays`)
-- [ ] Call `usePreviewEditorState` with the correct arguments and store as `previewEditorState`
-- [ ] In the existing template-section block, pass `previewEditorState` (instead of the raw editor state) to `TextOverlayCanvas`
-- [ ] Wire VariantStrip's `onSelect` to `setActiveOverlayId`
-- [ ] Write unit tests (see Tests)
+- [x] In `BatchWorkspace.tsx`, add `activeOverlayId` state (`useState<string | null>(null)`)
+- [x] Add `useEffect` that sets `activeOverlayId` to `overlays[0]?.id ?? null` on mount and whenever `overlays` changes (only update if the current `activeOverlayId` is no longer in `overlays`)
+- [x] Call `usePreviewEditorState` with the correct arguments and store as `previewEditorState`
+- [x] In the existing template-section block, pass `previewEditorState` (instead of the raw editor state) to `TextOverlayCanvas`
+- [x] Wire VariantStrip's `onSelect` to `setActiveOverlayId`
+- [x] Write unit tests (see Tests)
 
 **Tests:**
 
@@ -66,7 +66,7 @@ Layout restructure touches BatchWorkspace (the main wiring component) but leaves
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm --filter @maga/web test`
+- [x] Automated tests pass: `pnpm --filter @maga/web test`
 - [ ] Load `/batch` with variants; canvas shows first variant's image and per-item text overrides without clicking anything
 - [ ] Click a different variant in VariantStrip; canvas updates immediately
 - [ ] Open browser devtools; confirm `editorState` (the base) is never mutated (e.g., add a breakpoint or console.log inside `updateTextNode` — it must not fire during canvas render)
@@ -76,15 +76,15 @@ Layout restructure touches BatchWorkspace (the main wiring component) but leaves
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
 - [ ] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(batch): live preview derived-state hook + auto-select first variant`
+- [x] Changes committed: `feat(batch): live preview derived-state hook + auto-select first variant`
 - [ ] Phase marked complete
 
 ---
