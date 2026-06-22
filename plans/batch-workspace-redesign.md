@@ -286,17 +286,22 @@ No automated tests — justified because: pure documentation change, no executab
 
 **Steps:**
 
-- [ ] Every preceding phase's Steps / Verification / Phase review checkboxes are ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review of all phases)
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent reviews the entire change end-to-end
-- [ ] Any changes made in response to the final code-reviewer review have been reflected back into this plan file
-- [ ] All tests pass: `pnpm --filter @maga/web test`
-- [ ] No CLAUDE.md invariants violated (pnpm only, thin entry points, no new external deps, reuse before reinvent, functions ≤30 lines, generic components callback-only)
+- [x] Every preceding phase's Steps / Verification / Phase review checkboxes are ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review of all phases)
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent reviews the entire change end-to-end
+- [x] Any changes made in response to the final code-reviewer review have been reflected back into this plan file
+- [x] All tests pass: `pnpm --filter @maga/web test` (full monorepo: `pnpm -r test` = 362 pass — editor 32, projects 43, web 287; `pnpm -r typecheck` exit 0)
+- [x] No CLAUDE.md invariants violated (pnpm only, thin entry points, no new external deps, reuse before reinvent, functions ≤30 lines, generic components callback-only)
 - [ ] Feature tested manually — golden path: auto-select → live preview → per-item edit → locked edit → section switching → Results → Generate All
 - [ ] Edge cases tested manually: zero variants (canvas shows bare template); single variant; all layers locked; rapid variant switching
 - [ ] Overall success criteria met
 - [ ] All phase checkboxes above are ticked
+
+> **End-to-end code review: green (high confidence).** No blocking findings. Notes for the manual smoke test:
+> 1. **Variant background image** renders via the variable-slot placeholder (updates on slot toggle), not on VariantStrip click — pre-existing behavior, not a regression. Text/style overrides switch live on variant click regardless. Confirm the image behaves as expected.
+> 2. **Locked-layer editing** that updates the shared template across all variants is done in the **Template section** (select node → TextStylePanel), not the Text/BulkTextPanel (whose locked inputs are disabled — pre-plan behavior).
+> 3. **`next build`** currently fails only on **pre-existing ESLint errors** in files untouched by this branch (`select.tsx`, `*.test.ts`, `AssetList.tsx`, `LayerStackPanel.tsx`) — not introduced by this plan.
 
 ## Documentation
 
