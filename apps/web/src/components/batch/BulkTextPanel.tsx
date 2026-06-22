@@ -95,10 +95,9 @@ export function BulkTextPanel({
   }
 
   function handleBulkChange(nodeId: string, value: string) {
+    if (textLayerLocks[nodeId] ?? false) return;
     for (const id of selectedOverlayIds) {
-      if (!(textLayerLocks[nodeId] ?? false)) {
-        setItemTextValue(id, nodeId, value);
-      }
+      setItemTextValue(id, nodeId, value);
     }
   }
 

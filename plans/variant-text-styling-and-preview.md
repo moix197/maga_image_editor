@@ -128,14 +128,14 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 
 **Steps:**
 
-- [ ] Decide where `selectedOverlayIds` state lives: since no other section needs it yet, keep it local to `BulkTextPanel` (no premature lifting — CLAUDE.md: no speculative abstractions)
-- [ ] Add checkbox to each item card in `BulkTextPanel`; clicking toggles that `overlayAssetId` in `selectedOverlayIds`
-- [ ] Add select-all checkbox in the panel header; toggles all ids in/out of selection
-- [ ] When `selectedOverlayIds.size > 0`: render a "Bulk Edit" section above the cards with one row per text node; each row has a controlled input whose `onChange` calls `setItemTextValue(id, nodeId, value)` for every `id` in `selectedOverlayIds` where `isLocked(nodeId) === false`; locked nodes show a disabled row with a lock icon
-- [ ] When `selectedOverlayIds.size === 0`: render existing stacked view (unchanged)
-- [ ] Bulk row placeholder: show "(multiple values)" when selected items have different existing values for that node; on first keystroke replace with new value for all selected
-- [ ] Multi-select + locked layer: when a locked layer is in a multi-select group, the bulk row for that layer is disabled; its value does not change; bulk edits to other unlocked layers in the same selection are unaffected. Confirm this is consistent with Phase 3b's style panel (same lock check applies)
-- [ ] Preserve lock toggle per layer (still per-node, not per-item)
+- [x] Decide where `selectedOverlayIds` state lives: since no other section needs it yet, keep it local to `BulkTextPanel` (no premature lifting — CLAUDE.md: no speculative abstractions)
+- [x] Add checkbox to each item card in `BulkTextPanel`; clicking toggles that `overlayAssetId` in `selectedOverlayIds`
+- [x] Add select-all checkbox in the panel header; toggles all ids in/out of selection
+- [x] When `selectedOverlayIds.size > 0`: render a "Bulk Edit" section above the cards with one row per text node; each row has a controlled input whose `onChange` calls `setItemTextValue(id, nodeId, value)` for every `id` in `selectedOverlayIds` where `isLocked(nodeId) === false`; locked nodes show a disabled row with a lock icon
+- [x] When `selectedOverlayIds.size === 0`: render existing stacked view (unchanged)
+- [x] Bulk row placeholder: show "(multiple values)" when selected items have different existing values for that node; on first keystroke replace with new value for all selected
+- [x] Multi-select + locked layer: when a locked layer is in a multi-select group, the bulk row for that layer is disabled; its value does not change; bulk edits to other unlocked layers in the same selection are unaffected. Confirm this is consistent with Phase 3b's style panel (same lock check applies)
+- [x] Preserve lock toggle per layer (still per-node, not per-item)
 
 **Tests:**
 
@@ -145,7 +145,7 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test`
+- [x] Automated tests pass: `pnpm test`
 - [ ] Manual: select 2 of 3 items; type in bulk row → both selected items update; unselected item unaffected
 - [ ] Manual: lock a layer; select all items; bulk row for locked layer is disabled
 - [ ] Manual: deselect all → panel reverts to stacked view with no regressions
@@ -155,12 +155,12 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 - [ ] All Steps and Verification checkboxes above ticked in the plan file
 - [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
-- [ ] Documentation updated (see Documentation section)
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
+- [x] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(workspace): text tab multi-select — bulk content editing across selected variants`
+- [x] Changes committed: `feat(workspace): text tab multi-select — bulk content editing across selected variants`
 - [ ] Phase marked complete
 
 ---
