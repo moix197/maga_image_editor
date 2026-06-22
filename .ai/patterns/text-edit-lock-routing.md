@@ -7,8 +7,10 @@ layer's lock state. Lives in
 
 `makeTextEditHandlers({ textLayerLocks, setItemTextValue, setItemTextStyle, updateTextNode })`
 returns `{ routedSetItemTextValue, routedSetItemTextStyle }` — **drop-in
-replacements** with the same signatures as the per-item setters, so callers
-(BulkTextPanel / TextStylePanel) stay unaware of the routing.
+replacements** with the same signatures as the per-item setters, so the caller
+(BulkTextPanel, in the Text section) stays unaware of the routing. The Template
+section's TextStylePanel is not routed — it edits the shared template directly
+via `updateTextNode`.
 
 **The routing, per edit:**
 - **Unlocked layer** → per-item override: `setItemTextValue(overlayId, nodeId, value)`
