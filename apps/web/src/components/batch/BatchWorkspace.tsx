@@ -6,6 +6,7 @@ import { Lock, Unlock } from "lucide-react";
 import { useBatchProject } from "@/hooks/use-batch-project";
 import { useEditorState } from "@/hooks/use-editor-state";
 import { useItemText } from "@/hooks/use-item-text";
+import { usePreviewEditorState } from "@/hooks/use-preview-editor-state";
 import { useSingleComposite } from "@/hooks/use-single-composite";
 import { useBatchRender } from "@/hooks/use-batch-render";
 import { useZipExport } from "@/hooks/use-zip-export";
@@ -271,6 +272,14 @@ function BatchWorkspaceInner() {
     [editorState.state.nodes],
   );
 
+  const previewEditorState = usePreviewEditorState(
+    editorState.state,
+    activeOverlayId,
+    itemTextValues,
+    itemTextStyles,
+    textLayerLocks,
+  );
+
   return (
     <div className="flex flex-col">
       <WorkspaceActionsBar
@@ -411,7 +420,7 @@ function BatchWorkspaceInner() {
                   <div className="flex flex-col gap-3">
                     <div style={{ position: "relative" }} onPointerDown={() => setSelectedNodeId(null)}>
                       <TextOverlayCanvas
-                        state={editorState.state}
+                        state={previewEditorState}
                         imageSrc={background.blobKey}
                         selectedNodeId={selectedNodeId}
                         onNodeMove={handleNodeMove}
