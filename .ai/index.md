@@ -11,7 +11,7 @@ anywhere real.
 | ---------------- | ------------------------- | ---- | -------------------- |
 | `@maga/web` | Next.js app: routes, page components, hooks, and `lib/` services | `apps/web` | |
 | `@maga/editor` | Framework-free editor domain: node types, defaults, guards, state mutation | `packages/editor` | [[framework-free-editor-package]] · [[immutable-state-mutation-functions]] · [[aspect-ratio-locked-default]] · [[effect-field-optional-properties]] |
-| `@maga/projects` | Framework-free batch-project domain: schema v2 (overlay assets, per-item text, layer locks), ZIP + IDB serializers | `packages/projects` | [[per-item-text-schema]] |
+| `@maga/projects` | Framework-free batch-project domain: schema v3 (overlay assets, per-item text, per-item text styles, layer locks), ZIP + IDB serializers | `packages/projects` | [[per-item-text-schema]] |
 | `@maga/config` | Static build config: base tsconfig, ESLint config, Tailwind preset | `packages/config` | |
 
 ## Cross-cutting

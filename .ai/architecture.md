@@ -77,23 +77,26 @@ persistence hooks together.
 
 A batch project pairs a shared **template** (one `EditorState`: background, layers,
 text styles) with N **overlay assets** (each: id, original filename, blob key).
-Per-item text is stored as string overrides, not per-item state:
-`itemTextValues[overlayAssetId][textNodeId] = string`, with `textLayerLocks`
-deciding shared vs. per-item — see [[per-item-text-schema]]. This is the
-`@maga/projects` schema at `SCHEMA_VERSION = 2`.
+Per-item text is stored as overrides, not per-item state — two parallel maps keyed
+`[overlayAssetId][textNodeId]`: `itemTextValues` (content string) and
+`itemTextStyles` (`Partial<TextStyle>`), with `textLayerLocks` deciding shared vs.
+per-item for both — see [[per-item-text-schema]]. This is the `@maga/projects`
+schema at `SCHEMA_VERSION = 3`.
 
-Rendering each variant **mutates the live template text, lets the DOM repaint,
-captures it, then restores** — never a detached clone; the shared template is never
-permanently mutated. This is the load-bearing mechanism in
+Rendering each variant **mutates the live template (content + style), lets the DOM
+repaint, captures it, then restores both** — never a detached clone; the shared
+template is never permanently mutated, and the `finally` restore covers style
+fields, not just content. This is the load-bearing mechanism in
 `apps/web/src/hooks/use-batch-render.ts` — see [[batch-render-text-patch]].
 
 Reorder (asset list, layer stack) uses native HTML5 DnD with no library; layer
 z-order reuses `reorderNode` from `@maga/editor` — see [[dnd-library-choice]].
 
 Projects persist two ways from `@maga/projects`: an IndexedDB adapter (live
-autosave) and a ZIP exporter/importer (portable file). Both load v1 records
-through the single shared `migrateToV2` (`packages/projects/src/schema.ts`); the
-version bump is one-way.
+autosave) and a ZIP exporter/importer (portable file). Both load older records
+through the single shared `migrateProject` chain (`migrateToV3 ∘ migrateToV2`,
+`packages/projects/src/schema.ts`), which upgrades v1→v2→v3 and is idempotent on a
+v3 record; the version bump is one-way.
 
 ### Cartoonize (external service)
 
