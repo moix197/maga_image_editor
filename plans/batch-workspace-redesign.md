@@ -82,7 +82,7 @@ Layout restructure touches BatchWorkspace (the main wiring component) but leaves
 - [x] Code-reviewer agent has verified this phase
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing
-- [ ] Documentation updated (see Documentation section)
+- [x] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(batch): live preview derived-state hook + auto-select first variant`
 - [ ] Phase marked complete
@@ -137,7 +137,7 @@ Layout restructure touches BatchWorkspace (the main wiring component) but leaves
 - [x] Code-reviewer agent has verified this phase
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing
-- [ ] Documentation updated (see Documentation section)
+- [x] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(batch): route text/style edits to per-item override or shared template based on lock state`
 - [ ] Phase marked complete
@@ -204,7 +204,7 @@ No new automated tests — justified because: this phase is a pure layout restru
 - [x] Code-reviewer agent has verified this phase
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing (or no-tests justification accepted)
-- [ ] Documentation updated (see Documentation section)
+- [x] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(batch): 3-column persistent layout shell with VariantStrip below canvas`
 - [ ] Phase marked complete
@@ -228,12 +228,14 @@ No new automated tests — justified because: this phase is a pure layout restru
 
 **Steps:**
 
-- [ ] Read current `.ai/index.md` to locate the correct file and understand existing row format
-- [ ] Read existing `apps/web/.ai/architecture.md` (or equivalent) to find the batch workspace section and extend it
-- [ ] Write `apps/web/.ai/patterns/live-preview-derived-state.md` capturing the why, the hook contract, and the constraint
-- [ ] Update `.ai/index.md` with new hook row
-- [ ] Update architecture doc with 3-column layout description
-- [ ] Grep for any `.ai/` references to old batch layout (e.g., "canvas only in template block") and update/remove them
+- [x] Read current `.ai/index.md` to locate the correct file and understand existing row format
+- [x] Read existing `apps/web/.ai/architecture.md` (or equivalent) to find the batch workspace section and extend it
+- [x] Write `apps/web/.ai/patterns/live-preview-derived-state.md` capturing the why, the hook contract, and the constraint
+- [x] Update `.ai/index.md` with new hook row
+- [x] Update architecture doc with 3-column layout description
+- [x] Grep for any `.ai/` references to old batch layout (e.g., "canvas only in template block") and update/remove them
+
+> Note: KB lives at project-level `.ai/` (no `apps/web/.ai/`). Real files: `.ai/patterns/live-preview-derived-state.md`, `.ai/patterns/text-edit-lock-routing.md`, `.ai/architecture.md`, `.ai/index.md`.
 
 **Tests:**
 
@@ -241,22 +243,22 @@ No automated tests — justified because: pure documentation change, no executab
 
 **Verification:**
 
-- [ ] `grep -r "canvas only in template" apps/web/.ai/` returns no results
-- [ ] `.ai/index.md` contains a row for `use-preview-editor-state`
-- [ ] `apps/web/.ai/patterns/live-preview-derived-state.md` exists
-- [ ] No orphaned `.ai/` references to the old section-swap layout remain
+- [x] `grep -r "canvas only in template" apps/web/.ai/` returns no results
+- [x] `.ai/index.md` contains a row for `use-preview-editor-state`
+- [x] `apps/web/.ai/patterns/live-preview-derived-state.md` exists
+- [x] No orphaned `.ai/` references to the old section-swap layout remain
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing (or no-tests justification accepted)
-- [ ] Documentation updated (see Documentation section)
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing (or no-tests justification accepted)
+- [x] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `docs(ai): KB sync — batch workspace redesign: 3-column shell, live preview derived state`
+- [x] Changes committed: `docs(ai): KB sync — batch workspace redesign: 3-column shell, live preview derived state`
 - [ ] Phase marked complete
 
 ---
