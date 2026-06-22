@@ -104,14 +104,14 @@ Layout restructure touches BatchWorkspace (the main wiring component) but leaves
 
 **Steps:**
 
-- [ ] Read `apps/web/src/hooks/use-batch-project.ts` to confirm signatures of `setItemTextValue` and `setItemTextStyle`
-- [ ] Read `apps/web/src/hooks/use-editor-state.ts` to confirm `updateTextNode` signature
-- [ ] Read `apps/web/src/components/batch/BulkTextPanel.tsx` to understand what edit callbacks it expects
-- [ ] In `BatchWorkspace.tsx`, create `handleTextContentEdit(nodeId: string, value: string)`: if `textLayerLocks[nodeId]` → `updateTextNode(nodeId, { content: value })`; else → `setItemTextValue(activeOverlayId!, nodeId, value)`
-- [ ] Create `handleTextStyleEdit(nodeId: string, patch: Partial<TextStyle>)`: if locked → `updateTextNode(nodeId, patch)`; else → `setItemTextStyle(activeOverlayId!, nodeId, patch)`
-- [ ] Pass `handleTextContentEdit` and `handleTextStyleEdit` as callbacks to BulkTextPanel / TextStylePanel in the text section
-- [ ] Verify the derived state from Phase 1 automatically re-renders the canvas after each edit (no additional wiring needed)
-- [ ] Write unit tests (see Tests)
+- [x] Read `apps/web/src/hooks/use-batch-project.ts` to confirm signatures of `setItemTextValue` and `setItemTextStyle`
+- [x] Read `apps/web/src/hooks/use-editor-state.ts` to confirm `updateTextNode` signature
+- [x] Read `apps/web/src/components/batch/BulkTextPanel.tsx` to understand what edit callbacks it expects
+- [x] In `BatchWorkspace.tsx`, create `handleTextContentEdit(nodeId: string, value: string)`: if `textLayerLocks[nodeId]` → `updateTextNode(nodeId, { content: value })`; else → `setItemTextValue(activeOverlayId!, nodeId, value)`
+- [x] Create `handleTextStyleEdit(nodeId: string, patch: Partial<TextStyle>)`: if locked → `updateTextNode(nodeId, patch)`; else → `setItemTextStyle(activeOverlayId!, nodeId, patch)`
+- [x] Pass `handleTextContentEdit` and `handleTextStyleEdit` as callbacks to BulkTextPanel / TextStylePanel in the text section
+- [x] Verify the derived state from Phase 1 automatically re-renders the canvas after each edit (no additional wiring needed)
+- [x] Write unit tests (see Tests)
 
 **Tests:**
 
@@ -121,25 +121,25 @@ Layout restructure touches BatchWorkspace (the main wiring component) but leaves
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm --filter @maga/web test`
+- [x] Automated tests pass: `pnpm --filter @maga/web test`
 - [ ] Edit text on unlocked layer with variant A selected → variant A's canvas updates; switch to variant B → variant B shows original text
 - [ ] Toggle lock on a layer, edit text → all variants in VariantStrip show updated text
 - [ ] Run Generate All → output composites are still correct (same as pre-plan behavior)
-- [ ] Confirm existing test `apps/web/src/__tests__/use-batch-render.test.ts` still passes
-- [ ] Edge case: `activeOverlayId` is null (no variants) → handlers are no-ops, no crash
-- [ ] Edge case: locked layer edit with `activeOverlayId` set → `updateTextNode` called, per-item maps untouched
+- [x] Confirm existing test `apps/web/src/__tests__/use-batch-render.test.ts` still passes
+- [x] Edge case: `activeOverlayId` is null (no variants) → handlers are no-ops, no crash
+- [x] Edge case: locked layer edit with `activeOverlayId` set → `updateTextNode` called, per-item maps untouched
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
 - [ ] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(batch): route text/style edits to per-item override or shared template based on lock state`
+- [x] Changes committed: `feat(batch): route text/style edits to per-item override or shared template based on lock state`
 - [ ] Phase marked complete
 
 ---
