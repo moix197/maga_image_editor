@@ -35,7 +35,7 @@ export function OutputCard({ output, overlays, isSelected = false, onClick }: Ou
         "flex flex-col gap-2 rounded-lg border bg-card p-3 shadow-sm",
         onClick ? "cursor-pointer" : "",
         isSelected
-          ? "border-primary ring-2 ring-primary ring-offset-1"
+          ? "border-primary ring-2 ring-primary"
           : "border-border",
       ]
         .filter(Boolean)

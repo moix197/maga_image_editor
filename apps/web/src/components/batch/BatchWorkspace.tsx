@@ -555,7 +555,7 @@ interface ResultsSectionProps {
   onSelectOutput: (id: string) => void;
 }
 
-function ResultsSection({
+export function ResultsSection({
   outputs,
   overlays,
   batchRender,

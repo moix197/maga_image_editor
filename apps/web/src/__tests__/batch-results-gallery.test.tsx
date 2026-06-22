@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BatchResultsGallery } from "@/components/batch/BatchResultsGallery";
+import { ResultsSection } from "@/components/batch/BatchWorkspace";
 import type { GeneratedOutput, ProjectAsset } from "@maga/projects";
+import type { useBatchRender } from "@/hooks/use-batch-render";
 
 function makeOutput(id: string): GeneratedOutput {
   return { overlayAssetId: id, outputBlobKey: `data:image/png;base64,${id}`, timestamp: 0 };
@@ -13,6 +15,14 @@ function makeOverlay(id: string): ProjectAsset {
 }
 
 const BASE_PROGRESS = { current: 0, total: 0 };
+
+const STUB_BATCH_RENDER: ReturnType<typeof useBatchRender> = {
+  isRunning: false,
+  progress: BASE_PROGRESS,
+  error: null,
+  run: vi.fn(),
+  cancel: vi.fn(),
+};
 
 describe("BatchResultsGallery", () => {
   it("renders one card per output", () => {
@@ -131,53 +141,60 @@ describe("BatchResultsGallery", () => {
   });
 });
 
-// ── previewDataUrl fallback logic (unit tests on the derived variable) ──────
+// ── ResultsSection: big-preview fallback via real component ──────────────────
 
-describe("ResultsSection previewDataUrl fallback", () => {
-  /**
-   * The three-level fallback lives in ResultsSection inside BatchWorkspace.
-   * We test the logic directly as a plain function to avoid mounting the full
-   * workspace.  The invariant is:
-   *   selected (in outputs) → outputs[0] → compositeDataUrl → null
-   */
-  function derivePreviewUrl(
-    outputs: GeneratedOutput[],
-    selectedOutputId: string | null,
-    compositeDataUrl: string | null,
-  ): string | null {
-    const selectedOutput =
-      selectedOutputId != null
-        ? (outputs.find((o) => o.overlayAssetId === selectedOutputId) ?? null)
-        : null;
-    return (
-      (selectedOutput?.outputBlobKey ?? outputs[0]?.outputBlobKey ?? compositeDataUrl) || null
-    );
-  }
+function renderResultsSection(
+  outputs: GeneratedOutput[],
+  selectedOutputId: string | null,
+  compositeDataUrl: string | null,
+) {
+  const overlays = outputs.map((o) => makeOverlay(o.overlayAssetId));
+  return render(
+    <ResultsSection
+      outputs={outputs}
+      overlays={overlays}
+      batchRender={STUB_BATCH_RENDER}
+      compositeDataUrl={compositeDataUrl}
+      selectedOutputId={selectedOutputId}
+      onSelectOutput={vi.fn()}
+    />,
+  );
+}
 
-  it("returns selected output's blobKey when found", () => {
+describe("ResultsSection: previewDataUrl fallback (real component)", () => {
+  it("shows the selected output's url when found", () => {
     const outputs = [makeOutput("a"), makeOutput("b")];
-    expect(derivePreviewUrl(outputs, "b", "data:composite")).toBe(
-      `data:image/png;base64,b`,
-    );
+    renderResultsSection(outputs, "b", "data:composite");
+
+    const preview = screen.getByAltText("Composite preview");
+    expect(preview).toHaveAttribute("src", `data:image/png;base64,b`);
   });
 
   it("falls back to outputs[0] when selectedOutputId is stale (not in outputs)", () => {
     const outputs = [makeOutput("a"), makeOutput("b")];
-    // "stale-id" is no longer in the outputs array
-    expect(derivePreviewUrl(outputs, "stale-id", "data:composite")).toBe(
-      `data:image/png;base64,a`,
-    );
+    renderResultsSection(outputs, "stale-id", "data:composite");
+
+    const preview = screen.getByAltText("Composite preview");
+    expect(preview).toHaveAttribute("src", `data:image/png;base64,a`);
   });
 
   it("falls back to compositeDataUrl when outputs is empty and selectedOutputId is null", () => {
-    expect(derivePreviewUrl([], null, "data:composite")).toBe("data:composite");
+    renderResultsSection([], null, "data:composite");
+
+    const preview = screen.getByAltText("Composite preview");
+    expect(preview).toHaveAttribute("src", "data:composite");
   });
 
-  it("falls back to compositeDataUrl when outputs is cleared (empty) even with stale selectedOutputId", () => {
-    expect(derivePreviewUrl([], "stale-id", "data:composite")).toBe("data:composite");
+  it("falls back to compositeDataUrl when outputs is cleared with a stale selectedOutputId", () => {
+    renderResultsSection([], "stale-id", "data:composite");
+
+    const preview = screen.getByAltText("Composite preview");
+    expect(preview).toHaveAttribute("src", "data:composite");
   });
 
-  it("returns null when outputs empty and compositeDataUrl is null", () => {
-    expect(derivePreviewUrl([], null, null)).toBeNull();
+  it("renders no preview img when outputs is empty and compositeDataUrl is null", () => {
+    renderResultsSection([], null, null);
+
+    expect(screen.queryByAltText("Composite preview")).toBeNull();
   });
 });
