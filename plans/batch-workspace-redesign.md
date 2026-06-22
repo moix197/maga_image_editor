@@ -161,20 +161,20 @@ Layout restructure touches BatchWorkspace (the main wiring component) but leaves
 
 **Steps:**
 
-- [ ] Read `apps/web/src/app/batch/page.tsx` to understand the current container setup
-- [ ] Read `apps/web/src/components/batch/BatchWorkspace.tsx` lines 341–496 (the conditional section blocks) to map current structure before restructuring
-- [ ] Read `apps/web/src/components/batch/AssetList.tsx` and the AssetUploadZone to confirm props
-- [ ] Read `apps/web/src/components/batch/BatchResultsGallery.tsx` to confirm it assumes full-width and has no internal width constraint
-- [ ] In `page.tsx`, remove `max-w-5xl` (or replace with `max-w-screen-2xl`) and remove horizontal centering (`mx-auto`) if it would constrain the 3-column layout
-- [ ] Create `apps/web/src/components/batch/BatchRightPanel.tsx`: accepts `{ activeSection, ...per-section props }`, renders the matching panel content via a simple switch/if chain — no business logic, no direct state access
-- [ ] Restructure `BatchWorkspace.tsx` render into the 3-column shell:
+- [x] Read `apps/web/src/app/batch/page.tsx` to understand the current container setup
+- [x] Read `apps/web/src/components/batch/BatchWorkspace.tsx` lines 341–496 (the conditional section blocks) to map current structure before restructuring
+- [x] Read `apps/web/src/components/batch/AssetList.tsx` and the AssetUploadZone to confirm props
+- [x] Read `apps/web/src/components/batch/BatchResultsGallery.tsx` to confirm it assumes full-width and has no internal width constraint
+- [x] In `page.tsx`, remove `max-w-5xl` (or replace with `max-w-screen-2xl`) and remove horizontal centering (`mx-auto`) if it would constrain the 3-column layout
+- [x] Create `apps/web/src/components/batch/BatchRightPanel.tsx`: accepts `{ activeSection, ...per-section props }`, renders the matching panel content via a simple switch/if chain — no business logic, no direct state access
+- [x] Restructure `BatchWorkspace.tsx` render into the 3-column shell:
   - Outer: `<div className="flex h-full">` (or inherit existing layout)
   - Left: WorkspaceSideNav (unchanged)
   - Center: `<main className="flex flex-col flex-1 min-w-0 overflow-hidden">` — contains: (non-Results) canvas `<div className="flex-1 relative">` + VariantStrip `<div className="shrink-0">` ; (Results) `<div className="flex-1">` with BatchResultsGallery
   - Right: `<BatchRightPanel activeSection={activeSection} ... />` — hidden (`hidden md:block` or collapsing div) when Results active
   - Responsive wrapper: `<div className="flex flex-col md:flex-row h-full">` so center+right stack vertically on narrow screens
-- [ ] Ensure `?section=` param still drives `activeSection` exactly as before (no change to WorkspaceSideNav or resolveSection)
-- [ ] Spot-check that `workspace-side-nav.test.tsx` still passes without modification
+- [x] Ensure `?section=` param still drives `activeSection` exactly as before (no change to WorkspaceSideNav or resolveSection)
+- [x] Spot-check that `workspace-side-nav.test.tsx` still passes without modification
 
 **Tests:**
 
@@ -182,8 +182,8 @@ No new automated tests — justified because: this phase is a pure layout restru
 
 **Verification:**
 
-- [ ] Existing test suites pass: `pnpm --filter @maga/web test` (must include `workspace-side-nav.test.tsx` and `BatchWorkspace-editor.test.tsx`)
-- [ ] TypeScript clean: `pnpm --filter @maga/web build` (or `pnpm --filter @maga/web tsc --noEmit` if build is not fast) — zero type errors
+- [x] Existing test suites pass: `pnpm --filter @maga/web test` (must include `workspace-side-nav.test.tsx` and `BatchWorkspace-editor.test.tsx`)
+- [x] TypeScript clean: `pnpm --filter @maga/web build` (or `pnpm --filter @maga/web tsc --noEmit` if build is not fast) — zero type errors
 - [ ] Navigate to `/batch?section=assets` — canvas visible center, Assets panel visible right
 - [ ] Navigate to `/batch?section=template` — canvas visible center, template/overlay controls visible right
 - [ ] Navigate to `/batch?section=text` — canvas visible center, BulkTextPanel visible right (scrollable)
@@ -198,15 +198,15 @@ No new automated tests — justified because: this phase is a pure layout restru
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing (or no-tests justification accepted)
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing (or no-tests justification accepted)
 - [ ] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(batch): 3-column persistent layout shell with VariantStrip below canvas`
+- [x] Changes committed: `feat(batch): 3-column persistent layout shell with VariantStrip below canvas`
 - [ ] Phase marked complete
 
 ---
