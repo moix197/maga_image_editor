@@ -128,7 +128,7 @@ export function useBatchRender(
           for (const layer of perItemLayers) {
             const value = itemTextValues[overlay.id]?.[layer.id] ?? layer.templateValue;
             const stylePatch = itemTextStyles[overlay.id]?.[layer.id];
-            updateTextNode!(layer.id, { content: value, ...stylePatch });
+            updateTextNode!(layer.id, { ...stylePatch, content: value });
           }
 
           // (2) Let React re-paint the canvas before capture.

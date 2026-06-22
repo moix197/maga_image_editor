@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import { fileToDataUrl } from "@/lib/image-helpers";
 import { safeRandomId } from "@/lib/id";
-import { newTextLayerLockDefault } from "@maga/projects";
 import type { BatchProject, GeneratedOutput, ProjectAsset, TextStyle, VariableSlot } from "@maga/projects";
 import type { EditorState } from "@maga/editor";
 

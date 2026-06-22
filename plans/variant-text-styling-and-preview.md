@@ -190,17 +190,17 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 
 **Steps:**
 
-- [ ] **HARD GATE — do not proceed past this step until resolved.** Inspect `updateTextNode` in `packages/editor/src/editor-state.ts`: does its patch argument accept style fields (`fontFamily`, `fontSize`, `color`, `fontWeight`, `textAlign`, etc.) alongside `content`, or is it content-only? Two outcomes: (a) style fields accepted → document the confirmed signature and continue; (b) content-only → add `patchTextNode(id, patch: Partial<TextNode>)` to `packages/editor` following the `immutable-state-mutation-functions` pattern, export it from `packages/editor/src/index.ts`, write a unit test in `packages/editor/__tests__/editor-state.test.ts` confirming the patch merges style fields without mutating the original, and use `patchTextNode` everywhere below instead of `updateTextNode` for the combined content+style call. Record the outcome in a Step note before moving on.
-- [ ] Add `TextStyle` type export path through `@maga/projects` if callers would otherwise import directly from `@maga/editor` (avoids cross-boundary imports from `apps/web` reaching past `@maga/projects`)
-- [ ] Update `packages/projects/src/schema.ts`: add `itemTextStyles`, `migrateToV3`, and `migrateProject` chain; bump `SCHEMA_VERSION` to `3`
-- [ ] Update `zip-import.ts`, `zip-export.ts`, `idb-adapter.ts` to use `migrateProject` chain — each call site is a one-line change mirroring the existing `migrateToV2` pattern
-- [ ] Export updated types and helpers from `packages/projects/src/index.ts`
-- [ ] Add `setItemTextStyle` mutation to `use-batch-project.ts` (≤15 lines, single responsibility)
-- [ ] Extend `use-item-text.ts` with `getTextStyle` / `setTextStyle` (keep hook ≤50 lines total)
-- [ ] Update `use-batch-render.ts` render loop: read template style originals for each text node before the loop; for each item, merge and apply content + style override in a single `updateTextNode` / `patchTextNode` call; restore in `finally`
-- [ ] Update `packages/projects/README.md`
-- [ ] **Vertical-slice smoke-test (required for phase to be exercisable):** wire a temporary "Override Style" button in `BulkTextPanel` (clearly marked `// TODO: remove in Phase 3b`) that calls `setItemTextStyle(firstOverlayId, firstTextNodeId, { fontSize: 28 })` on click; run Generate All; confirm the first item renders at 28px, all others at template size; confirm template is unchanged after the run. This button is the exercisable surface for this phase — Phase 3b replaces it with the real UI.
-- [ ] Orphaned keys note: when a text node is deleted from the template or an overlay is removed, `itemTextStyles[overlayAssetId][textNodeId]` may hold a stale key. Behavior: stale keys are silently ignored by the render loop (no matching node → no mutation). No cleanup is added now (cheap to leak, expensive to coordinate); note this limitation in `packages/projects/README.md` and revisit if ZIP size becomes a concern.
+- [x] **HARD GATE — RESOLVED, outcome (a).** `updateTextNode(state, id, patch: Partial<Omit<TextNode, "id">>)` (`packages/editor/src/editor-state.ts`) already accepts all style fields (TextNode includes fontSize, color, fontFamily, fontWeight, fontStyle, opacity, rotation, shadow, textBackground). A single `updateTextNode` call carries merged content+style. No `patchTextNode` added; `packages/editor/*` untouched.
+- [x] Add `TextStyle` type export path through `@maga/projects` — no `TextStyle` existed; defined it in `packages/projects/src/schema.ts` as `Pick<TextNode, ...>` and exported from `@maga/projects` (avoids cross-boundary import + editor edit)
+- [x] Update `packages/projects/src/schema.ts`: add `itemTextStyles`, `migrateToV3`, and `migrateProject` chain; bump `SCHEMA_VERSION` to `3` (migrateToV2 re-gated on literal `2` to avoid re-stamping genuine v2 records)
+- [x] Update `zip-import.ts`, `zip-export.ts`, `idb-adapter.ts` to use `migrateProject` chain — each call site mirrors the existing `migrateToV2` pattern (migrateToV2 not forked)
+- [x] Export updated types and helpers from `packages/projects/src/index.ts`
+- [x] Add `setItemTextStyle` mutation to `use-batch-project.ts` (12 lines, merges partial)
+- [x] Extend `use-item-text.ts` with `getTextStyle` / `setTextStyle`
+- [x] Update `use-batch-render.ts` render loop: read template content+style originals before the loop; per item, apply merged content + style override in a single `updateTextNode` call; restore BOTH content AND style in `finally` (throw-restore covered by test)
+- [x] Update `packages/projects/README.md`
+- [x] **Vertical-slice smoke-test (required for phase to be exercisable):** wire a temporary "Override Style" button in `BulkTextPanel` (clearly marked `// TODO: remove in Phase 3b`) that calls `setItemTextStyle(firstOverlayId, firstTextNodeId, { fontSize: 28 })` on click; run Generate All; confirm the first item renders at 28px, all others at template size; confirm template is unchanged after the run. This button is the exercisable surface for this phase — Phase 3b replaces it with the real UI. _Note: scope expanded (orchestrator-approved) to `BatchWorkspace.tsx` + `use-zip-export.ts` — the required field and functional smoke button forced threading `setItemTextStyle`/`itemTextStyles` through those non-spread literals._
+- [x] Orphaned keys note: when a text node is deleted from the template or an overlay is removed, `itemTextStyles[overlayAssetId][textNodeId]` may hold a stale key. Behavior: stale keys are silently ignored by the render loop (no matching node → no mutation). No cleanup is added now (cheap to leak, expensive to coordinate); note this limitation in `packages/projects/README.md` and revisit if ZIP size becomes a concern.
 
 **Tests:**
 
@@ -216,7 +216,7 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test`
+- [x] Automated tests pass: `pnpm test`
 - [ ] Manual (dev smoke): hardcoded `setItemTextStyle` call changes rendered output for the target variant; other variants unaffected
 - [ ] Manual: import a v1 ZIP → no error; `itemTextStyles` empty; existing behavior preserved
 - [ ] Manual: import a v2 ZIP → upgraded to v3; `itemTextStyles` empty; text values and locks preserved
@@ -227,12 +227,12 @@ No file changes. No automated tests (pure confirmation step — no testable logi
 - [ ] All Steps and Verification checkboxes above ticked in the plan file
 - [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
-- [ ] Documentation updated (see Documentation section)
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
+- [x] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(projects): schema v3 — itemTextStyles + migrateToV3 + render-loop style application`
+- [x] Changes committed: `feat(projects): schema v3 — itemTextStyles + migrateToV3 + render-loop style application`
 - [ ] Phase marked complete
 
 ---
