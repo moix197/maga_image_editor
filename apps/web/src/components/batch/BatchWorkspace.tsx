@@ -2,7 +2,6 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Lock, Unlock } from "lucide-react";
 import { useBatchProject } from "@/hooks/use-batch-project";
 import { useEditorState } from "@/hooks/use-editor-state";
 import { useItemText } from "@/hooks/use-item-text";
@@ -13,21 +12,14 @@ import { useZipExport } from "@/hooks/use-zip-export";
 import { useProjectPersistence } from "@/hooks/use-project-persistence";
 import { fileToDataUrl } from "@/lib/image-helpers";
 import { canGenerateBatch } from "@/lib/batch-gating";
-import { AssetUploadZone } from "./AssetUploadZone";
-import { AssetList } from "./AssetList";
-import { LayerStackPanel } from "./LayerStackPanel";
 import { BatchResultsGallery } from "./BatchResultsGallery";
 import { VariantStrip } from "./VariantStrip";
 import { TextOverlayCanvas } from "@/components/text-overlay-canvas";
-import { TextStylePanel } from "@/components/text-style-panel";
-import { OverlayControlsPanel } from "@/components/overlay-controls-panel";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { WorkspaceActionsBar } from "./WorkspaceActionsBar";
-import { BulkTextPanel } from "./BulkTextPanel";
+import { WorkspaceSideNav } from "./WorkspaceSideNav";
+import { BatchRightPanel } from "./BatchRightPanel";
 import { SCHEMA_VERSION, type BatchProject, type GeneratedOutput, type ProjectAsset } from "@maga/projects";
-import { isTextNode, isOverlayNode, isBorderOverlay } from "@maga/editor";
+import { isTextNode, isOverlayNode } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
 import { resolveSection } from "./workspace-sections";
 import { makeTextEditHandlers } from "./make-text-edit-handlers";
@@ -93,9 +85,9 @@ function BatchWorkspaceInner() {
       template,
       variableSlot,
       outputs,
-      itemTextValues,
-      textLayerLocks,
-      itemTextStyles,
+      itemTextValues: itemTextValues ?? {},
+      textLayerLocks: textLayerLocks ?? {},
+      itemTextStyles: itemTextStyles ?? {},
     };
   }, [background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, itemTextStyles]);
 
@@ -135,10 +127,10 @@ function BatchWorkspaceInner() {
     overlays,
     template ?? { nodes: [] },
     variableSlot ?? { overlayNodeId: "" as never, width: 0, height: 0 },
-    itemTextValues,
-    textLayerLocks,
+    itemTextValues ?? {},
+    textLayerLocks ?? {},
     editorState.updateTextNode,
-    itemTextStyles,
+    itemTextStyles ?? {},
   );
 
   async function handleBackgroundFiles(files: File[]) {
@@ -239,7 +231,7 @@ function BatchWorkspaceInner() {
   }
 
   async function handleExportZip() {
-    await exportZip({ background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, itemTextStyles });
+    await exportZip({ background, overlays, template, variableSlot, outputs, itemTextValues: itemTextValues ?? {}, textLayerLocks: textLayerLocks ?? {}, itemTextStyles: itemTextStyles ?? {} });
   }
 
   async function handleClearProject() {
@@ -267,7 +259,14 @@ function BatchWorkspaceInner() {
   const isSelectedText = selectedNode !== null && isTextNode(selectedNode);
   const isSelectedOverlay = selectedNode !== null && isOverlayNode(selectedNode);
 
-  const itemText = useItemText({ itemTextValues, textLayerLocks, itemTextStyles, setItemTextValue, setItemTextStyle, setTextLayerLock });
+  const itemText = useItemText({
+    itemTextValues: itemTextValues ?? {},
+    textLayerLocks: textLayerLocks ?? {},
+    itemTextStyles: itemTextStyles ?? {},
+    setItemTextValue,
+    setItemTextStyle,
+    setTextLayerLock,
+  });
   const textNodes = useMemo(
     () => editorState.state.nodes.filter((n): n is TextNode => isTextNode(n)),
     [editorState.state.nodes],
@@ -276,15 +275,15 @@ function BatchWorkspaceInner() {
   const previewEditorState = usePreviewEditorState(
     editorState.state,
     activeOverlayId,
-    itemTextValues,
-    itemTextStyles,
-    textLayerLocks,
+    itemTextValues ?? {},
+    itemTextStyles ?? {},
+    textLayerLocks ?? {},
   );
 
   const { routedSetItemTextValue, routedSetItemTextStyle } = useMemo(
     () =>
       makeTextEditHandlers({
-        textLayerLocks,
+        textLayerLocks: textLayerLocks ?? {},
         setItemTextValue,
         setItemTextStyle,
         updateTextNode: editorState.updateTextNode,
@@ -292,8 +291,10 @@ function BatchWorkspaceInner() {
     [textLayerLocks, setItemTextValue, setItemTextStyle, editorState.updateTextNode],
   );
 
+  const hasBanner = restored || quotaWarning || importError || compositeError || batchRender.error || exportError;
+
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <WorkspaceActionsBar
         onGeneratePreview={() => void handleGeneratePreview()}
         onGenerateAll={() => void handleGenerateAll()}
@@ -325,248 +326,128 @@ function BatchWorkspaceInner() {
         }}
       />
 
-      <div className="flex flex-col gap-6 p-6">
-        {/* Status banners — always visible */}
-        {restored && (
-          <div role="status" className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
-            Project restored
-          </div>
-        )}
-        {quotaWarning && (
-          <div role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-            Storage quota exceeded — images will not be saved between sessions. Consider using smaller images.
-          </div>
-        )}
-        {importError && (
-          <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {importError}
-          </div>
-        )}
-        {compositeError && (
-          <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {compositeError}
-          </div>
-        )}
-        {batchRender.error && (
-          <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {batchRender.error}
-          </div>
-        )}
-        {exportError && (
-          <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {exportError}
-          </div>
-        )}
+      {/* Status banners strip — always visible */}
+      {hasBanner && (
+        <div className="flex flex-col gap-2 px-4 pt-3">
+          {restored && (
+            <div role="status" className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+              Project restored
+            </div>
+          )}
+          {quotaWarning && (
+            <div role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+              Storage quota exceeded — images will not be saved between sessions. Consider using smaller images.
+            </div>
+          )}
+          {importError && (
+            <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {importError}
+            </div>
+          )}
+          {compositeError && (
+            <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {compositeError}
+            </div>
+          )}
+          {batchRender.error && (
+            <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {batchRender.error}
+            </div>
+          )}
+          {exportError && (
+            <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {exportError}
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* Section content */}
-        {activeSection === "assets" && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Assets</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Upload background and overlay images.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <AssetUploadZone label="Background" multiple={false} onFiles={handleBackgroundFiles} />
-              <AssetUploadZone label="Overlays" multiple onFiles={handleOverlayFiles} />
-            </div>
-            {!background && (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm text-muted-foreground">Or resume a previously exported project:</p>
-                <AssetUploadZone label="Import ZIP" multiple={false} accept=".zip,application/zip" onFiles={handleImportZipFiles} />
+      {/* 3-column body */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+        {/* LEFT: side nav */}
+        <WorkspaceSideNav />
+
+        {/* CENTER: canvas (always visible for non-Results) + VariantStrip below */}
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {activeSection !== "results" ? (
+            <>
+              <div
+                className="relative flex-1 overflow-auto p-4"
+                onPointerDown={() => setSelectedNodeId(null)}
+              >
+                <TextOverlayCanvas
+                  state={previewEditorState}
+                  imageSrc={background?.blobKey ?? ""}
+                  selectedNodeId={selectedNodeId}
+                  onNodeMove={handleNodeMove}
+                  onNodeResize={handleNodeResize}
+                  onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
+                  canvasCallbackRef={liveCanvasCallbackRef}
+                />
               </div>
-            )}
-            <div className="flex flex-col gap-6">
-              {background && <AssetList label="Background" assets={[background]} />}
-              <AssetList label="Overlays" assets={overlays} onReorder={reorderOverlays} />
-            </div>
-            {template !== null && overlays.length === 0 && (
-              <p className="text-sm text-amber-600 dark:text-amber-400">No overlay images uploaded</p>
-            )}
-          </div>
-        )}
-
-        {activeSection === "template" && (
-          <div className="flex flex-col gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Template</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Design the compositing template.</p>
-            </div>
-            {background ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={() => editorState.addTextNode()}>Add Text</Button>
-                  <Button variant="outline" size="sm" onClick={() => editorState.addBorderNode()}>Add Border</Button>
-                  <Button variant="outline" size="sm" onClick={() => overlayInputRef.current?.click()}>Add Image Overlay</Button>
-                  <input
-                    ref={overlayInputRef}
-                    type="file"
-                    accept="image/png,image/svg+xml"
-                    className="hidden"
-                    aria-label="Upload image overlay"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) await handleOverlayFile(file);
-                      e.target.value = "";
-                    }}
-                  />
-                </div>
-
-                {/* Variant strip — switches the live canvas to the selected overlay */}
-                {overlays.length > 0 && (
+              {overlays.length > 0 && (
+                <div className="shrink-0 border-t border-border p-2">
                   <VariantStrip
                     overlays={overlays}
                     activeId={activeOverlayId}
                     onSelect={setActiveOverlayId}
                   />
-                )}
-
-                {/* Layer stack reorder */}
-                {editorState.state.nodes.length > 0 && (
-                  <LayerStackPanel
-                    nodes={editorState.state.nodes}
-                    onReorderNode={(id, dir) => editorState.reorderNode(id, dir)}
-                  />
-                )}
-
-                <div className="flex gap-4">
-                  <div className="flex flex-col gap-3">
-                    <div style={{ position: "relative" }} onPointerDown={() => setSelectedNodeId(null)}>
-                      <TextOverlayCanvas
-                        state={previewEditorState}
-                        imageSrc={background.blobKey}
-                        selectedNodeId={selectedNodeId}
-                        onNodeMove={handleNodeMove}
-                        onNodeResize={handleNodeResize}
-                        onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
-                        canvasCallbackRef={liveCanvasCallbackRef}
-                      />
-                    </div>
-                  </div>
-                  {(isSelectedText || isSelectedOverlay) && (
-                    <div className="w-64 shrink-0">
-                      {isSelectedText && (
-                        <TextStylePanel
-                          node={selectedNode as TextNode}
-                          onChange={(patch) => editorState.updateTextNode(selectedNodeId!, patch)}
-                          onDelete={() => { editorState.removeNode(selectedNodeId!); setSelectedNodeId(null); }}
-                          onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
-                        />
-                      )}
-                      {isSelectedOverlay && (
-                        <OverlayControlsPanel
-                          node={selectedNode as OverlayNode}
-                          onChange={(patch) => editorState.updateOverlayNode(selectedNodeId!, patch)}
-                          onDelete={() => handleDeleteOverlayNode(selectedNodeId!)}
-                          onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
-                          {...(!isBorderOverlay(selectedNode as OverlayNode) && {
-                            isVariableSlot: variableSlotNodeId === selectedNodeId,
-                            onToggleVariableSlot: () => handleToggleVariableSlot(selectedNodeId!),
-                          })}
-                        />
-                      )}
-                    </div>
-                  )}
                 </div>
-
-                {/* Per-item text for the active overlay (schema v2). */}
-                {activeOverlay && textNodes.length > 0 && (
-                  <ItemTextPanel
-                    overlayAssetId={activeOverlay.id}
-                    overlayLabel={activeOverlay.filename}
-                    textNodes={textNodes}
-                    itemText={itemText}
-                  />
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Upload a background image first in the Assets section.</p>
-            )}
-          </div>
-        )}
-
-        {activeSection === "text" && (
-          <div className="flex flex-col gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Text</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Edit per-item text for each overlay. Lock a layer to share one value across all items.
-              </p>
+              )}
+            </>
+          ) : (
+            <div className="flex-1 overflow-auto p-4">
+              <ResultsSection
+                outputs={outputs}
+                overlays={overlays}
+                batchRender={batchRender}
+                compositeDataUrl={compositeDataUrl}
+                selectedOutputId={selectedOutputId}
+                onSelectOutput={setSelectedOutputId}
+              />
             </div>
-            <BulkTextPanel
+          )}
+        </main>
+
+        {/* RIGHT: section-specific panel — hidden for Results */}
+        {activeSection !== "results" && (
+          <aside className="w-80 shrink-0 overflow-y-auto border-l border-border md:block">
+            <BatchRightPanel
+              activeSection={activeSection}
+              // assets props
+              background={background}
               overlays={overlays}
+              onBackgroundFiles={handleBackgroundFiles}
+              onOverlayFiles={handleOverlayFiles}
+              onImportZipFiles={handleImportZipFiles}
+              onReorderOverlays={reorderOverlays}
+              // template props
+              template={template}
+              editorState={editorState}
+              overlayInputRef={overlayInputRef}
+              onOverlayFile={handleOverlayFile}
+              variableSlotNodeId={variableSlotNodeId}
+              selectedNodeId={selectedNodeId}
+              selectedNode={selectedNode}
+              isSelectedText={isSelectedText}
+              isSelectedOverlay={isSelectedOverlay}
+              onSetSelectedNodeId={setSelectedNodeId}
+              onDeleteOverlayNode={handleDeleteOverlayNode}
+              onToggleVariableSlot={handleToggleVariableSlot}
+              activeOverlay={activeOverlay}
               textNodes={textNodes}
-              itemTextValues={itemTextValues}
-              itemTextStyles={itemTextStyles}
-              textLayerLocks={textLayerLocks}
+              itemText={itemText}
+              // text props
+              itemTextValues={itemTextValues ?? {}}
+              itemTextStyles={itemTextStyles ?? {}}
+              textLayerLocks={textLayerLocks ?? {}}
               setItemTextValue={routedSetItemTextValue}
               setItemTextStyle={routedSetItemTextStyle}
               setTextLayerLock={setTextLayerLock}
             />
-          </div>
-        )}
-
-        {activeSection === "results" && (
-          <ResultsSection
-            outputs={outputs}
-            overlays={overlays}
-            batchRender={batchRender}
-            compositeDataUrl={compositeDataUrl}
-            selectedOutputId={selectedOutputId}
-            onSelectOutput={setSelectedOutputId}
-          />
+          </aside>
         )}
       </div>
-    </div>
-  );
-}
-
-interface ItemTextPanelProps {
-  overlayAssetId: string;
-  overlayLabel: string;
-  textNodes: TextNode[];
-  itemText: ReturnType<typeof useItemText>;
-}
-
-/**
- * Per-item text editor for the active overlay: one input per text layer plus a
- * lock toggle. Locked layers share the template value (input disabled); unlocked
- * layers carry a per-item override.
- */
-function ItemTextPanel({ overlayAssetId, overlayLabel, textNodes, itemText }: ItemTextPanelProps) {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
-      <h2 className="text-sm font-semibold tracking-tight">Text for {overlayLabel}</h2>
-      {textNodes.map((node, i) => {
-        const locked = itemText.isLocked(node.id);
-        const value = locked ? node.content : itemText.getTextValue(overlayAssetId, node.id);
-        const inputId = `item-text-${overlayAssetId}-${node.id}`;
-        return (
-          <div key={node.id} className="flex flex-col gap-1.5">
-            <Label htmlFor={inputId} className="text-xs text-muted-foreground">
-              Text layer {i + 1}
-            </Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id={inputId}
-                value={value}
-                disabled={locked}
-                placeholder={node.content}
-                onChange={(e) => itemText.setTextValue(overlayAssetId, node.id, e.target.value)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label={locked ? "Unlock layer (edit per item)" : "Lock layer (share across items)"}
-                aria-pressed={locked}
-                onClick={() => itemText.toggleLock(node.id)}
-              >
-                {locked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
-              </Button>
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
