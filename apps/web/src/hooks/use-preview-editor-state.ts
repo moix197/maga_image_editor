@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { isTextNode } from "@maga/editor";
 import type { EditorState } from "@maga/editor";
+import { newTextLayerLockDefault } from "@maga/projects";
 import type { TextStyle } from "@maga/projects";
 
 type ItemTextValues = Record<string, Record<string, string>>;
@@ -35,12 +36,16 @@ export function usePreviewEditorState(
 
     const derivedNodes = base.nodes.map((node) => {
       if (!isTextNode(node)) return node;
-      if (textLayerLocks[node.id]) return node;
+      // Same lock resolution as use-item-text: a missing lock defaults to unlocked.
+      if (textLayerLocks[node.id] ?? newTextLayerLockDefault) return node;
 
       const contentOverride = perItemValues?.[node.id];
       const styleOverride = perItemStyles?.[node.id];
 
       if (contentOverride === undefined && !styleOverride) return node;
+
+      // Fallback to the live node.content (not layer.templateValue) is deliberate:
+      // for unlocked layers the base node IS the template, so the two are equivalent.
 
       return {
         ...node,
