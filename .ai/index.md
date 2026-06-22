@@ -18,7 +18,9 @@ anywhere real.
 
 | Concern | Where it's handled | Notes |
 | ------- | ------------------ | ----- |
-| Batch workspace | `apps/web/src/app/batch/` · `apps/web/src/components/batch/` · `apps/web/src/hooks/{use-batch-render,use-batch-project}.ts` | One editor surface (`/editor` redirects in). [[template-workspace-unified-route]] · [[batch-render-text-patch]] · [[dnd-library-choice]] |
+| Batch workspace | `apps/web/src/app/batch/` · `apps/web/src/components/batch/` · `apps/web/src/hooks/{use-batch-render,use-batch-project}.ts` | One editor surface (`/editor` redirects in). 3-column shell: side nav · persistent canvas+VariantStrip · contextual `BatchRightPanel` (Results takes over center full-width). [[template-workspace-unified-route]] · [[batch-render-text-patch]] · [[dnd-library-choice]] |
+| Batch live preview | `apps/web/src/hooks/use-preview-editor-state.ts` (`usePreviewEditorState`) | Derived copy-on-read EditorState for the active variant; memoized; never mutates the template. [[live-preview-derived-state]] |
+| Batch text-edit routing | `apps/web/src/components/batch/make-text-edit-handlers.ts` (`makeTextEditHandlers`) | Routes each text edit to per-item override (unlocked) or shared template (locked) by lock state. [[text-edit-lock-routing]] |
 | Property panels | `apps/web/src/components/{text-style-panel,overlay-controls-panel}.tsx` | [[field-row-property-panel-layout]] |
 | Export / compositing | `apps/web/src/lib/{export-helpers,canvas-post-pass}.ts` | [[canvas-post-pass-for-export-effects]] · [[data-overlay-dom-serialization]] · [[pixelratio-coordinate-mapping]] · [[per-item-trycatch-fallback]] |
 | External services (cartoonize) | `apps/web/src/app/api/cartoonize/route.ts` · `apps/web/src/lib/cartoonize-service.ts` · `apps/web/src/hooks/use-cartoonize.ts` | [[deepai-toonify-provider]] · [[ephemeral-cartoonize-result-state]] · [[lib-service-function-convention]] |

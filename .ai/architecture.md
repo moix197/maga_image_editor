@@ -75,6 +75,27 @@ sections via a `?section=` query param; `BatchWorkspace`
 (`apps/web/src/components/batch/`) wires the project, editor-state, render, and
 persistence hooks together.
 
+The workspace is a **3-column shell**: left `WorkspaceSideNav`; center a
+**persistent** `TextOverlayCanvas` with `VariantStrip` directly below it — both
+stay mounted and visible across the Assets / Template / Text sections, the canvas
+never section-swaps away. The right column is a contextual `BatchRightPanel`
+(`apps/web/src/components/batch/BatchRightPanel.tsx`) — a pure shell that switches
+its body on `activeSection` (Assets: asset list + upload zone; Template: overlay/
+template controls; Text: BulkTextPanel). **Results is the exception:** it replaces
+the center canvas with the full-width `BatchResultsGallery` and collapses the right
+panel. Below the `md` breakpoint the right panel stacks under the canvas.
+
+The center canvas renders a **live preview** of the active variant, derived
+copy-on-read from the template + that overlay's per-item overrides via
+`usePreviewEditorState` (`apps/web/src/hooks/use-preview-editor-state.ts`) — the
+shared template is never mutated for display; see [[live-preview-derived-state]].
+Text edits route by lock state through `makeTextEditHandlers`
+(`apps/web/src/components/batch/make-text-edit-handlers.ts`): an unlocked layer's
+edit writes a per-item override (only the active variant changes), a locked layer's
+edit writes the shared template (all variants change); see
+[[text-edit-lock-routing]]. This preview/display path is **orthogonal** to the
+Generate All render path below — the export loop owns output and is unaffected.
+
 A batch project pairs a shared **template** (one `EditorState`: background, layers,
 text styles) with N **overlay assets** (each: id, original filename, blob key).
 Per-item text is stored as overrides, not per-item state — two parallel maps keyed
