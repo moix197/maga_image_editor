@@ -25,7 +25,7 @@ export type TextStyle = Pick<
  * project JSON shape; consumers (ZIP import, IDB restore) gate on this literal
  * to reject incompatible projects.
  */
-export const SCHEMA_VERSION = 3 as const;
+export const SCHEMA_VERSION = 4 as const;
 
 /** Numeric literal type for the current schema version. */
 export type SchemaVersion = typeof SCHEMA_VERSION;
@@ -139,7 +139,7 @@ export interface BatchProject {
    * {@link itemTextValues}. New layers default to {@link newTextLayerLockDefault};
    * v1-migrated layers default to {@link migratedTextLayerLockDefault}.
    */
-  textLayerLocks: Record<string, boolean>;
+  textLayerLocks?: Record<string, boolean>;
   /**
    * Per-item text STYLE overrides keyed `overlayAssetId → textNodeId → style
    * partial` (schema v3). Mirrors {@link itemTextValues} but carries a
@@ -149,6 +149,25 @@ export interface BatchProject {
    * back to the template node's own style. Empty `{}` means no style overrides.
    */
   itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
+}
+
+/**
+ * Extracts the {@link TextStyle} subset from a template {@link TextNode}, used by
+ * {@link migrateToV4} to seed each variant's per-item style override from the
+ * locked layer's template style. Mirrors the fields of {@link TextStyle} exactly.
+ */
+function textStyleOf(node: TextNode): TextStyle {
+  return {
+    fontSize: node.fontSize,
+    color: node.color,
+    opacity: node.opacity,
+    fontFamily: node.fontFamily,
+    fontWeight: node.fontWeight,
+    fontStyle: node.fontStyle,
+    rotation: node.rotation,
+    shadow: node.shadow,
+    textBackground: node.textBackground,
+  };
 }
 
 /**
@@ -205,20 +224,72 @@ export function migrateToV3<
 }
 
 /**
- * Single forward-migration entry point: chains v1→v2→v3 by composing
- * {@link migrateToV2} then {@link migrateToV3}. Idempotent on an already-current
- * record (existing `itemTextValues` / `textLayerLocks` / `itemTextStyles` are
- * preserved, never reset). Shared by ZIP import and IDB load so both apply an
- * identical migration path — no forked copies.
+ * Upgrades a v3 record to v4 by retiring the lock model: every previously-locked
+ * text layer's template value/style is fanned out into each overlay's per-item
+ * {@link BatchProject.itemTextValues}/{@link BatchProject.itemTextStyles}, then
+ * `textLayerLocks` is dropped from the record. After v4, ALL text layers are
+ * per-item — there is no shared/locked concept.
+ *
+ * Edge cases handled (see plan Dependencies & Risks 6/7/8):
+ * - zero overlays: nothing to fan into — locks are simply dropped, no crash;
+ * - stale lock key (node id no longer in the template): skipped, never written;
+ * - existing per-item override for a locked node: preserved, never overwritten
+ *   (keeps the migration idempotent and non-clobbering).
+ *
+ * Idempotent: a record already at v4 (no `textLayerLocks`) is returned unchanged
+ * apart from re-stamping `schemaVersion`. Run after {@link migrateToV3} via
+ * {@link migrateProject}.
+ */
+export function migrateToV4<
+  T extends {
+    schemaVersion: number;
+    template: EditorState | null;
+    textLayerLocks?: Record<string, boolean>;
+    itemTextValues: BatchProject["itemTextValues"];
+    itemTextStyles: BatchProject["itemTextStyles"];
+    overlays: BatchProject["overlays"];
+  },
+>(
+  project: T,
+): Omit<T, "textLayerLocks"> & Pick<BatchProject, "schemaVersion" | "itemTextValues" | "itemTextStyles"> {
+  const { textLayerLocks, ...rest } = project;
+  const templateNodeIds = new Set(
+    (project.template?.nodes ?? []).filter(isTextNode).map((node) => node.id),
+  );
+  const itemTextValues: BatchProject["itemTextValues"] = { ...project.itemTextValues };
+  const itemTextStyles: BatchProject["itemTextStyles"] = { ...project.itemTextStyles };
+
+  for (const [nodeId, locked] of Object.entries(textLayerLocks ?? {})) {
+    if (!locked || !templateNodeIds.has(nodeId as NodeId)) continue;
+    const templateNode = project.template?.nodes.find((node) => node.id === nodeId);
+    if (!templateNode || !isTextNode(templateNode)) continue;
+    for (const overlay of project.overlays) {
+      const values = (itemTextValues[overlay.id] ??= {});
+      if (!(nodeId in values)) values[nodeId] = templateNode.content;
+      const styles = (itemTextStyles[overlay.id] ??= {});
+      if (!(nodeId in styles)) styles[nodeId] = textStyleOf(templateNode);
+    }
+  }
+
+  return { ...rest, schemaVersion: 4, itemTextValues, itemTextStyles };
+}
+
+/**
+ * Single forward-migration entry point: chains v1→v2→v3→v4 by composing
+ * {@link migrateToV2}, {@link migrateToV3}, then {@link migrateToV4}. Idempotent
+ * on an already-current record (existing `itemTextValues` / `itemTextStyles` are
+ * preserved, never reset; `textLayerLocks` is dropped). Shared by ZIP import and
+ * IDB load so both apply an identical migration path — no forked copies.
  */
 export function migrateProject<
   T extends {
     schemaVersion: number;
     template: EditorState | null;
+    overlays: BatchProject["overlays"];
     itemTextStyles?: BatchProject["itemTextStyles"];
   },
 >(
   project: T,
-): T & Pick<BatchProject, "schemaVersion" | "itemTextValues" | "textLayerLocks" | "itemTextStyles"> {
-  return migrateToV3(migrateToV2(project));
+): Omit<T, "textLayerLocks"> & Pick<BatchProject, "schemaVersion" | "itemTextValues" | "itemTextStyles"> {
+  return migrateToV4(migrateToV3(migrateToV2(project)));
 }

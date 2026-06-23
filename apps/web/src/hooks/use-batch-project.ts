@@ -100,7 +100,7 @@ export function useBatchProject(): UseBatchProjectResult {
     setVariableSlotState(project.variableSlot);
     setOutputs(project.outputs);
     setItemTextValuesState(project.itemTextValues);
-    setTextLayerLocksState(project.textLayerLocks);
+    setTextLayerLocksState(project.textLayerLocks ?? {});
     setItemTextStylesState(project.itemTextStyles);
   }, []);
 

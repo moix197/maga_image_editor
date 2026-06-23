@@ -46,7 +46,10 @@ describe("idb-adapter", () => {
     const project = makeProject();
     await saveProject(db, project);
     const loaded = await loadProject(db, project.id);
-    expect(loaded).toEqual(project);
+    // loadProject migrates to v4, which strips textLayerLocks; compare against
+    // the migrated shape (locks dropped) rather than the raw in-memory fixture.
+    const { textLayerLocks: _drop, ...migrated } = project;
+    expect(loaded).toEqual(migrated);
   });
 
   it("round-trips a background-only draft with null template + null variableSlot", async () => {
@@ -57,7 +60,8 @@ describe("idb-adapter", () => {
     expect(loaded).not.toBeNull();
     expect(loaded!.template).toBeNull();
     expect(loaded!.variableSlot).toBeNull();
-    expect(loaded).toEqual(draft);
+    const { textLayerLocks: _drop, ...migrated } = draft;
+    expect(loaded).toEqual(migrated);
   });
 
   it("round-trips a Blob via saveBlob + loadBlob", async () => {
@@ -95,7 +99,7 @@ describe("idb-adapter", () => {
     expect(await loadProject(db, futuristic.id)).toBeNull();
   });
 
-  it("loadProject migrates a stored v1 record to v3 (itemTextValues {}, all layers locked, itemTextStyles {})", async () => {
+  it("loadProject migrates a stored v1 record to v4 (itemTextValues {}, no textLayerLocks, itemTextStyles {})", async () => {
     const db = await openDb();
     // A legacy v1 record: schemaVersion 1, no v2/v3 fields, two text layers.
     const v1 = {
@@ -120,12 +124,14 @@ describe("idb-adapter", () => {
     const loaded = await loadProject(db, "legacy");
     expect(loaded).not.toBeNull();
     expect(loaded!.schemaVersion).toBe(SCHEMA_VERSION);
+    // v1 had no overlays, so the all-locked layers fan into nothing and the
+    // lock map drops entirely on v4 migration.
     expect(loaded!.itemTextValues).toEqual({});
-    expect(loaded!.textLayerLocks).toEqual({ t1: true, t2: true });
+    expect("textLayerLocks" in loaded!).toBe(false);
     expect(loaded!.itemTextStyles).toEqual({});
   });
 
-  it("loadProject migrates a stored v2 record to v3 (preserves values + locks, adds itemTextStyles {})", async () => {
+  it("loadProject migrates a stored v2 record to v4 (preserves values, drops locks, adds itemTextStyles {})", async () => {
     const db = await openDb();
     const v2 = {
       schemaVersion: 2,
@@ -146,12 +152,14 @@ describe("idb-adapter", () => {
     const loaded = await loadProject(db, "v2rec");
     expect(loaded).not.toBeNull();
     expect(loaded!.schemaVersion).toBe(SCHEMA_VERSION);
+    // t1 was unlocked (false) so it is not fanned into per-item values; the
+    // lock map drops on v4 migration.
     expect(loaded!.itemTextValues).toEqual({ "ov-1": { t1: "kept" } });
-    expect(loaded!.textLayerLocks).toEqual({ t1: false });
+    expect("textLayerLocks" in loaded!).toBe(false);
     expect(loaded!.itemTextStyles).toEqual({});
   });
 
-  it("loadProject is idempotent on an already-v3 record (itemTextStyles preserved)", async () => {
+  it("loadProject is idempotent on an already-v4 record (itemTextStyles preserved)", async () => {
     const db = await openDb();
     const v3 = makeProject({ itemTextStyles: { "ov-1": { t1: { fontSize: 19 } } } });
     await saveProject(db, v3);
