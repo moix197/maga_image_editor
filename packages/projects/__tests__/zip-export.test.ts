@@ -21,7 +21,6 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     variableSlot: { overlayNodeId: "slot" as NodeId, width: 100, height: 100 },
     outputs: [],
     itemTextValues: {},
-    textLayerLocks: {},
     itemTextStyles: {},
     ...overrides,
   };
@@ -49,7 +48,6 @@ describe("exportProjectZip", () => {
   it("writes schemaVersion 4 and the v3 field (itemTextStyles) alongside v2 fields", async () => {
     const project = makeProject({
       itemTextValues: { "ov-1": { "node-1": "hello" } },
-      textLayerLocks: { "node-1": false },
       itemTextStyles: { "ov-1": { "node-1": { fontSize: 32 } } },
     });
     const blob = await exportProjectZip(project, PNG_DATA_URL, [], []);
@@ -57,8 +55,8 @@ describe("exportProjectZip", () => {
 
     expect(parsed.schemaVersion).toBe(4);
     expect(parsed.itemTextValues).toEqual({ "ov-1": { "node-1": "hello" } });
-    expect(parsed.textLayerLocks).toEqual({ "node-1": false });
     expect(parsed.itemTextStyles).toEqual({ "ov-1": { "node-1": { fontSize: 32 } } });
+    expect("textLayerLocks" in parsed).toBe(false);
   });
 
   it("forces schemaVersion 4 on export even if the in-memory record is older", async () => {

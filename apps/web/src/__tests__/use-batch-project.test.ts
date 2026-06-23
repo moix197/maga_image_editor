@@ -171,10 +171,9 @@ describe("useBatchProject", () => {
     expect(result.current.outputs).toHaveLength(0);
   });
 
-  it("itemTextValues and textLayerLocks start empty", () => {
+  it("itemTextValues starts empty", () => {
     const { result } = renderHook(() => useBatchProject());
     expect(result.current.itemTextValues).toEqual({});
-    expect(result.current.textLayerLocks).toEqual({});
   });
 
   it("setItemTextValue stores a per-item override keyed by overlay then node", () => {
@@ -242,39 +241,27 @@ describe("useBatchProject", () => {
     });
   });
 
-  it("setTextLayerLock toggles a layer's lock state", () => {
+  it("getTextValue reads the per-item override directly via useItemText", () => {
+    // The lock model is gone — useItemText always reads the per-item map.
     const { result } = renderHook(() => useBatchProject());
-
     act(() => {
-      result.current.setTextLayerLock("node-1", true);
+      result.current.setItemTextValue("ov-1", "node-1", "hi");
     });
-    expect(result.current.textLayerLocks["node-1"]).toBe(true);
-
-    act(() => {
-      result.current.setTextLayerLock("node-1", false);
-    });
-    expect(result.current.textLayerLocks["node-1"]).toBe(false);
-  });
-
-  it("a newly-added (unrecorded) text layer reads as locked=false via useItemText", () => {
-    // No lock entry has been written, so the default applies (per-image).
-    const { result } = renderHook(() => useBatchProject());
     const { result: itemText } = renderHook(() =>
       useItemText({
         itemTextValues: result.current.itemTextValues,
-        textLayerLocks: result.current.textLayerLocks,
         itemTextStyles: result.current.itemTextStyles,
         setItemTextValue: result.current.setItemTextValue,
         setItemTextStyle: result.current.setItemTextStyle,
-        setTextLayerLock: result.current.setTextLayerLock,
       })
     );
-    expect(itemText.current.isLocked("brand-new-node")).toBe(false);
+    expect(itemText.current.getTextValue("ov-1", "node-1")).toBe("hi");
+    expect(itemText.current.getTextValue("ov-1", "missing")).toBe("");
   });
 
-  it("a migrated v1 layer reads as locked=true after setProject", () => {
+  it("setProject migrates a v1 project to v4 (no textLayerLocks, values fanned)", () => {
     const { result } = renderHook(() => useBatchProject());
-    // Build a v1 project with one text layer, migrate it, then load it.
+    // Build a v1 project with one text layer and one overlay, migrate, load.
     const v1 = {
       schemaVersion: 1,
       id: "p",
@@ -282,7 +269,7 @@ describe("useBatchProject", () => {
       createdAt: 0,
       updatedAt: 0,
       background: { id: "bg", filename: "bg.png", blobKey: "data:bg" },
-      overlays: [],
+      overlays: [{ id: "ov-1", filename: "a.png", blobKey: "data:a" }],
       template: {
         nodes: [
           { id: "t1" as NodeId, content: "A", x: 0, y: 0, rotation: 0, zIndex: 0, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null },
@@ -293,12 +280,14 @@ describe("useBatchProject", () => {
     } as unknown as BatchProject;
     const migrated = migrateProject(v1);
     expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
+    expect("textLayerLocks" in migrated).toBe(false);
 
     act(() => {
       result.current.setProject(migrated);
     });
 
-    expect(result.current.textLayerLocks["t1"]).toBe(true);
+    // The v1 layer's template value fanned into the overlay's per-item override.
+    expect(result.current.itemTextValues["ov-1"]?.["t1"]).toBe("A");
   });
 
   it("reorderOverlays replaces overlays array in correct order", async () => {
@@ -348,7 +337,6 @@ function makeProject(templateNodeId: string): BatchProject {
     variableSlot: { overlayNodeId: templateNodeId as NodeId, width: 200, height: 150 },
     outputs: [],
     itemTextValues: {},
-    textLayerLocks: {},
     itemTextStyles: {},
   };
 }

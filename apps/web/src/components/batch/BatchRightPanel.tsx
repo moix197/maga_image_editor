@@ -4,20 +4,17 @@ import type { RefObject } from "react";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
 import { isBorderOverlay } from "@maga/editor";
 import type { ProjectAsset } from "@maga/projects";
-import type { TextStyle } from "@maga/projects";
 import type { WorkspaceSection } from "./workspace-sections";
 import type { useEditorState } from "@/hooks/use-editor-state";
 import type { useItemText } from "@/hooks/use-item-text";
 import { AssetUploadZone } from "./AssetUploadZone";
 import { AssetList } from "./AssetList";
 import { LayerStackPanel } from "./LayerStackPanel";
-import { BulkTextPanel } from "./BulkTextPanel";
 import { TextStylePanel } from "@/components/text-style-panel";
 import { OverlayControlsPanel } from "@/components/overlay-controls-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, Unlock } from "lucide-react";
 import { Collapsible } from "@/components/ui/collapsible";
 
 interface BatchRightPanelProps {
@@ -45,13 +42,6 @@ interface BatchRightPanelProps {
   activeOverlay: ProjectAsset | null;
   textNodes: TextNode[];
   itemText: ReturnType<typeof useItemText>;
-  // text
-  itemTextValues: Record<string, Record<string, string>>;
-  itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
-  textLayerLocks: Record<string, boolean>;
-  setItemTextValue: (overlayId: string, nodeId: string, value: string) => void;
-  setItemTextStyle: (overlayId: string, nodeId: string, patch: Partial<TextStyle>) => void;
-  setTextLayerLock: (nodeId: string, locked: boolean) => void;
 }
 
 export function BatchRightPanel({
@@ -77,12 +67,6 @@ export function BatchRightPanel({
   activeOverlay,
   textNodes,
   itemText,
-  itemTextValues,
-  itemTextStyles,
-  textLayerLocks,
-  setItemTextValue,
-  setItemTextStyle,
-  setTextLayerLock,
 }: BatchRightPanelProps) {
   if (activeSection === "assets") {
     return (
@@ -197,29 +181,6 @@ export function BatchRightPanel({
     );
   }
 
-  if (activeSection === "text") {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Text</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Edit per-item text for each overlay. Lock a layer to share one value across all items.
-          </p>
-        </div>
-        <BulkTextPanel
-          overlays={overlays}
-          textNodes={textNodes}
-          itemTextValues={itemTextValues}
-          itemTextStyles={itemTextStyles}
-          textLayerLocks={textLayerLocks}
-          setItemTextValue={setItemTextValue}
-          setItemTextStyle={setItemTextStyle}
-          setTextLayerLock={setTextLayerLock}
-        />
-      </div>
-    );
-  }
-
   // results: panel is hidden (parent renders null for results)
   return null;
 }
@@ -236,33 +197,19 @@ function ItemTextPanel({ overlayAssetId, overlayLabel, textNodes, itemText }: It
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
       <h2 className="text-sm font-semibold tracking-tight">Text for {overlayLabel}</h2>
       {textNodes.map((node, i) => {
-        const locked = itemText.isLocked(node.id);
-        const value = locked ? node.content : itemText.getTextValue(overlayAssetId, node.id);
+        const value = itemText.getTextValue(overlayAssetId, node.id);
         const inputId = `item-text-${overlayAssetId}-${node.id}`;
         return (
           <div key={node.id} className="flex flex-col gap-1.5">
             <Label htmlFor={inputId} className="text-xs text-muted-foreground">
               Text layer {i + 1}
             </Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id={inputId}
-                value={value}
-                disabled={locked}
-                placeholder={node.content}
-                onChange={(e) => itemText.setTextValue(overlayAssetId, node.id, e.target.value)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label={locked ? "Unlock layer (edit per item)" : "Lock layer (share across items)"}
-                aria-pressed={locked}
-                onClick={() => itemText.toggleLock(node.id)}
-              >
-                {locked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
-              </Button>
-            </div>
+            <Input
+              id={inputId}
+              value={value}
+              placeholder={node.content}
+              onChange={(e) => itemText.setTextValue(overlayAssetId, node.id, e.target.value)}
+            />
           </div>
         );
       })}

@@ -19,7 +19,6 @@ interface ProjectState {
   variableSlot: VariableSlot | null;
   outputs: GeneratedOutput[];
   itemTextValues?: Record<string, Record<string, string>>;
-  textLayerLocks?: Record<string, boolean>;
   itemTextStyles?: Record<string, Record<string, Partial<TextStyle>>>;
 }
 
@@ -55,7 +54,6 @@ function assembleProject(
     },
     outputs: state.outputs,
     itemTextValues: state.itemTextValues ?? {},
-    textLayerLocks: state.textLayerLocks ?? {},
     itemTextStyles: state.itemTextStyles ?? {},
   };
 }

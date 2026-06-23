@@ -20,10 +20,6 @@ vi.mock("@maga/editor", () => ({
   isTextNode: vi.fn((n: unknown) => "content" in (n as object)),
 }));
 
-vi.mock("@maga/projects", () => ({
-  newTextLayerLockDefault: false,
-}));
-
 vi.mock("@/lib/capture-helpers", () => ({
   waitTwoFrames: vi.fn().mockResolvedValue(undefined),
 }));
@@ -233,11 +229,10 @@ describe("useBatchRender", () => {
     };
     const overlays = [makeOverlay("a"), makeOverlay("b")];
     const itemTextValues = { a: { [TEXT_ID]: "A-text" }, b: { [TEXT_ID]: "B-text" } };
-    const textLayerLocks = { [TEXT_ID]: false }; // unlocked → per-item
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, textLayerLocks, updateTextNode)
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode)
     );
 
     await act(async () => {
@@ -262,7 +257,6 @@ describe("useBatchRender", () => {
     };
     const overlays = [makeOverlay("a")];
     const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
-    const textLayerLocks = { [TEXT_ID]: false };
 
     // Simulate the live editor state mutated by updateTextNode so we can assert
     // its final value after the (throwing) run.
@@ -274,7 +268,7 @@ describe("useBatchRender", () => {
     mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, textLayerLocks, updateTextNode)
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode)
     );
 
     await act(async () => {
@@ -303,11 +297,10 @@ describe("useBatchRender", () => {
     };
     const overlays = [makeOverlay("a"), makeOverlay("b")];
     const itemTextValues = { a: { [TEXT_ID]: "A-text" }, b: { [TEXT_ID]: "B-text" } };
-    const textLayerLocks = { [TEXT_ID]: false };
     const updateTextNode = vi.fn<(id: NodeId, patch: { content?: string }) => void>();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, textLayerLocks, updateTextNode)
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode)
     );
 
     await act(async () => {
@@ -319,7 +312,10 @@ describe("useBatchRender", () => {
     expect(contents).toEqual(["A-text", "TEMPLATE", "B-text", "TEMPLATE"]);
   });
 
-  it("locked text nodes are NOT patched — updateTextNode never called for them", async () => {
+  it("every text node is patched per-item — a previously-locked node now appears in output", async () => {
+    // Pre-v4 a "locked" node was skipped (updateTextNode never called). The lock
+    // model is gone: ALL text nodes are per-item, so each one is patched +
+    // restored once per overlay.
     const TEXT_ID = "text-1";
     const textTemplate: EditorState = {
       nodes: [
@@ -329,18 +325,19 @@ describe("useBatchRender", () => {
     };
     const overlays = [makeOverlay("a"), makeOverlay("b")];
     const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
-    const textLayerLocks = { [TEXT_ID]: true }; // locked → shared, no patch
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, textLayerLocks, updateTextNode)
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode)
     );
 
     await act(async () => {
       await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
     });
 
-    expect(updateTextNode).not.toHaveBeenCalled();
+    // 2 overlays × (apply + restore) = 4 calls; the node is no longer skipped.
+    const contents = updateTextNode.mock.calls.map((c) => (c[1] as { content: string }).content);
+    expect(contents).toEqual(["A-text", "TEMPLATE", "TEMPLATE", "TEMPLATE"]);
   });
 
   it("batch run produces non-empty outputs — addOutput called at least once per overlay", async () => {
@@ -391,12 +388,11 @@ describe("useBatchRender", () => {
     const template = styleTemplate(TEXT_ID);
     const overlays = [makeOverlay("a")];
     const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
-    const textLayerLocks = { [TEXT_ID]: false };
     const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28 } } };
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, template, slot as VariableSlot, itemTextValues, textLayerLocks, updateTextNode, itemTextStyles),
+      useBatchRender(overlays, template, slot as VariableSlot, itemTextValues, updateTextNode, itemTextStyles),
     );
 
     await act(async () => {
@@ -409,23 +405,24 @@ describe("useBatchRender", () => {
     expect(applyPatch.fontSize).toBe(28);
   });
 
-  it("locked layers receive no per-item style — updateTextNode never called", async () => {
+  it("every layer receives its per-item style — a previously-locked layer is now patched", async () => {
     const TEXT_ID = "text-1";
     const template = styleTemplate(TEXT_ID);
     const overlays = [makeOverlay("a")];
     const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28 } } };
-    const textLayerLocks = { [TEXT_ID]: true }; // locked → template style, no patch
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, template, slot as VariableSlot, {}, textLayerLocks, updateTextNode, itemTextStyles),
+      useBatchRender(overlays, template, slot as VariableSlot, {}, updateTextNode, itemTextStyles),
     );
 
     await act(async () => {
       await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
     });
 
-    expect(updateTextNode).not.toHaveBeenCalled();
+    // The layer is no longer skipped: the apply call carries its per-item style.
+    const applyPatch = updateTextNode.mock.calls[0]![1] as { fontSize?: number };
+    expect(applyPatch.fontSize).toBe(28);
   });
 
   it("restore patch carries the template STYLE fields, not only content", async () => {
@@ -433,11 +430,10 @@ describe("useBatchRender", () => {
     const template = styleTemplate(TEXT_ID);
     const overlays = [makeOverlay("a")];
     const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28, color: "#ff0000" } } };
-    const textLayerLocks = { [TEXT_ID]: false };
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, template, slot as VariableSlot, {}, textLayerLocks, updateTextNode, itemTextStyles),
+      useBatchRender(overlays, template, slot as VariableSlot, {}, updateTextNode, itemTextStyles),
     );
 
     await act(async () => {
@@ -461,14 +457,13 @@ describe("useBatchRender", () => {
     const template = styleTemplate(TEXT_ID);
     const overlays = [makeOverlay("a"), makeOverlay("b")];
     const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28 } }, b: { [TEXT_ID]: { fontSize: 40 } } };
-    const textLayerLocks = { [TEXT_ID]: false };
 
     // Simulate live editor mutation so we can assert the template arg is never
     // permanently changed.
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, template, slot as VariableSlot, {}, textLayerLocks, updateTextNode, itemTextStyles),
+      useBatchRender(overlays, template, slot as VariableSlot, {}, updateTextNode, itemTextStyles),
     );
 
     await act(async () => {
@@ -484,7 +479,6 @@ describe("useBatchRender", () => {
     const template = styleTemplate(TEXT_ID);
     const overlays = [makeOverlay("a")];
     const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28, color: "#ff0000" } } };
-    const textLayerLocks = { [TEXT_ID]: false };
 
     // Track the live style as updateTextNode mutates it.
     let liveFontSize = 12;
@@ -499,7 +493,7 @@ describe("useBatchRender", () => {
     mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, template, slot as VariableSlot, {}, textLayerLocks, updateTextNode, itemTextStyles),
+      useBatchRender(overlays, template, slot as VariableSlot, {}, updateTextNode, itemTextStyles),
     );
 
     await act(async () => {

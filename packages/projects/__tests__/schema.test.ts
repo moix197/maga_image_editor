@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   SCHEMA_VERSION,
-  newTextLayerLockDefault,
-  migratedTextLayerLockDefault,
   migrateToV3,
   migrateProject,
 } from "../src/index";
@@ -10,8 +8,15 @@ import { migrateToV4 } from "../src/schema";
 import type { BatchProject } from "../src/index";
 import type { NodeId } from "@maga/editor";
 
+/**
+ * A legacy v3 record carries a transient `textLayerLocks` map that the v4
+ * migration consumes. The current {@link BatchProject} type no longer declares
+ * it, so migration-input fixtures use this loosened shape to attach locks.
+ */
+type ProjectWithLocks = Partial<BatchProject> & { textLayerLocks?: Record<string, boolean> };
+
 /** A minimal, valid project used to assert the schema shape at compile + runtime. */
-function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
+function makeProject(overrides: ProjectWithLocks = {}): BatchProject {
   return {
     schemaVersion: SCHEMA_VERSION,
     id: "project-1",
@@ -24,10 +29,9 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     variableSlot: { overlayNodeId: "slot-node-id" as NodeId, width: 800, height: 600 },
     outputs: [],
     itemTextValues: {},
-    textLayerLocks: {},
     itemTextStyles: {},
     ...overrides,
-  };
+  } as BatchProject;
 }
 
 describe("BatchProject schema", () => {
@@ -45,27 +49,20 @@ describe("BatchProject schema", () => {
       variableSlot: { overlayNodeId: "slot-node-id", width: 800, height: 600 },
       outputs: [],
       itemTextValues: {},
-      textLayerLocks: {},
       itemTextStyles: {},
     });
+    expect("textLayerLocks" in project).toBe(false);
     expect(project.variableSlot?.overlayNodeId).toBe("slot-node-id");
     expect(project.variableSlot?.width).toBe(800);
     expect(project.variableSlot?.height).toBe(600);
   });
 
-  it("has itemTextValues and textLayerLocks fields (schema v2)", () => {
+  it("has an itemTextValues field and no textLayerLocks (schema v4)", () => {
     const project = makeProject({
       itemTextValues: { "ov-1": { "node-1": "hi" } },
-      textLayerLocks: { "node-1": true },
     });
     expect(project.itemTextValues["ov-1"]?.["node-1"]).toBe("hi");
-    expect(project.textLayerLocks?.["node-1"]).toBe(true);
-  });
-
-  it("new-layer lock helper defaults to false; migration helper defaults to true", () => {
-    // Dual, intentionally opposite defaults.
-    expect(newTextLayerLockDefault).toBe(false);
-    expect(migratedTextLayerLockDefault).toBe(true);
+    expect("textLayerLocks" in project).toBe(false);
   });
 
   it("validates a background-only draft with null template and null variableSlot", () => {
@@ -186,7 +183,7 @@ describe("migration chain (v1 → v2 → v3 → v4)", () => {
 
 describe("migrateToV4 (lock → per-item fan-out)", () => {
   /** A v3 record with the given template nodes, overlays, and lock map. */
-  function makeV3(overrides: Partial<BatchProject> = {}): BatchProject {
+  function makeV3(overrides: ProjectWithLocks = {}): BatchProject {
     return makeProject({ schemaVersion: 3 as BatchProject["schemaVersion"], ...overrides });
   }
 

@@ -22,7 +22,6 @@ import { SCHEMA_VERSION, type BatchProject, type GeneratedOutput, type ProjectAs
 import { isTextNode, isOverlayNode } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
 import { resolveSection } from "./workspace-sections";
-import { makeTextEditHandlers } from "./make-text-edit-handlers";
 
 const DISABLED_GENERATE_HINT =
   "Select a variable slot and upload at least one overlay image to enable generation.";
@@ -31,7 +30,7 @@ function BatchWorkspaceInner() {
   const searchParams = useSearchParams();
   const activeSection = resolveSection(searchParams.get("section"));
 
-  const { background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, itemTextStyles, addOutput, clearOutputs, clearProject, setBackground, addOverlays, reorderOverlays, setEditorTemplate, setProject, setVariableSlot, setItemTextValue, setItemTextStyle, setTextLayerLock } =
+  const { background, overlays, template, variableSlot, outputs, itemTextValues, itemTextStyles, addOutput, clearOutputs, clearProject, setBackground, addOverlays, reorderOverlays, setEditorTemplate, setProject, setVariableSlot, setItemTextValue, setItemTextStyle } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite({ overlays });
   const { isExporting, error: exportError, exportZip } = useZipExport();
@@ -86,10 +85,9 @@ function BatchWorkspaceInner() {
       variableSlot,
       outputs,
       itemTextValues: itemTextValues ?? {},
-      textLayerLocks: textLayerLocks ?? {},
       itemTextStyles: itemTextStyles ?? {},
     };
-  }, [background, overlays, template, variableSlot, outputs, itemTextValues, textLayerLocks, itemTextStyles]);
+  }, [background, overlays, template, variableSlot, outputs, itemTextValues, itemTextStyles]);
 
   const { restored, pendingRestore, consumeRestore, clearPersisted, importError, quotaWarning, importZip } = useProjectPersistence({
     project: persistedProject,
@@ -128,7 +126,6 @@ function BatchWorkspaceInner() {
     template ?? { nodes: [] },
     variableSlot ?? { overlayNodeId: "" as never, width: 0, height: 0 },
     itemTextValues ?? {},
-    textLayerLocks ?? {},
     editorState.updateTextNode,
     itemTextStyles ?? {},
   );
@@ -231,7 +228,7 @@ function BatchWorkspaceInner() {
   }
 
   async function handleExportZip() {
-    await exportZip({ background, overlays, template, variableSlot, outputs, itemTextValues: itemTextValues ?? {}, textLayerLocks: textLayerLocks ?? {}, itemTextStyles: itemTextStyles ?? {} });
+    await exportZip({ background, overlays, template, variableSlot, outputs, itemTextValues: itemTextValues ?? {}, itemTextStyles: itemTextStyles ?? {} });
   }
 
   async function handleClearProject() {
@@ -261,11 +258,9 @@ function BatchWorkspaceInner() {
 
   const itemText = useItemText({
     itemTextValues: itemTextValues ?? {},
-    textLayerLocks: textLayerLocks ?? {},
     itemTextStyles: itemTextStyles ?? {},
     setItemTextValue,
     setItemTextStyle,
-    setTextLayerLock,
   });
   const textNodes = useMemo(
     () => editorState.state.nodes.filter((n): n is TextNode => isTextNode(n)),
@@ -277,20 +272,8 @@ function BatchWorkspaceInner() {
     activeOverlayId,
     itemTextValues ?? {},
     itemTextStyles ?? {},
-    textLayerLocks ?? {},
     variableSlotNodeId,
     activeOverlay?.blobKey ?? null,
-  );
-
-  const { routedSetItemTextValue, routedSetItemTextStyle } = useMemo(
-    () =>
-      makeTextEditHandlers({
-        textLayerLocks: textLayerLocks ?? {},
-        setItemTextValue,
-        setItemTextStyle,
-        updateTextNode: editorState.updateTextNode,
-      }),
-    [textLayerLocks, setItemTextValue, setItemTextStyle, editorState.updateTextNode],
   );
 
   const hasBanner = restored || quotaWarning || importError || compositeError || batchRender.error || exportError;
@@ -378,10 +361,11 @@ function BatchWorkspaceInner() {
                 onPointerDown={() => setSelectedNodeId(null)}
               >
                 <TextOverlayCanvas
-                  // During batch render the loop mutates editorState per overlay
-                  // (updateTextNode) and captures the live DOM. previewEditorState
-                  // re-pins text to the active variant, so it must be bypassed here
-                  // or every captured frame shows the selected variant's text.
+                  // LOAD-BEARING — do not change. During batch render the loop
+                  // mutates editorState per overlay (updateTextNode) and captures
+                  // the live DOM. previewEditorState re-pins text to the active
+                  // variant, so it must be bypassed here or every captured frame
+                  // shows the selected variant's text.
                   state={batchRender.isRunning ? editorState.state : previewEditorState}
                   imageSrc={background?.blobKey ?? ""}
                   selectedNodeId={selectedNodeId}
@@ -443,13 +427,6 @@ function BatchWorkspaceInner() {
               activeOverlay={activeOverlay}
               textNodes={textNodes}
               itemText={itemText}
-              // text props
-              itemTextValues={itemTextValues ?? {}}
-              itemTextStyles={itemTextStyles ?? {}}
-              textLayerLocks={textLayerLocks ?? {}}
-              setItemTextValue={routedSetItemTextValue}
-              setItemTextStyle={routedSetItemTextStyle}
-              setTextLayerLock={setTextLayerLock}
             />
           </aside>
         )}

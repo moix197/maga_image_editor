@@ -21,7 +21,6 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     variableSlot: { overlayNodeId: "slot" as NodeId, width: 100, height: 100 },
     outputs: [],
     itemTextValues: {},
-    textLayerLocks: {},
     itemTextStyles: {},
     ...overrides,
   };

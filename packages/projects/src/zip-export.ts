@@ -117,9 +117,8 @@ function serializeProjectJson(
     template: project.template,
     variableSlot: project.variableSlot,
     outputs,
-    // Per-item text overrides + layer locks (schema v2).
+    // Per-item text overrides (schema v2).
     itemTextValues: project.itemTextValues,
-    textLayerLocks: project.textLayerLocks,
     // Per-item text style overrides (schema v3).
     itemTextStyles: project.itemTextStyles,
   };

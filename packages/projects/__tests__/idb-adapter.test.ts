@@ -25,7 +25,6 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     variableSlot: { overlayNodeId: "slot" as NodeId, width: 100, height: 100 },
     outputs: [],
     itemTextValues: {},
-    textLayerLocks: {},
     itemTextStyles: {},
     ...overrides,
   };
@@ -46,10 +45,9 @@ describe("idb-adapter", () => {
     const project = makeProject();
     await saveProject(db, project);
     const loaded = await loadProject(db, project.id);
-    // loadProject migrates to v4, which strips textLayerLocks; compare against
-    // the migrated shape (locks dropped) rather than the raw in-memory fixture.
-    const { textLayerLocks: _drop, ...migrated } = project;
-    expect(loaded).toEqual(migrated);
+    // The fixture is already a v4 record (no textLayerLocks); loadProject's
+    // migration is a no-op, so it round-trips unchanged.
+    expect(loaded).toEqual(project);
   });
 
   it("round-trips a background-only draft with null template + null variableSlot", async () => {
@@ -60,8 +58,7 @@ describe("idb-adapter", () => {
     expect(loaded).not.toBeNull();
     expect(loaded!.template).toBeNull();
     expect(loaded!.variableSlot).toBeNull();
-    const { textLayerLocks: _drop, ...migrated } = draft;
-    expect(loaded).toEqual(migrated);
+    expect(loaded).toEqual(draft);
   });
 
   it("round-trips a Blob via saveBlob + loadBlob", async () => {

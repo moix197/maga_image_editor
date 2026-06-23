@@ -10,7 +10,6 @@ import { coverCropDataUrl } from "@/lib/cover-crop";
 import { compositeFromElement } from "@/lib/export-helpers";
 import { patchOverlays } from "@/lib/overlay-patch";
 import { waitTwoFrames } from "@/lib/capture-helpers";
-import { newTextLayerLockDefault } from "@maga/projects";
 import { isTextNode } from "@maga/editor";
 import type { EditorState, NodeId, TextNode } from "@maga/editor";
 import type { GeneratedOutput, ProjectAsset, TextStyle, VariableSlot } from "@maga/projects";
@@ -42,14 +41,14 @@ function templateStyleOf(node: TextNode): TextStyle {
   };
 }
 
-/** Collects the template's text layers that are UNLOCKED (per-item). */
-function unlockedTextLayers(
-  template: EditorState,
-  textLayerLocks: Record<string, boolean>,
-): TextLayer[] {
+/**
+ * Collects every text layer in the template. All text layers are per-item
+ * (the lock model was retired in schema v4), so each captures its template
+ * value + style as the restore target.
+ */
+function perItemTextLayers(template: EditorState): TextLayer[] {
   return template.nodes
     .filter((n): n is TextNode => isTextNode(n))
-    .filter((n) => (textLayerLocks[n.id] ?? newTextLayerLockDefault) === false)
     .map((n) => ({ id: n.id, templateValue: n.content, templateStyle: templateStyleOf(n) }));
 }
 
@@ -77,7 +76,6 @@ export function useBatchRender(
   template: EditorState,
   slot: VariableSlot,
   itemTextValues: Record<string, Record<string, string>> = {},
-  textLayerLocks: Record<string, boolean> = {},
   updateTextNode?: (id: NodeId, patch: Partial<Omit<TextNode, "id">>) => void,
   itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {},
 ): UseBatchRenderResult {
@@ -105,10 +103,10 @@ export function useBatchRender(
     clearOutputs();
     setProgress({ current: 0, total: overlays.length });
 
-    // Text layers whose value diverges per item. Their template (original)
-    // value is captured up front so it can be restored after each capture —
-    // the shared template is never permanently mutated.
-    const perItemLayers = updateTextNode ? unlockedTextLayers(template, textLayerLocks) : [];
+    // Every text layer is per-item. Each one's template (original) value is
+    // captured up front so it can be restored after each capture — the shared
+    // template is never permanently mutated.
+    const perItemLayers = updateTextNode ? perItemTextLayers(template) : [];
 
     const prevId = onDeselectForCapture();
     try {
@@ -159,7 +157,7 @@ export function useBatchRender(
       setIsRunning(false);
       onRestoreSelection(prevId);
     }
-  }, [overlays, template, slot, itemTextValues, textLayerLocks, updateTextNode, itemTextStyles]);
+  }, [overlays, template, slot, itemTextValues, updateTextNode, itemTextStyles]);
 
   const cancel = useCallback(() => {
     cancelRef.current = true;

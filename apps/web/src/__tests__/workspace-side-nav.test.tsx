@@ -19,12 +19,12 @@ describe("WorkspaceSideNav", () => {
     mockGet.mockReturnValue(null); // default: no section param → "assets"
   });
 
-  it("renders all four section tabs", () => {
+  it("renders all three section tabs (no Text tab)", () => {
     render(<WorkspaceSideNav />);
     expect(screen.getByRole("tab", { name: /assets/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /template/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /text/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /results/i })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /text/i })).not.toBeInTheDocument();
   });
 
   it("marks Assets as active by default (no section param)", () => {
@@ -41,10 +41,10 @@ describe("WorkspaceSideNav", () => {
     expect(screen.getByRole("tab", { name: /assets/i })).toHaveAttribute("aria-selected", "false");
   });
 
-  it("marks Text as active when section=text", () => {
+  it("falls back to Assets active when section=text (removed section)", () => {
     mockGet.mockReturnValue("text");
     render(<WorkspaceSideNav />);
-    expect(screen.getByRole("tab", { name: /text/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /assets/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("marks Results as active when section=results", () => {
@@ -72,8 +72,8 @@ describe("WorkspaceSideNav", () => {
     // Verify that clicking tabs only triggers router navigation, nothing else
     render(<WorkspaceSideNav />);
     const tabCount = screen.getAllByRole("tab").length;
-    expect(tabCount).toBe(4);
-    fireEvent.click(screen.getByRole("tab", { name: /text/i }));
+    expect(tabCount).toBe(3);
+    fireEvent.click(screen.getByRole("tab", { name: /template/i }));
     // Only push was called — no other unexpected effects
     expect(mockPush).toHaveBeenCalledTimes(1);
   });

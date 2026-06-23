@@ -31,20 +31,6 @@ export const SCHEMA_VERSION = 4 as const;
 export type SchemaVersion = typeof SCHEMA_VERSION;
 
 /**
- * Lock default for a text layer added in a schema-v2 project: `false`
- * (per-image). New layers diverge per overlay item unless explicitly locked.
- */
-export const newTextLayerLockDefault = false as const;
-
-/**
- * Lock default applied to every text layer when migrating a v1 project to v2:
- * `true` (shared). v1 had no per-item text, so all existing layers are locked
- * to preserve the prior shared-text behavior. This is the OPPOSITE of
- * {@link newTextLayerLockDefault} — intentional.
- */
-export const migratedTextLayerLockDefault = true as const;
-
-/**
  * A binary asset referenced by a project. The actual bytes live out-of-band
  * (IndexedDB blob store / ZIP entry); the project JSON holds only the
  * {@link ProjectAsset.blobKey} ref so it stays small, queryable, and portable.
@@ -128,25 +114,17 @@ export interface BatchProject {
   /** Generated composites; defaults to `[]` before any render. */
   outputs: GeneratedOutput[];
   /**
-   * Per-item text overrides keyed `overlayAssetId → textNodeId → value`. Only
-   * UNLOCKED text layers consult this map at render time; a missing entry falls
-   * back to the template's own text value. Empty `{}` means no overrides.
+   * Per-item text overrides keyed `overlayAssetId → textNodeId → value`. Every
+   * text layer is per-item (schema v4 retired the lock model); a missing entry
+   * falls back to the template's own text value. Empty `{}` means no overrides.
    */
   itemTextValues: Record<string, Record<string, string>>;
   /**
-   * Per-text-layer lock state keyed `textNodeId → locked`. `true` = the layer
-   * shares the template value across all items; `false` = per-item value from
-   * {@link itemTextValues}. New layers default to {@link newTextLayerLockDefault};
-   * v1-migrated layers default to {@link migratedTextLayerLockDefault}.
-   */
-  textLayerLocks?: Record<string, boolean>;
-  /**
    * Per-item text STYLE overrides keyed `overlayAssetId → textNodeId → style
    * partial` (schema v3). Mirrors {@link itemTextValues} but carries a
-   * {@link TextStyle} partial instead of a string. Only UNLOCKED layers consult
-   * it at render time (same {@link textLayerLocks} that govern content govern
-   * style too — there is no separate style lock); a missing/empty entry falls
-   * back to the template node's own style. Empty `{}` means no style overrides.
+   * {@link TextStyle} partial instead of a string. Every text layer is per-item
+   * (schema v4 retired the lock model); a missing/empty entry falls back to the
+   * template node's own style. Empty `{}` means no style overrides.
    */
   itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
 }
@@ -173,12 +151,14 @@ function textStyleOf(node: TextNode): TextStyle {
 /**
  * Builds the v1→v2 default lock map: every text layer in the template locked
  * (shared) to preserve v1's shared-text behavior. Returns `{}` when there is
- * no template or no text layers.
+ * no template or no text layers. Internal to {@link migrateToV2} — the lock
+ * model was retired in v4, so this is no longer part of the public surface; it
+ * survives only to feed the v2→v3→v4 fan-out for legacy v1 records.
  */
-export function migratedTextLayerLocks(template: EditorState | null): Record<string, boolean> {
+function v1LockMap(template: EditorState | null): Record<string, boolean> {
   const locks: Record<string, boolean> = {};
   for (const node of template?.nodes ?? []) {
-    if (isTextNode(node)) locks[node.id] = migratedTextLayerLockDefault;
+    if (isTextNode(node)) locks[node.id] = true;
   }
   return locks;
 }
@@ -190,20 +170,25 @@ export function migratedTextLayerLocks(template: EditorState | null): Record<str
  * those fields intact. This step is the FIRST link in the {@link migrateProject}
  * chain and intentionally gates on the v2 literal (`2`), not `SCHEMA_VERSION`,
  * so bumping the current version never causes it to re-stamp a v2 record.
+ *
+ * The `textLayerLocks` it emits is a transient migration artifact only — the
+ * v4 step ({@link migrateToV4}) fans it into per-item overrides and drops it.
  */
 export function migrateToV2<T extends { schemaVersion: number; template: EditorState | null }>(
   project: T,
-): T & { schemaVersion: number } & Pick<BatchProject, "itemTextValues" | "textLayerLocks"> {
+): T & { schemaVersion: number; itemTextValues: BatchProject["itemTextValues"]; textLayerLocks?: Record<string, boolean> } {
   if (project.schemaVersion >= 2) {
-    return project as T &
-      { schemaVersion: number } &
-      Pick<BatchProject, "itemTextValues" | "textLayerLocks">;
+    return project as T & {
+      schemaVersion: number;
+      itemTextValues: BatchProject["itemTextValues"];
+      textLayerLocks?: Record<string, boolean>;
+    };
   }
   return {
     ...project,
     schemaVersion: 2,
     itemTextValues: {},
-    textLayerLocks: migratedTextLayerLocks(project.template),
+    textLayerLocks: v1LockMap(project.template),
   };
 }
 
@@ -264,9 +249,11 @@ export function migrateToV4<
     const templateNode = project.template?.nodes.find((node) => node.id === nodeId);
     if (!templateNode || !isTextNode(templateNode)) continue;
     for (const overlay of project.overlays) {
-      const values = (itemTextValues[overlay.id] ??= {});
+      // Copy the nested per-overlay map before writing so the input record's
+      // nested objects are never mutated in place (matches v2/v3 immutability).
+      const values = (itemTextValues[overlay.id] = { ...(itemTextValues[overlay.id] ?? {}) });
       if (!(nodeId in values)) values[nodeId] = templateNode.content;
-      const styles = (itemTextStyles[overlay.id] ??= {});
+      const styles = (itemTextStyles[overlay.id] = { ...(itemTextStyles[overlay.id] ?? {}) });
       if (!(nodeId in styles)) styles[nodeId] = textStyleOf(templateNode);
     }
   }

@@ -8,9 +8,6 @@ export type {
 } from "./schema";
 export {
   SCHEMA_VERSION,
-  newTextLayerLockDefault,
-  migratedTextLayerLockDefault,
-  migratedTextLayerLocks,
   migrateToV2,
   migrateToV3,
   migrateProject,

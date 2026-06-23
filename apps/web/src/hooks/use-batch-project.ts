@@ -13,7 +13,6 @@ interface UseBatchProjectResult {
   variableSlot: VariableSlot | null;
   outputs: GeneratedOutput[];
   itemTextValues: Record<string, Record<string, string>>;
-  textLayerLocks: Record<string, boolean>;
   itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
   setBackground: (file: File) => Promise<void>;
   addOverlays: (files: File[]) => Promise<void>;
@@ -26,7 +25,6 @@ interface UseBatchProjectResult {
   setVariableSlot: (slot: VariableSlot | null) => void;
   setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
   setItemTextStyle: (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) => void;
-  setTextLayerLock: (textNodeId: string, locked: boolean) => void;
   reorderOverlays: (newOrder: ProjectAsset[]) => void;
 }
 
@@ -37,7 +35,6 @@ export function useBatchProject(): UseBatchProjectResult {
   const [variableSlot, setVariableSlotState] = useState<VariableSlot | null>(null);
   const [outputs, setOutputs] = useState<GeneratedOutput[]>([]);
   const [itemTextValues, setItemTextValuesState] = useState<Record<string, Record<string, string>>>({});
-  const [textLayerLocks, setTextLayerLocksState] = useState<Record<string, boolean>>({});
   const [itemTextStyles, setItemTextStylesState] = useState<Record<string, Record<string, Partial<TextStyle>>>>({});
 
   const setBackground = useCallback(async (file: File) => {
@@ -89,7 +86,6 @@ export function useBatchProject(): UseBatchProjectResult {
     setVariableSlotState(null);
     setOutputs([]);
     setItemTextValuesState({});
-    setTextLayerLocksState({});
     setItemTextStylesState({});
   }, []);
 
@@ -100,7 +96,6 @@ export function useBatchProject(): UseBatchProjectResult {
     setVariableSlotState(project.variableSlot);
     setOutputs(project.outputs);
     setItemTextValuesState(project.itemTextValues);
-    setTextLayerLocksState(project.textLayerLocks ?? {});
     setItemTextStylesState(project.itemTextStyles);
   }, []);
 
@@ -131,10 +126,6 @@ export function useBatchProject(): UseBatchProjectResult {
     [],
   );
 
-  const setTextLayerLock = useCallback((textNodeId: string, locked: boolean) => {
-    setTextLayerLocksState((prev) => ({ ...prev, [textNodeId]: locked }));
-  }, []);
-
   return {
     background,
     overlays,
@@ -142,7 +133,6 @@ export function useBatchProject(): UseBatchProjectResult {
     variableSlot,
     outputs,
     itemTextValues,
-    textLayerLocks,
     itemTextStyles,
     setBackground,
     addOverlays,
@@ -155,7 +145,6 @@ export function useBatchProject(): UseBatchProjectResult {
     setVariableSlot,
     setItemTextValue,
     setItemTextStyle,
-    setTextLayerLock,
     reorderOverlays,
   };
 }

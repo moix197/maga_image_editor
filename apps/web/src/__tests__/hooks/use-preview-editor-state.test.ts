@@ -98,30 +98,28 @@ const NODE_2 = "node-2";
 // --- tests ---
 
 describe("usePreviewEditorState", () => {
-  it("(1) unlocked layer gets per-item content override applied", () => {
+  it("(1) text layer gets per-item content override applied", () => {
     const base = makeBase({ id: NODE_1, content: "template text" });
     const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "per-item text" } };
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, textLayerLocks),
+      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles),
     );
 
     const node = result.current.nodes[0]!;
     expect(node).toHaveProperty("content", "per-item text");
   });
 
-  it("(2) unlocked layer gets per-item style override applied", () => {
+  it("(2) text layer gets per-item style override applied", () => {
     const base = makeBase({ id: NODE_1, content: "hello", fontSize: 16, color: "#000000" });
     const itemTextValues: Record<string, Record<string, string>> = {};
     const itemTextStyles = {
       [OVERLAY_A]: { [NODE_1]: { fontSize: 32, color: "#ff0000" } as Partial<TextStyle> },
     };
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, textLayerLocks),
+      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles),
     );
 
     const node = result.current.nodes[0]!;
@@ -131,31 +129,31 @@ describe("usePreviewEditorState", () => {
     expect(node).toHaveProperty("content", "hello");
   });
 
-  it("(3) locked layer retains template value regardless of per-item override", () => {
+  it("(3) per-item override is ALWAYS applied — a previously-locked node now overrides too", () => {
+    // Pre-v4 this node would have been "locked" and retained the template value.
+    // The lock model is gone, so the per-item override always wins.
     const base = makeBase({ id: NODE_1, content: "template text" });
-    const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "should not appear" } };
+    const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "now applied" } };
     const itemTextStyles = {
       [OVERLAY_A]: { [NODE_1]: { fontSize: 99 } as Partial<TextStyle> },
     };
-    const textLayerLocks: Record<string, boolean> = { [NODE_1]: true };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, textLayerLocks),
+      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles),
     );
 
     const node = result.current.nodes[0]!;
-    expect(node).toHaveProperty("content", "template text");
-    expect(node).toHaveProperty("fontSize", 16);
+    expect(node).toHaveProperty("content", "now applied");
+    expect(node).toHaveProperty("fontSize", 99);
   });
 
   it("(4) returns base state unchanged when activeOverlayId is null", () => {
     const base = makeBase({ id: NODE_1, content: "template text" });
     const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "per-item text" } };
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, null, itemTextValues, itemTextStyles, textLayerLocks),
+      usePreviewEditorState(base, null, itemTextValues, itemTextStyles),
     );
 
     expect(result.current).toBe(base);
@@ -165,10 +163,9 @@ describe("usePreviewEditorState", () => {
     const base = makeBase({ id: NODE_1, content: "template text" });
     const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "per-item text" } };
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result, rerender } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, textLayerLocks),
+      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles),
     );
 
     const first = result.current;
@@ -180,10 +177,9 @@ describe("usePreviewEditorState", () => {
     const base = makeBase({ id: NODE_1, content: "template text" });
     const itemTextValues: Record<string, Record<string, string>> = {};
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, textLayerLocks),
+      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles),
     );
 
     // No overrides for OVERLAY_A — should return base unchanged (same reference)
@@ -197,12 +193,11 @@ describe("usePreviewEditorState", () => {
     const base = makeBase({ id: NODE_1, content: "template text" });
     const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "per-item text" } };
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     // Render once with base
     const { result, rerender } = renderHook(
       ({ b }: { b: EditorState }) =>
-        usePreviewEditorState(b, OVERLAY_A, itemTextValues, itemTextStyles, textLayerLocks),
+        usePreviewEditorState(b, OVERLAY_A, itemTextValues, itemTextStyles),
       { initialProps: { b: base } },
     );
 
@@ -215,16 +210,15 @@ describe("usePreviewEditorState", () => {
     expect(result.current).toBe(firstResult);
   });
 
-  it("applies content and style together on an unlocked layer", () => {
+  it("applies content and style together on a text layer", () => {
     const base = makeBase({ id: NODE_1, content: "old", fontSize: 12, color: "#aaa" });
     const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "new" } };
     const itemTextStyles = {
       [OVERLAY_A]: { [NODE_1]: { fontSize: 24, color: "#fff" } as Partial<TextStyle> },
     };
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, textLayerLocks),
+      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles),
     );
 
     const node = result.current.nodes[0]!;
@@ -233,25 +227,24 @@ describe("usePreviewEditorState", () => {
     expect(node).toHaveProperty("color", "#fff");
   });
 
-  it("mixed nodes: locked node unchanged, unlocked node overridden", () => {
+  it("mixed nodes: each text node's per-item override is applied independently", () => {
     const base = makeBase(
-      { id: NODE_1, content: "locked-template" },
-      { id: NODE_2, content: "unlocked-template" },
+      { id: NODE_1, content: "template-1" },
+      { id: NODE_2, content: "template-2" },
     );
     const itemTextValues = {
-      [OVERLAY_A]: { [NODE_1]: "should-not-apply", [NODE_2]: "override" },
+      [OVERLAY_A]: { [NODE_1]: "override-1", [NODE_2]: "override-2" },
     };
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = { [NODE_1]: true };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, textLayerLocks),
+      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles),
     );
 
     const n1 = result.current.nodes.find((n) => n.id === NODE_1)!;
     const n2 = result.current.nodes.find((n) => n.id === NODE_2)!;
-    expect(n1).toHaveProperty("content", "locked-template");
-    expect(n2).toHaveProperty("content", "override");
+    expect(n1).toHaveProperty("content", "override-1");
+    expect(n2).toHaveProperty("content", "override-2");
   });
 
   // --- Variable-slot overlay-image swap (Change 1) ---
@@ -263,7 +256,6 @@ describe("usePreviewEditorState", () => {
     const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
     const itemTextValues: Record<string, Record<string, string>> = {};
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result } = renderHook(() =>
       usePreviewEditorState(
@@ -271,7 +263,6 @@ describe("usePreviewEditorState", () => {
         OVERLAY_A,
         itemTextValues,
         itemTextStyles,
-        textLayerLocks,
         makeNodeId(SLOT_ID),
         NEW_SRC,
       ),
@@ -300,7 +291,6 @@ describe("usePreviewEditorState", () => {
     };
     const itemTextValues: Record<string, Record<string, string>> = {};
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result } = renderHook(() =>
       usePreviewEditorState(
@@ -308,7 +298,6 @@ describe("usePreviewEditorState", () => {
         OVERLAY_A,
         itemTextValues,
         itemTextStyles,
-        textLayerLocks,
         makeNodeId(SLOT_ID),
         "blob:new-key",
       ),
@@ -324,7 +313,6 @@ describe("usePreviewEditorState", () => {
     const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
     const itemTextValues: Record<string, Record<string, string>> = {};
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result } = renderHook(() =>
       usePreviewEditorState(
@@ -332,7 +320,6 @@ describe("usePreviewEditorState", () => {
         OVERLAY_A,
         itemTextValues,
         itemTextStyles,
-        textLayerLocks,
         null,
         "blob:new-key",
       ),
@@ -349,7 +336,6 @@ describe("usePreviewEditorState", () => {
     const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
     const itemTextValues: Record<string, Record<string, string>> = {};
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result } = renderHook(() =>
       usePreviewEditorState(
@@ -357,7 +343,6 @@ describe("usePreviewEditorState", () => {
         null,  // no active overlay id — but slot swap should still apply
         itemTextValues,
         itemTextStyles,
-        textLayerLocks,
         makeNodeId(SLOT_ID),
         NEW_SRC,
       ),
@@ -375,7 +360,6 @@ describe("usePreviewEditorState", () => {
     const originalNode = base.nodes[0]!;
     const itemTextValues: Record<string, Record<string, string>> = {};
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     renderHook(() =>
       usePreviewEditorState(
@@ -383,7 +367,6 @@ describe("usePreviewEditorState", () => {
         OVERLAY_A,
         itemTextValues,
         itemTextStyles,
-        textLayerLocks,
         makeNodeId(SLOT_ID),
         NEW_SRC,
       ),
@@ -399,7 +382,6 @@ describe("usePreviewEditorState", () => {
     const base = makeBaseWithOverlayNode(SLOT_ID, "blob:old-key");
     const itemTextValues: Record<string, Record<string, string>> = {};
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
     const slotNodeId = makeNodeId(SLOT_ID);
 
     const { result, rerender } = renderHook(() =>
@@ -408,7 +390,6 @@ describe("usePreviewEditorState", () => {
         OVERLAY_A,
         itemTextValues,
         itemTextStyles,
-        textLayerLocks,
         slotNodeId,
         NEW_SRC,
       ),
@@ -426,7 +407,6 @@ describe("usePreviewEditorState", () => {
     const base = makeBaseWithMixedNodes(SLOT_ID, "blob:old-key", TEXT_ID, "template text");
     const itemTextValues = { [OVERLAY_A]: { [TEXT_ID]: "per-item text" } };
     const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const textLayerLocks: Record<string, boolean> = {};
 
     const { result } = renderHook(() =>
       usePreviewEditorState(
@@ -434,7 +414,6 @@ describe("usePreviewEditorState", () => {
         OVERLAY_A,
         itemTextValues,
         itemTextStyles,
-        textLayerLocks,
         makeNodeId(SLOT_ID),
         NEW_SRC,
       ),

@@ -3,18 +3,17 @@
 import { useMemo } from "react";
 import { isTextNode } from "@maga/editor";
 import type { EditorState, NodeId } from "@maga/editor";
-import { newTextLayerLockDefault } from "@maga/projects";
 import type { TextStyle } from "@maga/projects";
 
 type ItemTextValues = Record<string, Record<string, string>>;
 type ItemTextStyles = Record<string, Record<string, Partial<TextStyle>>>;
-type TextLayerLocks = Record<string, boolean>;
 
 /**
  * Returns a memoized derived EditorState with per-item text and style overrides
- * applied to unlocked text layers for the active overlay variant.
+ * applied to every text layer for the active overlay variant.
  *
- * - Locked layers retain the template (base) value unchanged.
+ * - Every text layer is per-item (the lock model was retired in schema v4); a
+ *   layer with no override for the active variant retains the template value.
  * - The base EditorState is never mutated.
  * - When activeOverlayId is null AND there is no slot swap pending, base is
  *   returned as-is (no copy).
@@ -26,7 +25,6 @@ export function usePreviewEditorState(
   activeOverlayId: string | null,
   itemTextValues: ItemTextValues,
   itemTextStyles: ItemTextStyles,
-  textLayerLocks: TextLayerLocks,
   variableSlotNodeId?: NodeId | null,
   activeOverlayBlobKey?: string | null,
 ): EditorState {
@@ -58,16 +56,14 @@ export function usePreviewEditorState(
       }
 
       if (!isTextNode(node)) return node;
-      // Same lock resolution as use-item-text: a missing lock defaults to unlocked.
-      if (textLayerLocks[node.id] ?? newTextLayerLockDefault) return node;
 
       const contentOverride = perItemValues?.[node.id];
       const styleOverride = perItemStyles?.[node.id];
 
       if (contentOverride === undefined && !styleOverride) return node;
 
-      // Fallback to the live node.content (not layer.templateValue) is deliberate:
-      // for unlocked layers the base node IS the template, so the two are equivalent.
+      // Fallback to the live node.content (not a template snapshot) is deliberate:
+      // the base node IS the template, so the two are equivalent.
 
       return {
         ...node,
@@ -77,5 +73,5 @@ export function usePreviewEditorState(
     });
 
     return { ...base, nodes: derivedNodes };
-  }, [base, activeOverlayId, itemTextValues, itemTextStyles, textLayerLocks, variableSlotNodeId, activeOverlayBlobKey]);
+  }, [base, activeOverlayId, itemTextValues, itemTextStyles, variableSlotNodeId, activeOverlayBlobKey]);
 }
