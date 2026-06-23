@@ -14,6 +14,7 @@ interface UseBatchProjectResult {
   outputs: GeneratedOutput[];
   itemTextValues: Record<string, Record<string, string>>;
   itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
+  itemHiddenNodeIds: Record<string, string[]>;
   setBackground: (file: File) => Promise<void>;
   addOverlays: (files: File[]) => Promise<void>;
   setTemplate: (editorState: EditorState, slot: VariableSlot) => void;
@@ -25,6 +26,7 @@ interface UseBatchProjectResult {
   setVariableSlot: (slot: VariableSlot | null) => void;
   setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
   setItemTextStyle: (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) => void;
+  setItemNodeHidden: (overlayAssetId: string, nodeId: string, hidden: boolean) => void;
   reorderOverlays: (newOrder: ProjectAsset[]) => void;
 }
 
@@ -36,6 +38,7 @@ export function useBatchProject(): UseBatchProjectResult {
   const [outputs, setOutputs] = useState<GeneratedOutput[]>([]);
   const [itemTextValues, setItemTextValuesState] = useState<Record<string, Record<string, string>>>({});
   const [itemTextStyles, setItemTextStylesState] = useState<Record<string, Record<string, Partial<TextStyle>>>>({});
+  const [itemHiddenNodeIds, setItemHiddenNodeIdsState] = useState<Record<string, string[]>>({});
 
   const setBackground = useCallback(async (file: File) => {
     const blobKey = await fileToDataUrl(file);
@@ -87,6 +90,7 @@ export function useBatchProject(): UseBatchProjectResult {
     setOutputs([]);
     setItemTextValuesState({});
     setItemTextStylesState({});
+    setItemHiddenNodeIdsState({});
   }, []);
 
   const setProject = useCallback((project: BatchProject) => {
@@ -97,6 +101,7 @@ export function useBatchProject(): UseBatchProjectResult {
     setOutputs(project.outputs);
     setItemTextValuesState(project.itemTextValues);
     setItemTextStylesState(project.itemTextStyles);
+    setItemHiddenNodeIdsState(project.itemHiddenNodeIds ?? {});
   }, []);
 
   const setVariableSlot = useCallback((slot: VariableSlot | null) => {
@@ -126,6 +131,22 @@ export function useBatchProject(): UseBatchProjectResult {
     [],
   );
 
+  const setItemNodeHidden = useCallback(
+    (overlayAssetId: string, nodeId: string, hidden: boolean) => {
+      setItemHiddenNodeIdsState((prev) => {
+        const current = prev[overlayAssetId] ?? [];
+        const alreadyHidden = current.includes(nodeId);
+        if (hidden && alreadyHidden) return prev;
+        if (!hidden && !alreadyHidden) return prev;
+        const next = hidden
+          ? [...current, nodeId]
+          : current.filter((id) => id !== nodeId);
+        return { ...prev, [overlayAssetId]: next };
+      });
+    },
+    [],
+  );
+
   return {
     background,
     overlays,
@@ -134,6 +155,7 @@ export function useBatchProject(): UseBatchProjectResult {
     outputs,
     itemTextValues,
     itemTextStyles,
+    itemHiddenNodeIds,
     setBackground,
     addOverlays,
     setTemplate,
@@ -145,6 +167,7 @@ export function useBatchProject(): UseBatchProjectResult {
     setVariableSlot,
     setItemTextValue,
     setItemTextStyle,
+    setItemNodeHidden,
     reorderOverlays,
   };
 }

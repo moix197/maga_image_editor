@@ -7,12 +7,14 @@ interface UseFanOutTextHandlersArgs {
   selectedVariantIds: Set<string>;
   setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
   setItemTextStyle: (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) => void;
+  setItemNodeHidden: (overlayAssetId: string, nodeId: string, hidden: boolean) => void;
 }
 
 export function useFanOutTextHandlers({
   selectedVariantIds,
   setItemTextValue,
   setItemTextStyle,
+  setItemNodeHidden,
 }: UseFanOutTextHandlersArgs) {
   const handleSetItemTextValue = useCallback(
     (_overlayAssetId: string, textNodeId: string, value: string) => {
@@ -32,5 +34,14 @@ export function useFanOutTextHandlers({
     [selectedVariantIds, setItemTextStyle],
   );
 
-  return { handleSetItemTextValue, handleSetItemTextStyle };
+  const handleSetNodeHidden = useCallback(
+    (_overlayAssetId: string, nodeId: string, hidden: boolean) => {
+      for (const id of selectedVariantIds) {
+        setItemNodeHidden(id, nodeId, hidden);
+      }
+    },
+    [selectedVariantIds, setItemNodeHidden],
+  );
+
+  return { handleSetItemTextValue, handleSetItemTextStyle, handleSetNodeHidden };
 }

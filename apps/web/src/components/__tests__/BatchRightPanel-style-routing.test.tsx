@@ -64,6 +64,8 @@ function makeItemText(overrides: { getTextStyle?: ReturnType<typeof vi.fn> } = {
     setTextValue: vi.fn(),
     getTextStyle: overrides.getTextStyle ?? vi.fn().mockReturnValue({}),
     setTextStyle: vi.fn(),
+    isNodeHidden: vi.fn().mockReturnValue(false),
+    setNodeHidden: vi.fn(),
   };
 }
 

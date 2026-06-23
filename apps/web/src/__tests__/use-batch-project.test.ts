@@ -251,8 +251,10 @@ describe("useBatchProject", () => {
       useItemText({
         itemTextValues: result.current.itemTextValues,
         itemTextStyles: result.current.itemTextStyles,
+        itemHiddenNodeIds: result.current.itemHiddenNodeIds,
         setItemTextValue: result.current.setItemTextValue,
         setItemTextStyle: result.current.setItemTextStyle,
+        setItemNodeHidden: result.current.setItemNodeHidden,
       })
     );
     expect(itemText.current.getTextValue("ov-1", "node-1")).toBe("hi");

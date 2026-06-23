@@ -7,6 +7,7 @@ import type { TextStyle } from "@maga/projects";
 
 type ItemTextValues = Record<string, Record<string, string>>;
 type ItemTextStyles = Record<string, Record<string, Partial<TextStyle>>>;
+type ItemHiddenNodeIds = Record<string, string[]>;
 
 /**
  * Returns a memoized derived EditorState with per-item text and style overrides
@@ -14,6 +15,8 @@ type ItemTextStyles = Record<string, Record<string, Partial<TextStyle>>>;
  *
  * - Every text layer is per-item (the lock model was retired in schema v4); a
  *   layer with no override for the active variant retains the template value.
+ * - Text nodes hidden for the active overlay via `itemHiddenNodeIds` are
+ *   excluded from the derived node list entirely (Phase 4).
  * - The base EditorState is never mutated.
  * - When activeOverlayId is null AND there is no slot swap pending, base is
  *   returned as-is (no copy).
@@ -25,10 +28,13 @@ export function usePreviewEditorState(
   activeOverlayId: string | null,
   itemTextValues: ItemTextValues,
   itemTextStyles: ItemTextStyles,
+  itemHiddenNodeIds: ItemHiddenNodeIds,
   variableSlotNodeId?: NodeId | null,
   activeOverlayBlobKey?: string | null,
 ): EditorState {
   return useMemo(() => {
+    const hiddenIds = activeOverlayId ? (itemHiddenNodeIds[activeOverlayId] ?? []) : [];
+
     // Determine whether a slot-src swap is needed.
     const slotNode = variableSlotNodeId
       ? base.nodes.find((n) => n.id === variableSlotNodeId)
@@ -40,38 +46,46 @@ export function usePreviewEditorState(
       !isTextNode(slotNode) &&
       (slotNode as { src?: string }).src !== activeOverlayBlobKey;
 
+    const hasHidden = hiddenIds.length > 0;
+
     // Nothing to do at all.
-    if (activeOverlayId === null && !needsSlotSwap) return base;
+    if (activeOverlayId === null && !needsSlotSwap && !hasHidden) return base;
 
     const perItemValues = activeOverlayId ? itemTextValues[activeOverlayId] : undefined;
     const perItemStyles = activeOverlayId ? itemTextStyles[activeOverlayId] : undefined;
 
-    // If neither text map has entries AND no slot swap is needed, skip the map pass.
-    if (!perItemValues && !perItemStyles && !needsSlotSwap) return base;
+    // If neither text map has entries AND no slot swap AND no hidden nodes, skip.
+    if (!perItemValues && !perItemStyles && !needsSlotSwap && !hasHidden) return base;
 
-    const derivedNodes = base.nodes.map((node) => {
-      // Variable-slot overlay node: swap src to the active variant's image.
-      if (needsSlotSwap && node.id === variableSlotNodeId) {
-        return { ...node, src: activeOverlayBlobKey };
-      }
+    const derivedNodes = base.nodes
+      .filter((node) => {
+        // Hidden text nodes are excluded from the preview for the active variant.
+        if (isTextNode(node) && hiddenIds.includes(node.id as string)) return false;
+        return true;
+      })
+      .map((node) => {
+        // Variable-slot overlay node: swap src to the active variant's image.
+        if (needsSlotSwap && node.id === variableSlotNodeId) {
+          return { ...node, src: activeOverlayBlobKey };
+        }
 
-      if (!isTextNode(node)) return node;
+        if (!isTextNode(node)) return node;
 
-      const contentOverride = perItemValues?.[node.id];
-      const styleOverride = perItemStyles?.[node.id];
+        const contentOverride = perItemValues?.[node.id];
+        const styleOverride = perItemStyles?.[node.id];
 
-      if (contentOverride === undefined && !styleOverride) return node;
+        if (contentOverride === undefined && !styleOverride) return node;
 
-      // Fallback to the live node.content (not a template snapshot) is deliberate:
-      // the base node IS the template, so the two are equivalent.
+        // Fallback to the live node.content (not a template snapshot) is deliberate:
+        // the base node IS the template, so the two are equivalent.
 
-      return {
-        ...node,
-        ...(contentOverride !== undefined ? { content: contentOverride } : {}),
-        ...(styleOverride ?? {}),
-      };
-    });
+        return {
+          ...node,
+          ...(contentOverride !== undefined ? { content: contentOverride } : {}),
+          ...(styleOverride ?? {}),
+        };
+      });
 
     return { ...base, nodes: derivedNodes };
-  }, [base, activeOverlayId, itemTextValues, itemTextStyles, variableSlotNodeId, activeOverlayBlobKey]);
+  }, [base, activeOverlayId, itemTextValues, itemTextStyles, itemHiddenNodeIds, variableSlotNodeId, activeOverlayBlobKey]);
 }

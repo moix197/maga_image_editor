@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible } from "@/components/ui/collapsible";
+import { Eye, EyeOff } from "lucide-react";
 
 interface BatchRightPanelProps {
   activeSection: WorkspaceSection;
@@ -160,7 +161,18 @@ export function BatchRightPanel({
                             editorState.updateTextNode(selectedNodeId!, patch);
                           }
                         }}
-                        onDelete={() => { editorState.removeNode(selectedNodeId!); onSetSelectedNodeId(null); }}
+                        onDelete={() => {
+                          if (activeOverlay) {
+                            // Fan-out hide: hides the node for all selected variants
+                            // (via fanOutItemText.setNodeHidden). Node stays in the
+                            // shared template — only per-variant visibility changes.
+                            itemText.setNodeHidden(activeOverlay.id, selectedNodeId!, true);
+                          } else {
+                            // No overlay context yet — fall back to removing from template.
+                            editorState.removeNode(selectedNodeId!);
+                          }
+                          onSetSelectedNodeId(null);
+                        }}
                         onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
                       />
                     );
@@ -217,18 +229,31 @@ function ItemTextPanel({ overlayAssetId, overlayLabel, textNodes, itemText }: It
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
       <h2 className="text-sm font-semibold tracking-tight">Text for {overlayLabel}</h2>
       {textNodes.map((node, i) => {
+        const hidden = itemText.isNodeHidden(overlayAssetId, node.id);
         const value = itemText.getTextValue(overlayAssetId, node.id);
         const inputId = `item-text-${overlayAssetId}-${node.id}`;
         return (
           <div key={node.id} className="flex flex-col gap-1.5">
-            <Label htmlFor={inputId} className="text-xs text-muted-foreground">
-              Text layer {i + 1}
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor={inputId} className="text-xs text-muted-foreground">
+                Text layer {i + 1}
+              </Label>
+              <button
+                type="button"
+                aria-label={hidden ? "Show text layer" : "Hide text layer"}
+                onClick={() => itemText.setNodeHidden(overlayAssetId, node.id, !hidden)}
+                className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+              >
+                {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
             <Input
               id={inputId}
               value={value}
               placeholder={node.content}
+              disabled={hidden}
               onChange={(e) => itemText.setTextValue(overlayAssetId, node.id, e.target.value)}
+              className={hidden ? "opacity-50" : undefined}
             />
           </div>
         );

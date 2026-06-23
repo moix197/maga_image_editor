@@ -32,7 +32,7 @@ function BatchWorkspaceInner() {
   const searchParams = useSearchParams();
   const activeSection = resolveSection(searchParams.get("section"));
 
-  const { background, overlays, template, variableSlot, outputs, itemTextValues, itemTextStyles, addOutput, clearOutputs, clearProject, setBackground, addOverlays, reorderOverlays, setEditorTemplate, setProject, setVariableSlot, setItemTextValue, setItemTextStyle } =
+  const { background, overlays, template, variableSlot, outputs, itemTextValues, itemTextStyles, itemHiddenNodeIds, addOutput, clearOutputs, clearProject, setBackground, addOverlays, reorderOverlays, setEditorTemplate, setProject, setVariableSlot, setItemTextValue, setItemTextStyle, setItemNodeHidden } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite({ overlays });
   const { isExporting, error: exportError, exportZip } = useZipExport();
@@ -108,8 +108,9 @@ function BatchWorkspaceInner() {
       outputs,
       itemTextValues: itemTextValues ?? {},
       itemTextStyles: itemTextStyles ?? {},
+      itemHiddenNodeIds: itemHiddenNodeIds ?? {},
     };
-  }, [background, overlays, template, variableSlot, outputs, itemTextValues, itemTextStyles]);
+  }, [background, overlays, template, variableSlot, outputs, itemTextValues, itemTextStyles, itemHiddenNodeIds]);
 
   const { restored, pendingRestore, consumeRestore, clearPersisted, importError, quotaWarning, importZip } = useProjectPersistence({
     project: persistedProject,
@@ -150,6 +151,7 @@ function BatchWorkspaceInner() {
     itemTextValues ?? {},
     editorState.updateTextNode,
     itemTextStyles ?? {},
+    itemHiddenNodeIds ?? {},
   );
 
   async function handleBackgroundFiles(files: File[]) {
@@ -281,20 +283,24 @@ function BatchWorkspaceInner() {
   const itemText = useItemText({
     itemTextValues: itemTextValues ?? {},
     itemTextStyles: itemTextStyles ?? {},
+    itemHiddenNodeIds: itemHiddenNodeIds ?? {},
     setItemTextValue,
     setItemTextStyle,
+    setItemNodeHidden,
   });
 
   const fanOut = useFanOutTextHandlers({
     selectedVariantIds,
     setItemTextValue,
     setItemTextStyle,
+    setItemNodeHidden,
   });
 
   const fanOutItemText = {
     ...itemText,
     setTextValue: fanOut.handleSetItemTextValue,
     setTextStyle: fanOut.handleSetItemTextStyle,
+    setNodeHidden: fanOut.handleSetNodeHidden,
   };
   const textNodes = useMemo(
     () => editorState.state.nodes.filter((n): n is TextNode => isTextNode(n)),
@@ -306,6 +312,7 @@ function BatchWorkspaceInner() {
     activeOverlayId,
     itemTextValues ?? {},
     itemTextStyles ?? {},
+    itemHiddenNodeIds ?? {},
     variableSlotNodeId,
     activeOverlay?.blobKey ?? null,
   );

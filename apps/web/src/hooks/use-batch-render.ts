@@ -78,6 +78,7 @@ export function useBatchRender(
   itemTextValues: Record<string, Record<string, string>> = {},
   updateTextNode?: (id: NodeId, patch: Partial<Omit<TextNode, "id">>) => void,
   itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {},
+  itemHiddenNodeIds: Record<string, string[]> = {},
 ): UseBatchRenderResult {
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState<Progress>({ current: 0, total: 0 });
@@ -117,16 +118,26 @@ export function useBatchRender(
         // Mutate live state, await the repaint, then capture — restoring each
         // patched layer in a finally so a throw mid-capture can never leave
         // the shared template permanently mutated.
-        let outputBlobKey: string;
+        // Layers hidden for this overlay are excluded from the render: we set
+          // their opacity to 0 before capture so they are invisible in the output.
+          // They are restored (along with all other layers) in the finally block.
+          const hiddenIds = itemHiddenNodeIds[overlay.id] ?? [];
+
+          let outputBlobKey: string;
         try {
           // (1) Write this item's content + style override into the LIVE editor
           // state in a SINGLE merged call so the canvas DOM re-renders with the
           // per-item text and styling (no detached clone). A missing override
-          // falls back to the template value/style.
+          // falls back to the template value/style. Hidden layers get opacity 0.
           for (const layer of perItemLayers) {
-            const value = itemTextValues[overlay.id]?.[layer.id] ?? layer.templateValue;
-            const stylePatch = itemTextStyles[overlay.id]?.[layer.id];
-            updateTextNode!(layer.id, { ...stylePatch, content: value });
+            const isHidden = hiddenIds.includes(layer.id as string);
+            if (isHidden) {
+              updateTextNode!(layer.id, { opacity: 0 });
+            } else {
+              const value = itemTextValues[overlay.id]?.[layer.id] ?? layer.templateValue;
+              const stylePatch = itemTextStyles[overlay.id]?.[layer.id];
+              updateTextNode!(layer.id, { ...stylePatch, content: value });
+            }
           }
 
           // (2) Let React re-paint the canvas before capture.
@@ -157,7 +168,7 @@ export function useBatchRender(
       setIsRunning(false);
       onRestoreSelection(prevId);
     }
-  }, [overlays, template, slot, itemTextValues, updateTextNode, itemTextStyles]);
+  }, [overlays, template, slot, itemTextValues, updateTextNode, itemTextStyles, itemHiddenNodeIds]);
 
   const cancel = useCallback(() => {
     cancelRef.current = true;

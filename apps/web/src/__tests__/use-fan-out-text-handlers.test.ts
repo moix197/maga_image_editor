@@ -9,7 +9,7 @@ describe("useFanOutTextHandlers", () => {
     const selectedVariantIds = new Set(["a", "b", "c"]);
 
     const { result } = renderHook(() =>
-      useFanOutTextHandlers({ selectedVariantIds, setItemTextValue, setItemTextStyle })
+      useFanOutTextHandlers({ selectedVariantIds, setItemTextValue, setItemTextStyle, setItemNodeHidden: vi.fn() })
     );
 
     act(() => {
@@ -28,7 +28,7 @@ describe("useFanOutTextHandlers", () => {
     const selectedVariantIds = new Set(["x", "y"]);
 
     const { result } = renderHook(() =>
-      useFanOutTextHandlers({ selectedVariantIds, setItemTextValue, setItemTextStyle })
+      useFanOutTextHandlers({ selectedVariantIds, setItemTextValue, setItemTextStyle, setItemNodeHidden: vi.fn() })
     );
 
     act(() => {
@@ -48,7 +48,7 @@ describe("useFanOutTextHandlers", () => {
     const selectedVariantIds = new Set(["a"]);
 
     const { result } = renderHook(() =>
-      useFanOutTextHandlers({ selectedVariantIds, setItemTextValue, setItemTextStyle })
+      useFanOutTextHandlers({ selectedVariantIds, setItemTextValue, setItemTextStyle, setItemNodeHidden: vi.fn() })
     );
 
     act(() => {
@@ -65,7 +65,7 @@ describe("useFanOutTextHandlers", () => {
     const selectedVariantIds = new Set(["a", "b"]);
 
     const { result } = renderHook(() =>
-      useFanOutTextHandlers({ selectedVariantIds, setItemTextValue, setItemTextStyle })
+      useFanOutTextHandlers({ selectedVariantIds, setItemTextValue, setItemTextStyle, setItemNodeHidden: vi.fn() })
     );
 
     act(() => {

@@ -127,6 +127,14 @@ export interface BatchProject {
    * template node's own style. Empty `{}` means no style overrides.
    */
   itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
+  /**
+   * Per-variant hidden node ids keyed `overlayAssetId → nodeId[]`. A text node
+   * listed here for a given overlay is excluded from that overlay's canvas
+   * preview and Generate All render. Absent means nothing is hidden for that
+   * overlay. Added without a schema version bump — purely additive and
+   * backward-compatible; absence defaults to `{}` / `[]` at read sites.
+   */
+  itemHiddenNodeIds?: Record<string, string[]>;
 }
 
 /**

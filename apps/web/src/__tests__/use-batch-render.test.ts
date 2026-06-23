@@ -530,4 +530,93 @@ describe("useBatchRender", () => {
     );
     expect(ids).toEqual(["a", "b", "c", "d"]);
   });
+
+  // ── Phase 4: per-variant text-node hiding in batch render ────────────────────
+
+  it("a hidden node for overlay X gets opacity 0 applied (not its per-item value)", async () => {
+    const TEXT_ID = "text-1";
+    const textTemplate: EditorState = {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        { id: TEXT_ID as NodeId, content: "TEMPLATE", x: 0, y: 0, rotation: 0, zIndex: 1, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null } as unknown as EditorState["nodes"][0],
+      ],
+    };
+    const overlays = [makeOverlay("a")];
+    const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
+    const itemHiddenNodeIds = { a: [TEXT_ID] };
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode, {}, itemHiddenNodeIds),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // The apply call should use opacity 0, NOT the per-item "A-text" value.
+    const applyCalls = updateTextNode.mock.calls;
+    const applyPatch = applyCalls[0]![1] as { opacity?: number; content?: string };
+    expect(applyPatch.opacity).toBe(0);
+    // content should NOT be "A-text" (the node is hidden, not patched with its value)
+    expect(applyPatch.content).toBeUndefined();
+  });
+
+  it("a hidden node for overlay X is present (and NOT hidden) in overlay Y's render", async () => {
+    const TEXT_ID = "text-1";
+    const textTemplate: EditorState = {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        { id: TEXT_ID as NodeId, content: "TEMPLATE", x: 0, y: 0, rotation: 0, zIndex: 1, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null } as unknown as EditorState["nodes"][0],
+      ],
+    };
+    const overlays = [makeOverlay("a"), makeOverlay("b")];
+    const itemTextValues = { a: { [TEXT_ID]: "A-text" }, b: { [TEXT_ID]: "B-text" } };
+    // node hidden only for overlay "a", NOT for overlay "b"
+    const itemHiddenNodeIds = { a: [TEXT_ID] };
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode, {}, itemHiddenNodeIds),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Calls: [overlay-a apply (opacity 0), overlay-a restore, overlay-b apply (B-text), overlay-b restore]
+    const allPatches = updateTextNode.mock.calls.map((c) => c[1] as Record<string, unknown>);
+    // overlay-a apply: opacity 0, no content
+    expect(allPatches[0]!.opacity).toBe(0);
+    expect(allPatches[0]!.content).toBeUndefined();
+    // overlay-b apply: "B-text" (not hidden)
+    expect(allPatches[2]!.content).toBe("B-text");
+    expect(allPatches[2]!.opacity).toBeUndefined();
+  });
+
+  it("a hidden node is still restored after capture (finally block integrity)", async () => {
+    const TEXT_ID = "text-1";
+    const textTemplate: EditorState = {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        { id: TEXT_ID as NodeId, content: "TEMPLATE", x: 0, y: 0, rotation: 0, zIndex: 1, fontSize: 12, color: "#000", opacity: 1, fontFamily: "Arial", fontWeight: "normal", fontStyle: "normal", shadow: null, textBackground: null } as unknown as EditorState["nodes"][0],
+      ],
+    };
+    const overlays = [makeOverlay("a")];
+    const itemHiddenNodeIds = { a: [TEXT_ID] };
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, {}, updateTextNode, {}, itemHiddenNodeIds),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Last call is restore — must include content: "TEMPLATE" and opacity: 1
+    const restorePatch = updateTextNode.mock.calls.at(-1)![1] as { content: string; opacity: number };
+    expect(restorePatch.content).toBe("TEMPLATE");
+    expect(restorePatch.opacity).toBe(1);
+  });
 });
