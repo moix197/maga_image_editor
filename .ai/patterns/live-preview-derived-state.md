@@ -9,28 +9,29 @@ never a mutation of the shared template. Lives in
 usePreviewEditorState(
   base: EditorState,
   activeOverlayId: string | null,
-  itemTextValues, itemTextStyles, textLayerLocks,
+  itemTextValues, itemTextStyles, itemHiddenNodeIds,
+  variableSlotNodeId?, activeOverlayBlobKey?,
 ): EditorState
 ```
 
-It maps `base.nodes`: for each unlocked text node it applies that overlay's
+It maps `base.nodes`: **every** text node gets that overlay's
 `itemTextValues[overlayId][nodeId]` (content) and `itemTextStyles[overlayId][nodeId]`
-(style partial), spread onto a node copy; locked nodes pass through untouched. Lock
-resolution is `textLayerLocks[node.id] ?? newTextLayerLockDefault` — a missing lock
-defaults to **unlocked** (per-item editable), matching `use-item-text`. Result is
-wrapped in a `{ ...base, nodes }` copy.
+(style partial) applied — text is per-item with no shared-vs-locked distinction
+(the lock model was retired in schema v4; see [[per-item-text-schema]]). Nodes
+listed in `itemHiddenNodeIds[overlayId]` are **filtered out** of the derived node
+array entirely (not painted), and the variable-slot node's `src` is swapped to the
+active overlay's blob. Result is wrapped in a `{ ...base, nodes }` copy.
 
 **Why derived, not mutate:** the preview must reflect a per-item override without
 touching the shared template — switching variants, or selecting a node, must not
 leak a previous variant's text into the template. Copy-on-read keeps `base`
 authoritative and pristine; the derived object is throwaway render input.
 
-**Memoization contract (load-bearing):** `useMemo` deps are exactly
-`[base, activeOverlayId, itemTextValues, itemTextStyles, textLayerLocks]`. The dep
-array is **deliberately minimal** so unrelated `editorState` churn (e.g.
-`selectedNodeId` changes) does **not** re-derive the preview. Two early returns of
-`base` itself (no copy) avoid allocating: when `activeOverlayId` is null, and when
-the active overlay has no entries in either override map.
+**Memoization contract (load-bearing):** the `useMemo` deps are exactly the inputs
+above and nothing more. The dep array is **deliberately minimal** so unrelated
+`editorState` churn (e.g. `selectedNodeId` changes) does **not** re-derive the
+preview. An early return of `base` itself (no copy) avoids allocating when there is
+no active overlay and nothing to override or hide.
 
 **Hard constraint — orthogonality to Generate All:** this is a **read-only**
 preview path. The export/render path in `apps/web/src/hooks/use-batch-render.ts`
@@ -39,16 +40,17 @@ mutates the live template, captures the DOM, then restores it
 output and must remain **untouched and unaffected** by anything here. Don't fold
 the preview into the render loop or vice-versa: one is copy-on-read for display,
 the other is mutate-capture-restore for fidelity. They share the override maps and
-the lock semantics — **and the canvas element**, the one coupling that bites.
+the hidden-node map — **and the canvas element**, the one coupling that bites.
 
-**The canvas `state` prop is the coupling point:** both paths render through the
-same canvas, but the render loop mutates `editorState.state` while this hook's
-output pins text to the active variant. If the canvas renders `previewEditorState`
-during a run, the active-variant override **shadows the loop's per-item writes** and
-every output gets the selected variant's text. So `BatchWorkspace` feeds the canvas
-`isRunning ? editorState.state : previewEditorState` — the preview is bypassed for
-the duration of Generate All. Don't route the render loop's capture through this
-derived state.
+**The canvas `state` prop is the coupling point (load-bearing):** both paths render
+through the same canvas, but the render loop mutates `editorState.state` while this
+hook's output pins text to the active variant. If the canvas renders
+`previewEditorState` during a run, the active-variant override **shadows the loop's
+per-item writes** and every output gets the selected variant's text. So
+`BatchWorkspace` feeds the canvas
+`state={batchRender.isRunning ? editorState.state : previewEditorState}` — the
+preview is bypassed for the duration of Generate All. Don't route the render loop's
+capture through this derived state.
 
 **Don't regress** to mutating `base` for preview, to widening the `useMemo` deps
 (re-derives on every selection change), or to routing preview through the render

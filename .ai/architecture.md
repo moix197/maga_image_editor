@@ -16,8 +16,8 @@ Three packages in a pnpm workspace, each owning one responsibility.
   — see [[framework-free-editor-package]]. Web reaches it only through the
   `apps/web/src/hooks/use-editor-state.ts` wrapper.
 - **`@maga/projects`** (`packages/projects`) — framework-free batch-project domain:
-  the persisted schema (overlay assets, per-item text, layer locks) and the
-  ZIP/IDB serializers. No React, no DOM. See *Batch workspace* below.
+  the persisted schema (overlay assets, per-item text + styles, per-variant hidden
+  nodes) and the ZIP/IDB serializers. No React, no DOM. See *Batch workspace* below.
 - **`@maga/config`** (`packages/config`) — static build configuration shared across
   the workspace: the base `tsconfig`, the ESLint config, and the Tailwind preset.
   No runtime code.
@@ -77,11 +77,11 @@ persistence hooks together.
 
 The workspace is a **3-column shell**: left `WorkspaceSideNav`; center a
 **persistent** `TextOverlayCanvas` with `VariantStrip` directly below it — both
-stay mounted and visible across the Assets / Template / Text sections, the canvas
-never section-swaps away. The right column is a contextual `BatchRightPanel`
+stay mounted and visible across the Assets / Template sections, the canvas never
+section-swaps away. The right column is a contextual `BatchRightPanel`
 (`apps/web/src/components/batch/BatchRightPanel.tsx`) — a pure shell that switches
 its body on `activeSection` (Assets: asset list + upload zone; Template: overlay/
-template controls; Text: BulkTextPanel). **Results is the exception:** it replaces
+template + per-variant text controls). **Results is the exception:** it replaces
 the center canvas with the full-width `BatchResultsGallery` and collapses the right
 panel. Below the `md` breakpoint the right panel stacks under the canvas.
 
@@ -89,20 +89,22 @@ The center canvas renders a **live preview** of the active variant, derived
 copy-on-read from the template + that overlay's per-item overrides via
 `usePreviewEditorState` (`apps/web/src/hooks/use-preview-editor-state.ts`) — the
 shared template is never mutated for display; see [[live-preview-derived-state]].
-Text edits route by lock state through `makeTextEditHandlers`
-(`apps/web/src/components/batch/make-text-edit-handlers.ts`): an unlocked layer's
-edit writes a per-item override (only the active variant changes), a locked layer's
-edit writes the shared template (all variants change); see
-[[text-edit-lock-routing]]. This preview/display path is **orthogonal** to the
+Every text layer is per-item (the lock model was removed in v4): text value, style,
+and visibility edits fan across the selected variants via `useFanOutTextHandlers`
+(`apps/web/src/hooks/use-fan-out-text-handlers.ts`) — `VariantStrip` multi-select
+chooses the targets, `reconcileVariantSelection`
+(`apps/web/src/lib/variant-selection.ts`) keeps that selection coherent across
+active-switch and deletion. This preview/display path is **orthogonal** to the
 Generate All render path below — the export loop owns output and is unaffected.
 
 A batch project pairs a shared **template** (one `EditorState`: background, layers,
 text styles) with N **overlay assets** (each: id, original filename, blob key).
 Per-item text is stored as overrides, not per-item state — two parallel maps keyed
 `[overlayAssetId][textNodeId]`: `itemTextValues` (content string) and
-`itemTextStyles` (`Partial<TextStyle>`), with `textLayerLocks` deciding shared vs.
-per-item for both — see [[per-item-text-schema]]. This is the `@maga/projects`
-schema at `SCHEMA_VERSION = 3`.
+`itemTextStyles` (`Partial<TextStyle>`), plus an optional
+`itemHiddenNodeIds[overlayAssetId]` listing nodes hidden for that variant — see
+[[per-item-text-schema]]. This is the `@maga/projects` schema at
+`SCHEMA_VERSION = 4`.
 
 Rendering each variant **mutates the live template (content + style), lets the DOM
 repaint, captures it, then restores both** — never a detached clone; the shared
@@ -115,9 +117,11 @@ z-order reuses `reorderNode` from `@maga/editor` — see [[dnd-library-choice]].
 
 Projects persist two ways from `@maga/projects`: an IndexedDB adapter (live
 autosave) and a ZIP exporter/importer (portable file). Both load older records
-through the single shared `migrateProject` chain (`migrateToV3 ∘ migrateToV2`,
-`packages/projects/src/schema.ts`), which upgrades v1→v2→v3 and is idempotent on a
-v3 record; the version bump is one-way.
+through the single shared `migrateProject` chain
+(`migrateToV4 ∘ migrateToV3 ∘ migrateToV2`, `packages/projects/src/schema.ts`),
+which upgrades v1→v4 and is idempotent on a v4 record; `migrateToV4` fans the
+retired lock model's shared values into per-item overrides. The version bump is
+one-way; see [[per-item-text-schema]].
 
 ### Cartoonize (external service)
 
