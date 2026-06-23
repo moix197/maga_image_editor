@@ -278,15 +278,15 @@ This phase is an allowed thin-infrastructure exception (schema-only, no user-fac
 | modify | `apps/web/src/components/batch/BatchRightPanel.tsx` | `TextStylePanel.onDelete`: when `activeOverlay` exists → `itemText.setNodeHidden(activeOverlay.id, nodeId, true)` (fan-out hide across selected) + deselect; else fall back to `editorState.removeNode`. In `ItemTextPanel`, add a per-node show/hide (eye) toggle reflecting `itemText.isNodeHidden(activeOverlay.id, nodeId)` for restore |
 
 **Steps:**
-- [ ] schema.ts: add optional `itemHiddenNodeIds?: Record<string, string[]>`
-- [ ] use-batch-project.ts: state + `setItemNodeHidden` (toggle nodeId in `itemHiddenNodeIds[overlayId]`, immutable partial-merge); include in persisted record; default `{}`
-- [ ] use-item-text.ts: `isNodeHidden` / `setNodeHidden`
-- [ ] use-fan-out-text-handlers.ts: `handleSetNodeHidden` fanning across `selectedVariantIds`
-- [ ] BatchWorkspace.tsx: add `setNodeHidden` to `fanOutItemText`; thread `itemHiddenNodeIds` into preview + render hooks; do NOT touch the `isRunning` line
-- [ ] use-preview-editor-state.ts: filter hidden nodes for active overlay
-- [ ] use-batch-render.ts: filter hidden nodes per overlay
-- [ ] BatchRightPanel.tsx: rewire `TextStylePanel.onDelete` to fan-out hide (fallback removeNode when no overlay); add eye toggle in `ItemTextPanel`
-- [ ] Run `pnpm tsc --noEmit`
+- [x] schema.ts: add optional `itemHiddenNodeIds?: Record<string, string[]>`
+- [x] use-batch-project.ts: state + `setItemNodeHidden` (toggle nodeId in `itemHiddenNodeIds[overlayId]`, immutable partial-merge, idempotent); include in persisted record; default `{}`
+- [x] use-item-text.ts: `isNodeHidden` / `setNodeHidden`
+- [x] use-fan-out-text-handlers.ts: `handleSetNodeHidden` fanning across `selectedVariantIds`
+- [x] BatchWorkspace.tsx: add `setNodeHidden` to `fanOutItemText`; thread `itemHiddenNodeIds` into preview + render hooks; `isRunning` line untouched
+- [x] use-preview-editor-state.ts: filter hidden nodes for active overlay
+- [x] use-batch-render.ts: filter hidden nodes per overlay (hidden → opacity 0; restore resets via templateStyle)
+- [x] BatchRightPanel.tsx: rewire `TextStylePanel.onDelete` to fan-out hide (fallback removeNode when no overlay); add eye toggle in `ItemTextPanel`
+- [x] Run `pnpm tsc --noEmit`
 
 **Tests:**
 | Action | File | What it covers |
@@ -296,19 +296,19 @@ This phase is an allowed thin-infrastructure exception (schema-only, no user-fac
 | modify | `apps/web/src/__tests__/use-batch-render.test.ts` | A node hidden for overlay X is absent from X's rendered frame but present in overlay Y's frame |
 
 **Verification:**
-- [ ] `pnpm test` + `pnpm tsc --noEmit` pass
-- [ ] Select 1 variant, delete a text layer → hidden only on that variant; other variants still show it
-- [ ] Multi-select → delete → hidden on all selected (+active)
-- [ ] Eye toggle restores a hidden layer for the active variant
-- [ ] Generate All: hidden layers absent from their variants' output, present elsewhere
-- [ ] isRunning invariant preserved; images unaffected
-- [ ] Old project (no `itemHiddenNodeIds`) loads fine — nothing hidden
+- [x] `pnpm test` + `pnpm tsc --noEmit` pass (orchestrator-verified: web 305/305, projects 47/47, tsc clean both)
+- [x] Old project (no `itemHiddenNodeIds`) loads fine — nothing hidden (covered by tests)
+- [x] isRunning invariant preserved; images unaffected (review-confirmed)
+- [ ] Select 1 variant, delete a text layer → hidden only on that variant; other variants still show it — _live-visual; user smoke_
+- [ ] Multi-select → delete → hidden on all selected (+active) — _live-visual; user smoke_
+- [ ] Eye toggle restores a hidden layer for the active variant — _live-visual; user smoke_
+- [ ] Generate All: hidden layers absent from their variants' output, present elsewhere — _live-visual; user smoke_
 
 **Phase review:**
-- [ ] Code-reviewer verified
-- [ ] Tests passing
+- [x] Code-reviewer verified (green; one cosmetic nit only)
+- [x] Tests passing
 - [ ] Orchestrator approved
-- [ ] Changes committed
+- [x] Changes committed: `46164e9`
 - [ ] Phase marked complete
 
 ---
