@@ -13,6 +13,7 @@ import { useProjectPersistence } from "@/hooks/use-project-persistence";
 import { useFanOutTextHandlers } from "@/hooks/use-fan-out-text-handlers";
 import { fileToDataUrl } from "@/lib/image-helpers";
 import { canGenerateBatch } from "@/lib/batch-gating";
+import { reconcileVariantSelection } from "@/lib/variant-selection";
 import { BatchResultsGallery } from "./BatchResultsGallery";
 import { VariantStrip } from "./VariantStrip";
 import { TextOverlayCanvas } from "@/components/text-overlay-canvas";
@@ -70,13 +71,19 @@ function BatchWorkspaceInner() {
     });
   }, [overlays]);
 
+  const prevActiveIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (activeOverlayId) {
-      setSelectedVariantIds((prev) => {
-        const pruned = new Set([...prev].filter((id) => overlays.some((o) => o.id === id)));
-        pruned.add(activeOverlayId);
-        return pruned;
-      });
+      const activeChanged = prevActiveIdRef.current !== activeOverlayId;
+      prevActiveIdRef.current = activeOverlayId;
+      setSelectedVariantIds((prev) =>
+        reconcileVariantSelection({
+          prev,
+          activeId: activeOverlayId,
+          overlayIds: overlays.map((o) => o.id),
+          activeChanged,
+        }),
+      );
     }
   }, [activeOverlayId, overlays]);
 
