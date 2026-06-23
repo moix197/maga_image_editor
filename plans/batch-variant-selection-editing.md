@@ -253,6 +253,66 @@ This phase is an allowed thin-infrastructure exception (schema-only, no user-fac
 
 ---
 
+### Phase 4: Per-variant text-node hiding (added during verification)
+
+**Risk:** medium
+**Mode:** afk
+**Type:** frontend
+**Success criteria:** Deleting a text layer (trash button) while one or more variants are selected HIDES that layer only for the selected variant(s) — other variants keep it. Hidden layers are excluded from the canvas preview AND from Generate All output for the variants they're hidden in. A show/hide (eye) toggle in the "Variant text" panel lets the user restore a hidden layer per active variant. Node existence stays in the shared template; only per-variant visibility changes. Images unaffected.
+**Commit message:** `feat(batch): per-variant text-layer hiding — delete hides for selected variants, eye toggle restores`
+
+**Design:**
+- New per-variant store `itemHiddenNodeIds: Record<string, string[]>` (overlayId → hidden nodeIds), added as an OPTIONAL field on `BatchProject` (no SCHEMA_VERSION bump / no migration — absence means "nothing hidden"; default `?? {}` / `?? []` at read sites). Justification: purely additive, backward-compatible; avoids the version-assertion ripple a bump causes.
+- Visibility is fanned across `selectedVariantIds` exactly like text value/style (reuse the fan-out pattern; ignore the passed overlay id, iterate selected).
+
+**File changes:**
+| Action | File | What changes |
+|---|---|---|
+| modify | `packages/projects/src/schema.ts` | Add optional `itemHiddenNodeIds?: Record<string, string[]>` to `BatchProject` (no version bump) |
+| modify | `apps/web/src/hooks/use-batch-project.ts` | Add `itemHiddenNodeIds` state + `setItemNodeHidden(overlayId, nodeId, hidden)` setter (toggle a nodeId in the overlay's array, partial-merge like the other per-item setters); include `itemHiddenNodeIds` in the persisted record; default `{}` on load |
+| modify | `apps/web/src/hooks/use-item-text.ts` | Add `isNodeHidden(overlayAssetId, nodeId): boolean` and `setNodeHidden(overlayAssetId, nodeId, hidden)` accessors (read/write the hidden store) |
+| modify | `apps/web/src/hooks/use-fan-out-text-handlers.ts` | Add `handleSetNodeHidden(_overlayId, nodeId, hidden)` that iterates `selectedVariantIds` calling `setNodeHidden(id, nodeId, hidden)` |
+| modify | `apps/web/src/components/batch/BatchWorkspace.tsx` | Wire `setNodeHidden` into the fan-out (`fanOutItemText.setNodeHidden = fanOut.handleSetNodeHidden`); pass `itemHiddenNodeIds` to `usePreviewEditorState` and `useBatchRender` |
+| modify | `apps/web/src/hooks/use-preview-editor-state.ts` | Accept `itemHiddenNodeIds`; filter out nodes hidden for `activeOverlayId` from the rendered node list |
+| modify | `apps/web/src/hooks/use-batch-render.ts` | For each overlay, filter out that overlay's hidden nodes before rendering its frame |
+| modify | `apps/web/src/components/batch/BatchRightPanel.tsx` | `TextStylePanel.onDelete`: when `activeOverlay` exists → `itemText.setNodeHidden(activeOverlay.id, nodeId, true)` (fan-out hide across selected) + deselect; else fall back to `editorState.removeNode`. In `ItemTextPanel`, add a per-node show/hide (eye) toggle reflecting `itemText.isNodeHidden(activeOverlay.id, nodeId)` for restore |
+
+**Steps:**
+- [ ] schema.ts: add optional `itemHiddenNodeIds?: Record<string, string[]>`
+- [ ] use-batch-project.ts: state + `setItemNodeHidden` (toggle nodeId in `itemHiddenNodeIds[overlayId]`, immutable partial-merge); include in persisted record; default `{}`
+- [ ] use-item-text.ts: `isNodeHidden` / `setNodeHidden`
+- [ ] use-fan-out-text-handlers.ts: `handleSetNodeHidden` fanning across `selectedVariantIds`
+- [ ] BatchWorkspace.tsx: add `setNodeHidden` to `fanOutItemText`; thread `itemHiddenNodeIds` into preview + render hooks; do NOT touch the `isRunning` line
+- [ ] use-preview-editor-state.ts: filter hidden nodes for active overlay
+- [ ] use-batch-render.ts: filter hidden nodes per overlay
+- [ ] BatchRightPanel.tsx: rewire `TextStylePanel.onDelete` to fan-out hide (fallback removeNode when no overlay); add eye toggle in `ItemTextPanel`
+- [ ] Run `pnpm tsc --noEmit`
+
+**Tests:**
+| Action | File | What it covers |
+|---|---|---|
+| create | `apps/web/src/__tests__/item-node-hidden.test.ts` | `setItemNodeHidden` toggles per overlay without clobbering other overlays/nodes; fan-out `handleSetNodeHidden` hides across all selected ids; `isNodeHidden` reads correctly |
+| modify | `apps/web/src/__tests__/hooks/use-preview-editor-state.test.ts` | A node hidden for the active overlay is excluded from the preview node list; non-hidden nodes remain |
+| modify | `apps/web/src/__tests__/use-batch-render.test.ts` | A node hidden for overlay X is absent from X's rendered frame but present in overlay Y's frame |
+
+**Verification:**
+- [ ] `pnpm test` + `pnpm tsc --noEmit` pass
+- [ ] Select 1 variant, delete a text layer → hidden only on that variant; other variants still show it
+- [ ] Multi-select → delete → hidden on all selected (+active)
+- [ ] Eye toggle restores a hidden layer for the active variant
+- [ ] Generate All: hidden layers absent from their variants' output, present elsewhere
+- [ ] isRunning invariant preserved; images unaffected
+- [ ] Old project (no `itemHiddenNodeIds`) loads fine — nothing hidden
+
+**Phase review:**
+- [ ] Code-reviewer verified
+- [ ] Tests passing
+- [ ] Orchestrator approved
+- [ ] Changes committed
+- [ ] Phase marked complete
+
+---
+
 ### Phase 3: Final Verification
 
 **Risk:** low
