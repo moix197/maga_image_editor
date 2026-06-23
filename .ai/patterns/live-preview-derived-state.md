@@ -39,7 +39,16 @@ mutates the live template, captures the DOM, then restores it
 output and must remain **untouched and unaffected** by anything here. Don't fold
 the preview into the render loop or vice-versa: one is copy-on-read for display,
 the other is mutate-capture-restore for fidelity. They share the override maps and
-the lock semantics, nothing else.
+the lock semantics — **and the canvas element**, the one coupling that bites.
+
+**The canvas `state` prop is the coupling point:** both paths render through the
+same canvas, but the render loop mutates `editorState.state` while this hook's
+output pins text to the active variant. If the canvas renders `previewEditorState`
+during a run, the active-variant override **shadows the loop's per-item writes** and
+every output gets the selected variant's text. So `BatchWorkspace` feeds the canvas
+`isRunning ? editorState.state : previewEditorState` — the preview is bypassed for
+the duration of Generate All. Don't route the render loop's capture through this
+derived state.
 
 **Don't regress** to mutating `base` for preview, to widening the `useMemo` deps
 (re-derives on every selection change), or to routing preview through the render

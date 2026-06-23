@@ -378,7 +378,11 @@ function BatchWorkspaceInner() {
                 onPointerDown={() => setSelectedNodeId(null)}
               >
                 <TextOverlayCanvas
-                  state={previewEditorState}
+                  // During batch render the loop mutates editorState per overlay
+                  // (updateTextNode) and captures the live DOM. previewEditorState
+                  // re-pins text to the active variant, so it must be bypassed here
+                  // or every captured frame shows the selected variant's text.
+                  state={batchRender.isRunning ? editorState.state : previewEditorState}
                   imageSrc={background?.blobKey ?? ""}
                   selectedNodeId={selectedNodeId}
                   onNodeMove={handleNodeMove}

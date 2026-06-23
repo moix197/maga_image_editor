@@ -30,6 +30,16 @@ real canvas element. A detached `EditorState` clone never reaches the DOM, so th
 capture would show the template text, not the override — silently wrong output.
 The patch has to land on the state the DOM actually renders.
 
+**Load-bearing coupling — the canvas `state` prop:** the loop mutates
+`editorState.state`, but the canvas normally renders `previewEditorState`
+(see [[live-preview-derived-state]]), which re-pins every unlocked text node to the
+**active** variant's `itemTextValues[activeOverlayId]`. That derived override
+shadows the loop's per-item writes, so every captured frame shows the selected
+variant's text — the exact bug this guards against. `BatchWorkspace` therefore
+swaps the canvas source while rendering: `state={isRunning ? editorState.state :
+previewEditorState}`. The render loop's mutations only reach the DOM because the
+canvas points at the live `editorState.state` for the duration of the run.
+
 **Why the restore is in `finally` (load-bearing):** the override is a *temporary*
 mutation of the **shared** template, now spanning content **and** style. If capture
 throws mid-loop without restoring, the template stays mutated and the next item —
