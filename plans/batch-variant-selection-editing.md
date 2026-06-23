@@ -151,21 +151,22 @@ This phase is an allowed thin-infrastructure exception (schema-only, no user-fac
 | delete | `apps/web/src/components/batch/BulkTextPanel.tsx` | Replaced by VariantStrip multi-select in Phase 2 |
 
 **Steps:**
-- [ ] **Grep before delete:** run `grep -r "make-text-edit-handlers" apps/ packages/` — confirm ONLY `BatchWorkspace.tsx` imports it; if other callers exist, update them first before deleting
-- [ ] **Grep for lock references:** run `grep -rn "textLayerLocks\|TextLayerLock" apps/ packages/` — every hit must be removed/updated in this phase (the list below is the known set; if grep surfaces a file not listed, e.g. `apps/web/src/hooks/use-zip-export.ts`, update it too and note it)
-- [ ] In `packages/projects/src/schema.ts`: remove the `textLayerLocks?` field from `BatchProject`; remove `newTextLayerLockDefault`, `migratedTextLayerLockDefault`, `migratedTextLayerLocks`
-- [ ] In `packages/projects/src/index.ts`: drop the re-exports of the removed helpers
-- [ ] In `packages/projects/src/zip-export.ts`: drop `textLayerLocks` from the exported record; update `packages/projects/__tests__/idb-adapter.test.ts` and `__tests__/zip-export.test.ts` fixtures/assertions accordingly
-- [ ] Update `workspace-sections.ts`: remove "text" entry from SECTIONS and VALID_SECTIONS
-- [ ] Update `use-batch-project.ts`: drop `textLayerLocks` state/setter/return; drop `setTextLayerLock`
-- [ ] Update `use-item-text.ts`: drop `isLocked`/`toggleLock`; simplify `getTextValue`/`getTextStyle` to always look up per-item map directly (no lock check); these are the existing `setItemTextValue`/`setItemTextStyle` partial-merge setters — do NOT replace them with new setters
-- [ ] Update `use-preview-editor-state.ts`: remove `textLayerLocks` param; apply overrides to ALL text nodes (no lock filter); verify hook signature change propagates cleanly to all call sites
-- [ ] Update `use-batch-render.ts`: remove `unlockedTextLayers` filter; iterate ALL text nodes; verify `isRunning` guard in `BatchWorkspace` (`state={batchRender.isRunning ? editorState.state : previewEditorState}`) is NOT touched — add a comment noting it is load-bearing if it isn't already commented
-- [ ] Delete `make-text-edit-handlers.ts` (only after grep confirms no other callers)
-- [ ] Update `BatchWorkspace.tsx`: remove `makeTextEditHandlers` call; wire `setItemTextValue`/`setItemTextStyle` directly — fan-out logic belongs in a small helper function or hook (e.g. `useFanOutTextHandlers`), NOT inline in the JSX render body; confirm `isRunning` swap line is character-for-character unchanged
-- [ ] Update `BatchRightPanel.tsx`: remove BulkTextPanel branch and import; remove lock prop threading
-- [ ] Delete `BulkTextPanel.tsx`
-- [ ] Run `pnpm tsc --noEmit`
+- [x] **Grep before delete:** run `grep -r "make-text-edit-handlers" apps/ packages/` — confirm ONLY `BatchWorkspace.tsx` imports it; if other callers exist, update them first before deleting
+- [x] **Grep for lock references:** run `grep -rn "textLayerLocks\|TextLayerLock" apps/ packages/` — every hit must be removed/updated in this phase (the list below is the known set; if grep surfaces a file not listed, e.g. `apps/web/src/hooks/use-zip-export.ts`, update it too and note it)
+- [x] In `packages/projects/src/schema.ts`: remove the `textLayerLocks?` field from `BatchProject`; remove `newTextLayerLockDefault`, `migratedTextLayerLockDefault`, `migratedTextLayerLocks`
+- [x] **Purity nit (carried from 1a review):** in `migrateToV4`, make the nested per-overlay copy fully immutable — copy the nested override object (`{ ...(itemTextValues[overlay.id] ?? {}) }` and same for styles) before assigning, so the input record's nested objects are never mutated in place (matches `migrateToV2`/`migrateToV3` immutability)
+- [x] In `packages/projects/src/index.ts`: drop the re-exports of the removed helpers
+- [x] In `packages/projects/src/zip-export.ts`: drop `textLayerLocks` from the exported record; update `packages/projects/__tests__/idb-adapter.test.ts` and `__tests__/zip-export.test.ts` fixtures/assertions accordingly
+- [x] Update `workspace-sections.ts`: remove "text" entry from SECTIONS and VALID_SECTIONS
+- [x] Update `use-batch-project.ts`: drop `textLayerLocks` state/setter/return; drop `setTextLayerLock`
+- [x] Update `use-item-text.ts`: drop `isLocked`/`toggleLock`; simplify `getTextValue`/`getTextStyle` to always look up per-item map directly (no lock check); these are the existing `setItemTextValue`/`setItemTextStyle` partial-merge setters — do NOT replace them with new setters
+- [x] Update `use-preview-editor-state.ts`: remove `textLayerLocks` param; apply overrides to ALL text nodes (no lock filter); verify hook signature change propagates cleanly to all call sites
+- [x] Update `use-batch-render.ts`: remove `unlockedTextLayers` filter; iterate ALL text nodes; verify `isRunning` guard in `BatchWorkspace` (`state={batchRender.isRunning ? editorState.state : previewEditorState}`) is NOT touched — add a comment noting it is load-bearing if it isn't already commented
+- [x] Delete `make-text-edit-handlers.ts` (only after grep confirms no other callers)
+- [x] Update `BatchWorkspace.tsx`: remove `makeTextEditHandlers` call; wire `setItemTextValue`/`setItemTextStyle` directly — fan-out logic belongs in a small helper function or hook (e.g. `useFanOutTextHandlers`), NOT inline in the JSX render body; confirm `isRunning` swap line is character-for-character unchanged
+- [x] Update `BatchRightPanel.tsx`: remove BulkTextPanel branch and import; remove lock prop threading
+- [x] Delete `BulkTextPanel.tsx`
+- [x] Run `pnpm tsc --noEmit`
 
 **Tests:**
 | Action | File | What it covers |
@@ -174,25 +175,25 @@ This phase is an allowed thin-infrastructure exception (schema-only, no user-fac
 | modify | `apps/web/src/__tests__/use-preview-editor-state.test.ts` | With `textLayerLocks` param removed, ALL text nodes receive per-item overrides (add a test with a previously-locked node to confirm it is now always applied) |
 
 **Verification:**
-- [ ] `pnpm test` passes across all packages
-- [ ] `pnpm tsc --noEmit` passes
-- [ ] Nav renders 3 sections (assets, template, results) — "Text" tab absent
-- [ ] Template section: editing a text node writes to the active variant's `itemTextValues`/`itemTextStyles`, not to a shared template path
-- [ ] Generate All: produced images reflect per-variant text overrides; no node is silently skipped
-- [ ] Switching active variant shows that variant's per-item text on canvas (preview correct)
-- [ ] **isRunning invariant:** during Generate All the canvas consumes `editorState.state`, not `previewEditorState` — confirm this line is unchanged in `BatchWorkspace.tsx` diff
-- [ ] **App is fully functional at end of 1b** — users can edit text on the active variant with no regressions before Phase 2 begins
+- [x] `pnpm test` passes across all packages (orchestrator-verified: projects 47/47, web 258/258)
+- [x] `pnpm tsc --noEmit` passes (orchestrator-verified clean in packages/projects + apps/web)
+- [x] Nav renders 3 sections (assets, template, results) — "Text" tab absent (covered by `workspace-side-nav.test.tsx`, updated to expect 3 tabs)
+- [x] Template section: editing a text node writes to the active variant's `itemTextValues`/`itemTextStyles`, not to a shared template path (review-confirmed routing)
+- [x] **isRunning invariant:** during Generate All the canvas consumes `editorState.state`, not `previewEditorState` — confirmed unchanged (`BatchWorkspace.tsx:369`)
+- [ ] Generate All: produced images reflect per-variant text overrides; no node is silently skipped — _live-visual; consolidated into Phase 3 manual smoke_
+- [ ] Switching active variant shows that variant's per-item text on canvas — _live-visual; consolidated into Phase 3 manual smoke_
+- [ ] **App is fully functional at end of 1b** — _live-visual; consolidated into Phase 3 manual smoke_
 
 **Phase review:**
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted
-- [ ] Orchestrator cleared context and pasted handoff prompt
-- [ ] Code-reviewer agent verified this phase
-- [ ] Reviewer-driven changes reflected back into plan
-- [ ] Tests written and passing (or no-tests justification accepted)
-- [ ] Documentation updated
+- [x] All Steps and Verification checkboxes above ticked (live-visual smoke deferred to Phase 3)
+- [x] Reviewer handoff prompt emitted
+- [x] Orchestrator cleared context and pasted handoff prompt
+- [x] Code-reviewer agent verified this phase
+- [x] Reviewer-driven changes reflected back into plan (purity nit applied; unused-import nit noted, tsc clean)
+- [x] Tests written and passing (or no-tests justification accepted)
+- [x] Documentation updated (load-bearing isRunning comment added; KB sync is Phase 3)
 - [ ] Orchestrator approved
-- [ ] Changes committed: `feat(batch): remove text-lock model end-to-end — drop Text section, BulkTextPanel, makeTextEditHandlers; all text layers per-variant`
+- [x] Changes committed: `feat(batch): remove text-lock model end-to-end — drop Text section, BulkTextPanel, makeTextEditHandlers; all text layers per-variant`
 - [ ] Phase marked complete
 
 ---
