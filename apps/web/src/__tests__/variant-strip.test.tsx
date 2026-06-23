@@ -8,10 +8,20 @@ function makeAsset(id: string, filename = id + ".png"): ProjectAsset {
   return { id, filename, blobKey: "data:image/png;base64," + id };
 }
 
+function defaultProps(overlays: ProjectAsset[], activeId: string | null = null) {
+  return {
+    overlays,
+    activeId,
+    onSelect: vi.fn(),
+    selectedIds: new Set(activeId ? [activeId] : []),
+    onSelectionChange: vi.fn(),
+  };
+}
+
 describe("VariantStrip", () => {
   it("renders one thumbnail button per overlay", () => {
     const overlays = [makeAsset("a"), makeAsset("b"), makeAsset("c")];
-    render(<VariantStrip overlays={overlays} activeId="a" onSelect={vi.fn()} />);
+    render(<VariantStrip {...defaultProps(overlays, "a")} />);
 
     const buttons = screen.getAllByRole("option");
     expect(buttons).toHaveLength(3);
@@ -19,7 +29,7 @@ describe("VariantStrip", () => {
 
   it("renders nothing when overlays array is empty", () => {
     const { container } = render(
-      <VariantStrip overlays={[]} activeId={null} onSelect={vi.fn()} />,
+      <VariantStrip {...defaultProps([], null)} />,
     );
     expect(container.firstChild).toBeNull();
   });
@@ -29,7 +39,7 @@ describe("VariantStrip", () => {
     const overlays = [makeAsset("alpha"), makeAsset("beta")];
     const onSelect = vi.fn();
 
-    render(<VariantStrip overlays={overlays} activeId="alpha" onSelect={onSelect} />);
+    render(<VariantStrip overlays={overlays} activeId="alpha" onSelect={onSelect} selectedIds={new Set(["alpha"])} onSelectionChange={vi.fn()} />);
 
     const betaButton = screen.getByRole("option", { name: /beta/i });
     await user.click(betaButton);
@@ -40,7 +50,7 @@ describe("VariantStrip", () => {
 
   it("active item has aria-selected=true", () => {
     const overlays = [makeAsset("x"), makeAsset("y")];
-    render(<VariantStrip overlays={overlays} activeId="y" onSelect={vi.fn()} />);
+    render(<VariantStrip overlays={overlays} activeId="y" onSelect={vi.fn()} selectedIds={new Set(["y"])} onSelectionChange={vi.fn()} />);
 
     const xOption = screen.getByRole("option", { name: /x/i });
     const yOption = screen.getByRole("option", { name: /y/i });
@@ -51,7 +61,7 @@ describe("VariantStrip", () => {
 
   it("active item has a highlight class (border-primary)", () => {
     const overlays = [makeAsset("img1"), makeAsset("img2")];
-    render(<VariantStrip overlays={overlays} activeId="img1" onSelect={vi.fn()} />);
+    render(<VariantStrip overlays={overlays} activeId="img1" onSelect={vi.fn()} selectedIds={new Set(["img1"])} onSelectionChange={vi.fn()} />);
 
     const activeButton = screen.getByRole("option", { name: /img1/i });
     const inactiveButton = screen.getByRole("option", { name: /img2/i });
@@ -62,7 +72,7 @@ describe("VariantStrip", () => {
 
   it("each thumbnail img uses the overlay blobKey as src", () => {
     const overlays = [makeAsset("foo"), makeAsset("bar")];
-    render(<VariantStrip overlays={overlays} activeId="foo" onSelect={vi.fn()} />);
+    render(<VariantStrip overlays={overlays} activeId="foo" onSelect={vi.fn()} selectedIds={new Set(["foo"])} onSelectionChange={vi.fn()} />);
 
     const images = screen.getAllByRole("img");
     expect(images[0]).toHaveAttribute("src", overlays[0]!.blobKey);
@@ -73,7 +83,7 @@ describe("VariantStrip", () => {
     const user = userEvent.setup();
     const overlays = [makeAsset("one"), makeAsset("two")];
     const onSelect = vi.fn();
-    render(<VariantStrip overlays={overlays} activeId="one" onSelect={onSelect} />);
+    render(<VariantStrip overlays={overlays} activeId="one" onSelect={onSelect} selectedIds={new Set(["one"])} onSelectionChange={vi.fn()} />);
 
     // Click active item — still fires onSelect (parent decides if state changes)
     const activeButton = screen.getByRole("option", { name: /one/i });

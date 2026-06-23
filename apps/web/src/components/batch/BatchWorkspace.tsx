@@ -10,6 +10,7 @@ import { useSingleComposite } from "@/hooks/use-single-composite";
 import { useBatchRender } from "@/hooks/use-batch-render";
 import { useZipExport } from "@/hooks/use-zip-export";
 import { useProjectPersistence } from "@/hooks/use-project-persistence";
+import { useFanOutTextHandlers } from "@/hooks/use-fan-out-text-handlers";
 import { fileToDataUrl } from "@/lib/image-helpers";
 import { canGenerateBatch } from "@/lib/batch-gating";
 import { BatchResultsGallery } from "./BatchResultsGallery";
@@ -41,6 +42,10 @@ function BatchWorkspaceInner() {
     overlays[0]?.id ?? null,
   );
 
+  const [selectedVariantIds, setSelectedVariantIds] = useState<Set<string>>(
+    () => new Set(overlays[0]?.id ? [overlays[0].id] : []),
+  );
+
   // Track which generated output is highlighted in the Results big preview.
   // Auto-selects the first output when outputs go from empty to non-empty.
   // Resets to null when outputs are cleared.
@@ -64,6 +69,16 @@ function BatchWorkspaceInner() {
       return stillExists ? prev : (overlays[0]?.id ?? null);
     });
   }, [overlays]);
+
+  useEffect(() => {
+    if (activeOverlayId) {
+      setSelectedVariantIds((prev) => {
+        const pruned = new Set([...prev].filter((id) => overlays.some((o) => o.id === id)));
+        pruned.add(activeOverlayId);
+        return pruned;
+      });
+    }
+  }, [activeOverlayId, overlays]);
 
   // Resolve the ProjectAsset for the active overlay (used to drive the canvas).
   const activeOverlay = useMemo(
@@ -262,6 +277,18 @@ function BatchWorkspaceInner() {
     setItemTextValue,
     setItemTextStyle,
   });
+
+  const fanOut = useFanOutTextHandlers({
+    selectedVariantIds,
+    setItemTextValue,
+    setItemTextStyle,
+  });
+
+  const fanOutItemText = {
+    ...itemText,
+    setTextValue: fanOut.handleSetItemTextValue,
+    setTextStyle: fanOut.handleSetItemTextStyle,
+  };
   const textNodes = useMemo(
     () => editorState.state.nodes.filter((n): n is TextNode => isTextNode(n)),
     [editorState.state.nodes],
@@ -381,6 +408,12 @@ function BatchWorkspaceInner() {
                     overlays={overlays}
                     activeId={activeOverlayId}
                     onSelect={setActiveOverlayId}
+                    selectedIds={selectedVariantIds}
+                    onSelectionChange={(ids) => {
+                      const next = new Set(ids);
+                      if (activeOverlayId) next.add(activeOverlayId);
+                      setSelectedVariantIds(next);
+                    }}
                   />
                 </div>
               )}
@@ -426,7 +459,7 @@ function BatchWorkspaceInner() {
               onToggleVariableSlot={handleToggleVariableSlot}
               activeOverlay={activeOverlay}
               textNodes={textNodes}
-              itemText={itemText}
+              itemText={fanOutItemText}
             />
           </aside>
         )}
