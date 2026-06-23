@@ -261,6 +261,10 @@ This phase is an allowed thin-infrastructure exception (schema-only, no user-fac
 **Success criteria:** The "Text" nav section is gone. All text editing happens via the Template section (targeting selected variants). VariantStrip checkboxes let users fan edits across multiple variants. Existing projects (v3) load correctly with locks migrated into per-variant overrides. Generate All produces correct output. No TypeScript errors. KB updated.
 **Commit message:** n/a — no new code changes; KB updates committed separately if needed
 
+**Verification findings (fixed during manual smoke):**
+- **Text-style edits were global (fixed `80c1625`).** Manual smoke A surfaced that text STYLE edits (color/font/size/shadow) applied to all variants: `TextStylePanel.onChange` was wired to `editorState.updateTextNode` (shared template). Phase 1b had rerouted text CONTENT to the per-item fan-out but missed style. Fix: route text-style edits through `itemText.setTextStyle` (fan-out across `selectedVariantIds`) and read the active variant's effective style (`{...baseNode, ...getTextStyle(activeOverlay.id, nodeId)}`) for the panel controls; fallback to template only when no overlays exist. Reviewed green. `TextStyle` already covered all fields — no schema change.
+- **Images remain shared by design.** Only text is per-variant; per-variant image overrides were explicitly out of scope (deferred as a possible future feature).
+
 **File changes:**
 | Action | File | What changes |
 |---|---|---|
