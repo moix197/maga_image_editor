@@ -152,8 +152,8 @@ export function BatchRightPanel({
                         node={effectiveNode}
                         onChange={(patch) => {
                           if (activeOverlay) {
-                            // Fan out style edits to every selected variant via itemText
-                            // (fanOutItemText.setTextStyle), never mutating the shared template.
+                            // Fans the style edit across every selected variant,
+                            // never mutating the shared template.
                             itemText.setTextStyle(activeOverlay.id, selectedNodeId!, patch);
                           } else {
                             // No overlay context yet (template-only mode) — fall back to

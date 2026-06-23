@@ -6,7 +6,13 @@ interface VariantStripProps {
   overlays: ProjectAsset[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  /**
+   * The set of variants edits fan out to. The active variant is always part of
+   * this set and is rendered checked + disabled (you can't deselect what you're
+   * editing).
+   */
   selectedIds: Set<string>;
+  /** Notifies the parent of a new fan-out selection set (checkbox / select-all). */
   onSelectionChange: (ids: Set<string>) => void;
 }
 

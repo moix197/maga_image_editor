@@ -10,6 +10,13 @@ interface UseFanOutTextHandlersArgs {
   setItemNodeHidden: (overlayAssetId: string, nodeId: string, hidden: boolean) => void;
 }
 
+/**
+ * Wraps the per-item text setters so a single edit fans out across every
+ * variant in `selectedVariantIds` (text value, style, and visibility). The
+ * `overlayAssetId` each returned handler receives is intentionally ignored —
+ * the selection set, not the active overlay, decides which variants the edit
+ * is written to.
+ */
 export function useFanOutTextHandlers({
   selectedVariantIds,
   setItemTextValue,

@@ -87,7 +87,7 @@ export interface GeneratedOutput {
  * };
  */
 export interface BatchProject {
-  /** Discriminant pinning the project to its schema version (current: v3). */
+  /** Discriminant pinning the project to its schema version (current: v4). */
   schemaVersion: SchemaVersion;
   /** Stable uuid for the project. */
   id: string;

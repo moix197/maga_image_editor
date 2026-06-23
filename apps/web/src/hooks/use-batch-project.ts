@@ -131,6 +131,12 @@ export function useBatchProject(): UseBatchProjectResult {
     [],
   );
 
+  /**
+   * Toggles a text node's hidden state for one overlay. Immutable and
+   * idempotent: a no-op toggle (hiding an already-hidden node, or revealing a
+   * non-hidden one) returns the previous state object so referential equality
+   * is preserved and no re-render is triggered.
+   */
   const setItemNodeHidden = useCallback(
     (overlayAssetId: string, nodeId: string, hidden: boolean) => {
       setItemHiddenNodeIdsState((prev) => {

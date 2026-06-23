@@ -119,11 +119,11 @@ export function useBatchRender(
         // patched layer in a finally so a throw mid-capture can never leave
         // the shared template permanently mutated.
         // Layers hidden for this overlay are excluded from the render: we set
-          // their opacity to 0 before capture so they are invisible in the output.
-          // They are restored (along with all other layers) in the finally block.
-          const hiddenIds = itemHiddenNodeIds[overlay.id] ?? [];
+        // their opacity to 0 before capture so they are invisible in the output.
+        // They are restored (along with all other layers) in the finally block.
+        const hiddenIds = itemHiddenNodeIds[overlay.id] ?? [];
 
-          let outputBlobKey: string;
+        let outputBlobKey: string;
         try {
           // (1) Write this item's content + style override into the LIVE editor
           // state in a SINGLE merged call so the canvas DOM re-renders with the
