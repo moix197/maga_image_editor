@@ -137,14 +137,34 @@ export function BatchRightPanel({
             {(isSelectedText || isSelectedOverlay) && (
               <Collapsible title="Layer properties">
                 <div className="flex flex-col gap-3 pt-2">
-                  {isSelectedText && (
-                    <TextStylePanel
-                      node={selectedNode as TextNode}
-                      onChange={(patch) => editorState.updateTextNode(selectedNodeId!, patch)}
-                      onDelete={() => { editorState.removeNode(selectedNodeId!); onSetSelectedNodeId(null); }}
-                      onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
-                    />
-                  )}
+                  {isSelectedText && (() => {
+                    // Compute the effective node for the active variant: merge the
+                    // template node's base style with any per-item style override so
+                    // the panel displays the active variant's current values.
+                    const baseNode = selectedNode as TextNode;
+                    const perItemStyle = activeOverlay
+                      ? itemText.getTextStyle(activeOverlay.id, selectedNodeId!)
+                      : {};
+                    const effectiveNode: TextNode = { ...baseNode, ...perItemStyle };
+                    return (
+                      <TextStylePanel
+                        node={effectiveNode}
+                        onChange={(patch) => {
+                          if (activeOverlay) {
+                            // Fan out style edits to every selected variant via itemText
+                            // (fanOutItemText.setTextStyle), never mutating the shared template.
+                            itemText.setTextStyle(activeOverlay.id, selectedNodeId!, patch);
+                          } else {
+                            // No overlay context yet (template-only mode) — fall back to
+                            // mutating the template directly so the panel still works.
+                            editorState.updateTextNode(selectedNodeId!, patch);
+                          }
+                        }}
+                        onDelete={() => { editorState.removeNode(selectedNodeId!); onSetSelectedNodeId(null); }}
+                        onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
+                      />
+                    );
+                  })()}
                   {isSelectedOverlay && (
                     <OverlayControlsPanel
                       node={selectedNode as OverlayNode}
