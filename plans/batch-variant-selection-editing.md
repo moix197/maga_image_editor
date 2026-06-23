@@ -12,7 +12,7 @@ The current batch workspace has a two-surface text editing model: a "Text" side-
 
 ## Dependencies & Risks
 
-1. **IDB migration gap (CONFIRMED):** `use-project-persistence.ts` does NOT call `migrateProject` on IDB load. The JSDoc of `migrateProject` claims it's shared by both ZIP import and IDB load — but the hook only calls `hydrateFromIdb` (blob-key resolution only). The v3→v4 migration will NOT run for existing saved projects unless the hook explicitly calls `migrateProject`. Must fix in Phase 1a.
+1. **No IDB migration gap (CORRECTED):** the original plan claimed `use-project-persistence.ts` never migrates on IDB load. Verified false — `use-project-persistence.ts:97` calls `loadProject`, which ends with `return migrateProject(project)` (`idb-adapter.ts:72`); `hydrateFromIdb` (line 99) only resolves blob keys on the already-migrated record. ZIP import is the same: `importProjectZip` → `zip-import.ts:29` `return migrateProject({...})`. Both ingress points already funnel through `migrateProject`, so adding `migrateToV4` to the chain upgrades existing v3 projects automatically. **No hook change needed** — the `use-project-persistence.ts` edit is dropped from Phase 1a.
 2. **isRunning canvas invariant (load-bearing):** `BatchWorkspace` renders `state={batchRender.isRunning ? editorState.state : previewEditorState}`. After lock removal, `usePreviewEditorState` no longer needs to filter by lock — it should apply all per-item overrides. This must continue to work after changes; the `isRunning` swap line must not be disturbed.
 3. **Schema-only migration (Phase 1a) is an allowed thin-infrastructure exception** because Phase 1b depends on it being green first.
 4. `make-text-edit-handlers.ts` factory becomes a routing layer to delete — callers must be updated to call per-item setters directly. **Grep step required before deletion:** confirm no file outside `BatchWorkspace.tsx` imports `make-text-edit-handlers` (plan step must include `grep -r "make-text-edit-handlers"` across `apps/` and `packages/`).
@@ -72,27 +72,27 @@ No automated tests — justified because: this phase creates only a git worktree
 **Risk:** medium
 **Mode:** afk
 **Type:** typescript
-**Success criteria:** A v3 project saved to IDB (or imported via ZIP) is automatically upgraded to v4 on load: `textLayerLocks` is absent, each previously-locked layer's template value/style is copied into every variant's `itemTextValues`/`itemTextStyles`, `SCHEMA_VERSION` becomes 4. Migration tests pass. No UI changes visible yet.
+**Success criteria:** A v3 project saved to IDB (or imported via ZIP) is automatically upgraded to v4 on load: the migrated *data* has no `textLayerLocks`, each previously-locked layer's template value/style is copied into every variant's `itemTextValues`/`itemTextStyles`, `SCHEMA_VERSION` becomes 4. Migration tests pass. No UI changes visible yet. **Additive-only:** the `textLayerLocks?` field stays on the `BatchProject` interface (now optional) so all ~20 existing consumers still compile; the field + helper removal happens in Phase 1b.
 
-This phase is an allowed thin-infrastructure exception (schema-only, no user-facing surface) because Phase 1b depends on the v4 schema being in place.
+This phase is an allowed thin-infrastructure exception (schema-only, no user-facing surface) because Phase 1b depends on the v4 schema being in place. Migration already flows through `migrateProject` at both ingress points (`loadProject`, `importProjectZip`), so chaining `migrateToV4` upgrades existing projects automatically — no hook change.
 
-**Commit message:** `feat(projects): schema v4 — drop textLayerLocks, fan locked values into per-item overrides; fix IDB migration gap`
+**Commit message:** `feat(projects): schema v4 — migrateToV4 fans locked values into per-item overrides`
 
 **File changes:**
 | Action | File | What changes |
 |---|---|---|
-| modify | `packages/projects/src/schema.ts` | Add `migrateToV4` function, bump `SCHEMA_VERSION = 4`, update `BatchProject` to remove `textLayerLocks`, update `migrateProject` chain to include `migrateToV4`, remove `newTextLayerLockDefault`/`migratedTextLayerLockDefault`/`textLayerLocks` field from `BatchProject` interface, remove `migratedTextLayerLocks` helper |
-| modify | `apps/web/src/hooks/use-project-persistence.ts` | Import and call `migrateProject` on both IDB load path (after `loadProject`) and ZIP import path (after `importProjectZip`) |
-| modify | `packages/projects/src/zip-import.ts` | Verify `normalizeNullableFields` still calls `migrateProject`; if already done, no change needed — just note it |
+| modify | `packages/projects/src/schema.ts` | Add `migrateToV4` function; bump `SCHEMA_VERSION = 4 as const`; add `migrateToV4` to the `migrateProject` chain; make `textLayerLocks?` **optional** on `BatchProject` (do NOT remove it or its helpers yet — that is Phase 1b) |
+| modify | `packages/projects/__tests__/idb-adapter.test.ts` | **Version bump only:** update `schemaVersion` expectations from 3 to 4 (the field + lock assertions stay — they are removed in Phase 1b) |
+| modify | `packages/projects/__tests__/zip-export.test.ts` | **Version bump only:** update `schemaVersion` expectations from 3 to 4 (lock assertions stay — removed in Phase 1b) |
+| modify | `apps/web/src/hooks/use-batch-project.ts` | **One-line guard only:** at ~line 103, default the now-optional field: `project.textLayerLocks ?? {}` (full lock-state removal is Phase 1b) |
 
 **Steps:**
-- [ ] In `schema.ts`: remove `textLayerLocks: Record<string, boolean>` from `BatchProject` interface; remove `newTextLayerLockDefault`, `migratedTextLayerLockDefault`, `migratedTextLayerLocks`
-- [ ] Add `migrateToV4<T>(project: T)` that: collect all text node ids present in `project.template`; for each `nodeId` where `project.textLayerLocks?.[nodeId]` is true AND `nodeId` exists in the template (skip stale keys); for each overlay in `project.overlays` (if overlays is empty, skip loop entirely): set `itemTextValues[overlayId][nodeId]` only if NOT already set; set `itemTextStyles[overlayId][nodeId]` only if NOT already set; finally remove `textLayerLocks` from the result and set `schemaVersion: 4`
-- [ ] Bump `SCHEMA_VERSION = 4 as const`
-- [ ] Update `migrateProject` to chain `migrateToV4(migrateToV3(migrateToV2(project)))`
-- [ ] In `use-project-persistence.ts`: import `migrateProject` from `@maga/projects`; call it on `stored` before passing to `hydrateFromIdb`; call it on `imported` before passing to `hydrateFromBlobs`
-- [ ] Verify `zip-import.ts` already calls `migrateProject` via `normalizeNullableFields` — if so, no double-migration (migrateProject is idempotent)
-- [ ] Run `pnpm tsc --noEmit` across packages to ensure no type errors
+- [x] In `schema.ts`: change `textLayerLocks: Record<string, boolean>` to `textLayerLocks?: Record<string, boolean>` on the `BatchProject` interface (keep `newTextLayerLockDefault`/`migratedTextLayerLockDefault`/`migratedTextLayerLocks` — they are removed in Phase 1b)
+- [x] Add `migrateToV4<T>(project: T)` that: collect all text node ids present in `project.template`; for each `nodeId` where `project.textLayerLocks?.[nodeId]` is true AND `nodeId` exists in the template (skip stale keys); for each overlay in `project.overlays` (if overlays is empty, skip loop entirely): set `itemTextValues[overlayId][nodeId]` only if NOT already set; set `itemTextStyles[overlayId][nodeId]` only if NOT already set; finally remove `textLayerLocks` from the returned data and set `schemaVersion: 4`. Match the generic style of the existing `migrateToV2`/`migrateToV3`
+- [x] Bump `SCHEMA_VERSION = 4 as const`
+- [x] Update `migrateProject` to chain `migrateToV4(migrateToV3(migrateToV2(project)))`
+- [x] Version-bump ripple (unavoidable from the `SCHEMA_VERSION` bump): in `packages/projects/__tests__/idb-adapter.test.ts` and `__tests__/zip-export.test.ts`, update `schemaVersion` expectations 3→4 (keep all lock-related fixtures/assertions — those are removed in Phase 1b); in `apps/web/src/hooks/use-batch-project.ts` ~line 103, change to `project.textLayerLocks ?? {}` (one-line guard only). Note: idb-adapter post-load assertions reading `loaded.textLayerLocks` were changed to absence checks since `loadProject` migrates on read (strips locks).
+- [x] Run `pnpm --filter @maga/projects test` (all green, not just schema.test.ts) and `pnpm tsc --noEmit` in `packages/projects` and `apps/web` (both green) — 48/48 pass, tsc clean
 
 **Tests:**
 | Action | File | What it covers |
@@ -101,24 +101,23 @@ This phase is an allowed thin-infrastructure exception (schema-only, no user-fac
 | modify | `packages/projects/__tests__/zip-import.test.ts` | ZIP import of a v3 project (with locked layers) produces a v4 record without `textLayerLocks`; overlays contain expected per-item values |
 
 **Verification:**
-- [ ] `pnpm --filter @maga/projects test` passes (all 6 cases above)
-- [ ] `pnpm tsc --noEmit` passes in `packages/projects` and `apps/web`
-- [ ] v3 fixture with 1 locked layer + 2 overlays: after `migrateProject`, `textLayerLocks` absent; both overlays' `itemTextValues`/`itemTextStyles` contain the locked layer's value/style
-- [ ] v3 fixture with 0 overlays: no crash, result is v4
-- [ ] v3 fixture with stale lock key: stale key absent from all `itemTextValues`/`itemTextStyles`
-- [ ] v3 fixture where overlay already has override for locked node: after migration, override unchanged
-- [ ] IDB load of a v3 project (manual): project loads as v4, no console errors, text edits work
+- [x] `pnpm --filter @maga/projects test` passes (all 6 cases above)
+- [x] `pnpm tsc --noEmit` passes in `packages/projects` and `apps/web` (stays green — `textLayerLocks?` kept optional)
+- [x] v3 fixture with 1 locked layer + 2 overlays: after `migrateProject`, migrated data has no `textLayerLocks`; both overlays' `itemTextValues`/`itemTextStyles` contain the locked layer's value/style
+- [x] v3 fixture with 0 overlays: no crash, result is v4
+- [x] v3 fixture with stale lock key: stale key absent from all `itemTextValues`/`itemTextStyles`
+- [x] v3 fixture where overlay already has override for locked node: after migration, override unchanged
 
 **Phase review:**
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Reviewer handoff prompt emitted
-- [ ] Orchestrator cleared context and pasted handoff prompt
-- [ ] Code-reviewer agent verified this phase
-- [ ] Reviewer-driven changes reflected back into plan
-- [ ] Tests written and passing (or no-tests justification accepted)
-- [ ] Documentation updated
+- [x] All Steps and Verification checkboxes above ticked
+- [x] Reviewer handoff prompt emitted
+- [x] Orchestrator cleared context and pasted handoff prompt
+- [x] Code-reviewer agent verified this phase
+- [x] Reviewer-driven changes reflected back into plan (purity nit on nested override copy noted for Phase 1b)
+- [x] Tests written and passing (or no-tests justification accepted)
+- [x] Documentation updated (JSDoc on `migrateToV4` matching v2/v3)
 - [ ] Orchestrator approved
-- [ ] Changes committed: `feat(projects): schema v4 — drop textLayerLocks, fan locked values into per-item overrides; fix IDB migration gap`
+- [x] Changes committed: `feat(projects): schema v4 — migrateToV4 fans locked values into per-item overrides`
 - [ ] Phase marked complete
 
 ---
@@ -131,9 +130,16 @@ This phase is an allowed thin-infrastructure exception (schema-only, no user-fac
 **Success criteria:** The "Text" nav item is gone. Clicking Template section still lets users edit text; editing changes the active variant's per-variant override. "Generate All" produces correct per-variant output with no lock filtering. No TypeScript errors. Existing tests pass.
 **Commit message:** `feat(batch): remove text-lock model end-to-end — drop Text section, BulkTextPanel, makeTextEditHandlers; all text layers per-variant`
 
+**Note (moved from Phase 1a):** the `textLayerLocks?` field and its helpers were kept in Phase 1a so consumers stayed green. This phase removes the field + helpers from `schema.ts` AND every remaining consumer (apps/web lock code **plus** the packages/projects consumers below) in one atomic green commit.
+
 **File changes:**
 | Action | File | What changes |
 |---|---|---|
+| modify | `packages/projects/src/schema.ts` | Remove `textLayerLocks?` field from `BatchProject`; remove `newTextLayerLockDefault`, `migratedTextLayerLockDefault`, `migratedTextLayerLocks` helpers |
+| modify | `packages/projects/src/index.ts` | Remove re-exports of `newTextLayerLockDefault`/`migratedTextLayerLockDefault`/`migratedTextLayerLocks` (whichever are exported) |
+| modify | `packages/projects/src/zip-export.ts` | Remove `textLayerLocks: project.textLayerLocks` (and any other lock references) from the export record |
+| modify | `packages/projects/__tests__/idb-adapter.test.ts` | Remove `textLayerLocks` from fixtures/assertions |
+| modify | `packages/projects/__tests__/zip-export.test.ts` | Remove `textLayerLocks` from fixtures/assertions |
 | modify | `apps/web/src/components/batch/workspace-sections.ts` | Remove `"text"` from SECTIONS array and VALID_SECTIONS array; remove `Type` icon import |
 | modify | `apps/web/src/hooks/use-batch-project.ts` | Remove `textLayerLocks` state, `setTextLayerLock` setter, and their entries from the return object and interface |
 | modify | `apps/web/src/hooks/use-item-text.ts` | Remove lock-related accessors: `isLocked`, `toggleLock`; remove lock resolution from `getTextValue`/`getTextStyle` (they now always return per-item overrides directly) |
@@ -146,6 +152,10 @@ This phase is an allowed thin-infrastructure exception (schema-only, no user-fac
 
 **Steps:**
 - [ ] **Grep before delete:** run `grep -r "make-text-edit-handlers" apps/ packages/` — confirm ONLY `BatchWorkspace.tsx` imports it; if other callers exist, update them first before deleting
+- [ ] **Grep for lock references:** run `grep -rn "textLayerLocks\|TextLayerLock" apps/ packages/` — every hit must be removed/updated in this phase (the list below is the known set; if grep surfaces a file not listed, e.g. `apps/web/src/hooks/use-zip-export.ts`, update it too and note it)
+- [ ] In `packages/projects/src/schema.ts`: remove the `textLayerLocks?` field from `BatchProject`; remove `newTextLayerLockDefault`, `migratedTextLayerLockDefault`, `migratedTextLayerLocks`
+- [ ] In `packages/projects/src/index.ts`: drop the re-exports of the removed helpers
+- [ ] In `packages/projects/src/zip-export.ts`: drop `textLayerLocks` from the exported record; update `packages/projects/__tests__/idb-adapter.test.ts` and `__tests__/zip-export.test.ts` fixtures/assertions accordingly
 - [ ] Update `workspace-sections.ts`: remove "text" entry from SECTIONS and VALID_SECTIONS
 - [ ] Update `use-batch-project.ts`: drop `textLayerLocks` state/setter/return; drop `setTextLayerLock`
 - [ ] Update `use-item-text.ts`: drop `isLocked`/`toggleLock`; simplify `getTextValue`/`getTextStyle` to always look up per-item map directly (no lock check); these are the existing `setItemTextValue`/`setItemTextStyle` partial-merge setters — do NOT replace them with new setters
