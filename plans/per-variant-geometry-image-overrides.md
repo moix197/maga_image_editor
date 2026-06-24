@@ -472,11 +472,11 @@ Preview filters the hidden overlay out; Generate All renders it with
 
 **Steps:**
 
-- [ ] Reroute `handleDeleteOverlayNode` + `OverlayControlsPanel.onDelete` to the per-variant hide handler.
-- [ ] Extend preview filter to overlay nodes flagged `hidden`.
-- [ ] Extend render hide (`opacity: 0`) + `finally` restore to overlay nodes.
-- [ ] Add the restore affordance: build `ItemOverlayPanel` (structural copy of `ItemTextPanel`) — a "Variant overlays" `Collapsible` listing the active overlay's image-overlay nodes, each with an eye/eye-off toggle wired to `handleSetNodeHidden`. This is required (not conditional): `OverlayControlsPanel` has no eye-toggle, and hide clears selection so the panel can't host one. Reuse the existing `Eye`/`EyeOff` icons + button markup from `ItemTextPanel`; factor the shared per-node row into a small helper if it reads cleanly, otherwise mirror it.
-- [ ] Update `.ai/decisions/per-item-text-schema.md` (now v5) + the two pattern docs: hidden now covers overlays too; preview filters / render opacity:0 path unchanged in mechanism.
+- [x] Reroute `handleDeleteOverlayNode` + `OverlayControlsPanel.onDelete` to the per-variant hide handler. (No `editorState.removeNode` — template node survives.)
+- [x] Extend preview filter to overlay nodes flagged `hidden`. (Dropped the `isTextNode` guard — any `hidden` node now filtered.)
+- [x] Extend render hide (`opacity: 0`) + `finally` restore to overlay nodes. (Applied on the composited `applyOverlayOverrides` array so Generate All output actually hides; full template opacity snapshotted + restored.)
+- [x] Add the restore affordance: build `ItemOverlayPanel` (structural copy of `ItemTextPanel`) — a "Variant overlays" `Collapsible` listing the active overlay's image-overlay nodes, each with an eye/eye-off toggle wired to `handleSetNodeHidden`. (Selection-independent — survives `OverlayControlsPanel` unmount.)
+- [x] Update `.ai/decisions/per-item-text-schema.md` (now v5) + the two pattern docs: hidden now covers overlays too; preview filters / render opacity:0 path unchanged in mechanism.
 
 **Tests:**
 
@@ -488,20 +488,20 @@ Preview filters the hidden overlay out; Generate All renders it with
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `apps/web`.
+- [x] Automated tests pass: `pnpm test` in `apps/web`. — 352/352 pass (incl. new `item-overlay-panel.test.tsx`); `tsc --noEmit` clean.
 - [ ] Manual: delete/hide an overlay on selected variants; template node survives, other variants keep it, eye restores; Generate All shows it hidden only for the hidden variants (smoke).
 
 **Phase review:**
 
 - [ ] All Steps and Verification checkboxes ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Reviewer-driven changes reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd`.
+- [x] Orchestrator cleared context and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
+- [x] Code-reviewer agent has verified this phase — verdict green; template survival, composited opacity:0 + finally restore, preview filter, selection-independent restore UI all verified.
+- [x] Reviewer-driven changes reflected back into this plan file
+- [x] Tests written and passing
+- [x] Documentation updated
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(batch): per-variant image overlay visibility (hide/restore) via unified hidden flag`
+- [x] Changes committed: `feat(batch): per-variant image overlay visibility (hide/restore) via unified hidden flag` — commit 3c69ef7.
 - [ ] Phase marked complete
 
 ---
