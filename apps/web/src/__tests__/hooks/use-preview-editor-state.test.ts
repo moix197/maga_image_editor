@@ -299,6 +299,51 @@ describe("usePreviewEditorState", () => {
     expect(node).toHaveProperty("y", 75);
   });
 
+  // --- Phase 3: per-variant text size (width/height/fontSize) override ---
+
+  it("(size-a) fontSize override is applied to the active variant's text node", () => {
+    const base = makeBase({ id: NODE_1, content: "template text", fontSize: 16 });
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { fontSize: 48 } } };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, overrides),
+    );
+
+    const node = result.current.nodes[0]!;
+    expect(node).toHaveProperty("fontSize", 48);
+    // content untouched
+    expect(node).toHaveProperty("content", "template text");
+  });
+
+  it("(size-b) width/height size override flows through the generic spread", () => {
+    const base = makeBase({ id: NODE_1, content: "template text" });
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [NODE_1]: { width: 300, height: 120 } },
+    };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, overrides),
+    );
+
+    const node = result.current.nodes[0]!;
+    expect(node).toHaveProperty("width", 300);
+    expect(node).toHaveProperty("height", 120);
+  });
+
+  it("(size-c) an unselected variant keeps the template size", () => {
+    const OVERLAY_B = "overlay-b";
+    const base = makeBase({ id: NODE_1, content: "template text", fontSize: 16 });
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { fontSize: 48 } } };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_B, overrides),
+    );
+
+    // overlay-b has no override — base returned as-is, template fontSize kept
+    expect(result.current).toBe(base);
+    expect(result.current.nodes[0]!).toHaveProperty("fontSize", 16);
+  });
+
   // --- Variable-slot overlay-image swap (Change 1) ---
 
   it("(slot-a) slot node src is swapped to activeOverlayBlobKey when variableSlotNodeId matches", () => {

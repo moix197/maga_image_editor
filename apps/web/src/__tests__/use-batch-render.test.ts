@@ -718,4 +718,88 @@ describe("useBatchRender", () => {
     expect(restorePatch.y).toBe(0);
     expect(result.current.error).toBe("composite boom");
   });
+
+  // ── Phase 3: per-variant text SIZE (width/height/fontSize) overrides ──────────
+
+  it("applies a per-item width/height/fontSize size override in the merged apply call", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID);
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [TEXT_ID]: { width: 300, height: 120, fontSize: 28 } } };
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // First call = apply: a single merged patch carrying the size fields.
+    const applyPatch = updateTextNode.mock.calls[0]![1] as { width?: number; height?: number; fontSize?: number };
+    expect(applyPatch.width).toBe(300);
+    expect(applyPatch.height).toBe(120);
+    expect(applyPatch.fontSize).toBe(28);
+  });
+
+  it("restore patch resets fontSize and includes width/height keys (snapshot covers size)", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID); // template node fontSize:12, no width/height
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [TEXT_ID]: { width: 300, height: 120, fontSize: 28 } } };
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Restore = last call. fontSize reverts to template (12). width/height are not
+    // declared on TextNode (undefined on the template node) but the snapshot
+    // includes the keys so the override can't leak — restoring undefined is a no-op.
+    const restorePatch = updateTextNode.mock.calls.at(-1)![1] as {
+      fontSize: number;
+      width?: number;
+      height?: number;
+    };
+    expect(restorePatch.fontSize).toBe(12);
+    expect("width" in restorePatch).toBe(true);
+    expect("height" in restorePatch).toBe(true);
+    expect(restorePatch.width).toBeUndefined();
+    expect(restorePatch.height).toBeUndefined();
+  });
+
+  it("THROW-RESTORE: finally restores fontSize when capture throws mid-capture", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID);
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [TEXT_ID]: { fontSize: 28 } } };
+
+    let liveFontSize = 12;
+    const updateTextNode = vi.fn<(id: NodeId, patch: { fontSize?: number }) => void>(
+      (_id, patch) => {
+        if (patch.fontSize !== undefined) liveFontSize = patch.fontSize;
+      },
+    );
+
+    mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Despite the throw, the live fontSize ends back at the template (12).
+    expect(liveFontSize).toBe(12);
+    const restorePatch = updateTextNode.mock.calls.at(-1)![1] as { fontSize: number };
+    expect(restorePatch.fontSize).toBe(12);
+    expect(result.current.error).toBe("composite boom");
+  });
 });

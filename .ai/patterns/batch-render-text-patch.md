@@ -7,15 +7,18 @@ detached state clone. Lives in `apps/web/src/hooks/use-batch-render.ts`.
 **The mechanism, per item:**
 
 0. **Before the loop**, snapshot each text layer's template originals — `content`,
-   style fields, **and geometry (x/y)** — so the restore has a known target that no
-   item mutation can clobber.
+   style fields, **geometry (x/y), and size (width/height/fontSize)** — so the
+   restore has a known target that no item mutation can clobber. (`width`/`height`
+   are not declared on `TextNode`, so they snapshot as `undefined` for plain text;
+   the keys are still captured so an override can never leak — restoring `undefined`
+   is a no-op.)
 1. For each text layer, write the item's override into the **live** editor state in
    a **single merged call**:
    `updateTextNode(layer.id, { ...patch, content: value })`. `updateTextNode`
    accepts `Partial<Omit<TextNode, "id">>`, so content and the per-item override
    partial (`itemNodeOverrides[overlayId][nodeId]` minus `content`/`hidden`) — which
-   carries style **and geometry x/y** — go in one mutation. No separate style or
-   position transition exists or is needed.
+   carries style, **geometry x/y, and size (width/height/fontSize)** — go in one
+   mutation. No separate style, position, or size transition exists or is needed.
 2. **Hidden nodes** (`itemHiddenNodeIds[overlay.id]`) are mutated to `opacity: 0`
    before capture so they don't paint — note the render path hides via opacity,
    whereas the preview path filters the node out entirely. Restored in the same
@@ -49,7 +52,8 @@ loop's mutations only reach the DOM because the canvas points at the live
 
 **Why the restore is in `finally` (load-bearing):** the override is a *temporary*
 mutation of the **shared** template, now spanning content, style, **geometry
-(x/y)**, **and** the hidden-node opacity. If capture throws mid-loop without
+(x/y), size (width/height/fontSize)**, **and** the hidden-node opacity. If capture
+throws mid-loop without
 restoring, the template stays mutated and the next item — and the user's template —
 carry the wrong text, style, position, or a vanished layer. The `finally`
 guarantees the template is never permanently mutated on a thrown capture; it must

@@ -23,15 +23,18 @@ import type { GeneratedOutput, ItemNodeOverrides, ProjectAsset, TextStyle, Varia
 interface TextLayer {
   id: NodeId;
   templateValue: string;
-  templateStyle: TextStyle & { x: number; y: number };
+  templateStyle: TextStyle & { x: number; y: number; width?: number; height?: number };
 }
 
 /**
  * Snapshots the overridable fields of a template text node (the restore target).
- * Covers style AND geometry (x/y), so a per-variant move/restyle is fully
- * reverted in the `finally`.
+ * Covers style, geometry (x/y), AND size (fontSize from style + width/height),
+ * so a per-variant move/resize/restyle is fully reverted in the `finally`.
+ * width/height are not declared on TextNode, so they're read via a loose cast
+ * (undefined for plain text) — restoring `undefined` is a harmless no-op.
  */
-function templateStyleOf(node: TextNode): TextStyle & { x: number; y: number } {
+function templateStyleOf(node: TextNode): TextStyle & { x: number; y: number; width?: number; height?: number } {
+  const sized = node as TextNode & { width?: number; height?: number };
   return {
     fontSize: node.fontSize,
     color: node.color,
@@ -44,6 +47,8 @@ function templateStyleOf(node: TextNode): TextStyle & { x: number; y: number } {
     textBackground: node.textBackground,
     x: node.x,
     y: node.y,
+    width: sized.width,
+    height: sized.height,
   };
 }
 

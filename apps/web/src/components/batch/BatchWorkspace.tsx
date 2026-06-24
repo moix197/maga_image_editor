@@ -177,7 +177,16 @@ function BatchWorkspaceInner() {
   }
 
   function handleNodeResize(id: string, width: number, height: number) {
-    editorState.updateOverlayNode(id as NodeId, { width, height });
+    const node = editorState.state.nodes.find((n) => n.id === id);
+    if (!node) return;
+    // Text resizes fan out a per-variant size override (selected variants only,
+    // active always included) — never the shared template. Image/overlay resizes
+    // still hit the template until Phase 4.
+    if (isTextNode(node)) {
+      fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { width, height });
+    } else {
+      editorState.updateOverlayNode(id as NodeId, { width, height });
+    }
   }
 
   function handleToggleVariableSlot(nodeId: NodeId) {
