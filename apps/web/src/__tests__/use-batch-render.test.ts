@@ -802,4 +802,182 @@ describe("useBatchRender", () => {
     expect(restorePatch.fontSize).toBe(12);
     expect(result.current.error).toBe("composite boom");
   });
+
+  // ── Phase 4: per-variant IMAGE OVERLAY geometry (x/y/width/height) ─────────────
+
+  const OVERLAY_ID = "overlay-2";
+
+  /** Template: one variable-slot image (node-1) + one non-slot image overlay. */
+  function overlayTemplate(): EditorState {
+    return {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        { id: OVERLAY_ID as NodeId, src: "data:logo", x: 10, y: 20, width: 80, height: 60, opacity: 1, zIndex: 1, overlayType: "image" },
+      ],
+    };
+  }
+
+  it("applies a per-item overlay geometry override via updateOverlayNode before capture", async () => {
+    const template = overlayTemplate();
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { x: 120, y: 240, width: 300, height: 200 } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // First overlay-node call = apply: the per-variant geometry patch.
+    const applyCall = updateOverlayNode.mock.calls.find((c) => c[0] === OVERLAY_ID);
+    const applyPatch = applyCall![1] as { x?: number; y?: number; width?: number; height?: number };
+    expect(applyPatch.x).toBe(120);
+    expect(applyPatch.y).toBe(240);
+    expect(applyPatch.width).toBe(300);
+    expect(applyPatch.height).toBe(200);
+  });
+
+  it("restore patch resets overlay geometry to the FULL template snapshot", async () => {
+    const template = overlayTemplate(); // OVERLAY_ID at x:10 y:20 w:80 h:60
+    const overlays = [makeOverlay("a")];
+    // Override touches only x/y; restore must still reset all four fields.
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { x: 120, y: 240 } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Restore = the LAST updateOverlayNode call for OVERLAY_ID. It resets the
+    // full template geometry, not just the overridden keys.
+    const overlayCalls = updateOverlayNode.mock.calls.filter((c) => c[0] === OVERLAY_ID);
+    const restorePatch = overlayCalls.at(-1)![1] as { x: number; y: number; width: number; height: number };
+    expect(restorePatch.x).toBe(10);
+    expect(restorePatch.y).toBe(20);
+    expect(restorePatch.width).toBe(80);
+    expect(restorePatch.height).toBe(60);
+  });
+
+  it("apply happens before restore for overlay geometry (call order + shape)", async () => {
+    const template = overlayTemplate();
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { x: 120, y: 240 } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    const overlayCalls = updateOverlayNode.mock.calls
+      .filter((c) => c[0] === OVERLAY_ID)
+      .map((c) => c[1] as Record<string, number>);
+    // Apply (override x/y) then restore (template x:10 y:20).
+    expect(overlayCalls[0]!.x).toBe(120);
+    expect(overlayCalls[0]!.y).toBe(240);
+    expect(overlayCalls.at(-1)!.x).toBe(10);
+    expect(overlayCalls.at(-1)!.y).toBe(20);
+  });
+
+  it("an overlay node with NO override is never touched by updateOverlayNode", async () => {
+    const template = overlayTemplate();
+    const overlays = [makeOverlay("a")];
+    // Override targets node-1 (the slot), not OVERLAY_ID.
+    const itemNodeOverrides = { a: { "node-1": { x: 5, y: 5 } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // OVERLAY_ID has no override → only restored (snapshot), never applied with a
+    // per-variant patch. node-1 (overridden) is applied + restored.
+    const overlay2Calls = updateOverlayNode.mock.calls.filter((c) => c[0] === OVERLAY_ID);
+    // Only the restore call (template geometry) — no apply-with-override.
+    expect(overlay2Calls).toHaveLength(1);
+    expect(overlay2Calls[0]![1]).toEqual({ x: 10, y: 20, width: 80, height: 60 });
+  });
+
+  it("composited overlay-node array carries the per-item geometry override (post-pass output is correct)", async () => {
+    // Image overlays are drawn by a post-pass from the explicit node array passed
+    // to compositeFromElement — NOT from the live DOM. The override must land on
+    // that array or the output keeps the template geometry.
+    const template = overlayTemplate(); // OVERLAY_ID at x:10 y:20 w:80 h:60
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { x: 120, y: 240, width: 300, height: 200 } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    const composited = (mockCompositeFromElement.mock.calls[0] as unknown as [HTMLElement, OverlayNode[]])[1];
+    const overriddenNode = composited.find((n) => n.id === OVERLAY_ID)!;
+    expect(overriddenNode.x).toBe(120);
+    expect(overriddenNode.y).toBe(240);
+    expect(overriddenNode.width).toBe(300);
+    expect(overriddenNode.height).toBe(200);
+  });
+
+  it("THROW-RESTORE: finally restores overlay geometry when capture throws mid-capture", async () => {
+    const template = overlayTemplate();
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { x: 120, y: 240, width: 300, height: 200 } } };
+
+    // Track the live overlay geometry as updateOverlayNode mutates it.
+    let liveX = 10;
+    let liveY = 20;
+    let liveW = 80;
+    let liveH = 60;
+    const updateOverlayNode = vi.fn<(id: NodeId, patch: { x?: number; y?: number; width?: number; height?: number }) => void>(
+      (_id, patch) => {
+        if (patch.x !== undefined) liveX = patch.x;
+        if (patch.y !== undefined) liveY = patch.y;
+        if (patch.width !== undefined) liveW = patch.width;
+        if (patch.height !== undefined) liveH = patch.height;
+      },
+    );
+
+    mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Despite the throw, the live geometry ends back at the template values.
+    expect(liveX).toBe(10);
+    expect(liveY).toBe(20);
+    expect(liveW).toBe(80);
+    expect(liveH).toBe(60);
+    // The last call for OVERLAY_ID is the restore with the full snapshot.
+    const overlayCalls = updateOverlayNode.mock.calls.filter((c) => c[0] === OVERLAY_ID);
+    expect(overlayCalls.at(-1)![1]).toEqual({ x: 10, y: 20, width: 80, height: 60 });
+    // The shared template object itself is untouched.
+    const node = template.nodes.find((n) => n.id === OVERLAY_ID) as unknown as { x: number; y: number };
+    expect(node.x).toBe(10);
+    expect(node.y).toBe(20);
+    expect(result.current.error).toBe("composite boom");
+  });
 });

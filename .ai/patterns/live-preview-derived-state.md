@@ -9,22 +9,25 @@ never a mutation of the shared template. Lives in
 usePreviewEditorState(
   base: EditorState,
   activeOverlayId: string | null,
-  itemTextValues, itemTextStyles, itemHiddenNodeIds,
+  itemNodeOverrides: ItemNodeOverrides,
   variableSlotNodeId?, activeOverlayBlobKey?,
 ): EditorState
 ```
 
-It maps `base.nodes`: **every** text node gets that overlay's unified override
-`itemNodeOverrides[overlayId][nodeId]` (a single `NodeOverride`) applied — text is
-per-item with no shared-vs-locked distinction (the lock model was retired in
-schema v4; see [[per-item-text-schema]]). The merge **strips the non-Node `hidden`
-flag, then spreads the whole override onto the node** — `content`, the style
-partial, **geometry (x/y), and size (width/height/fontSize)** all fall through in
-one generic spread, so any
-future overridable field flows automatically without touching the merge. Nodes
-whose override carries `hidden: true` are **filtered out** of the derived node
-array entirely (not painted), and the variable-slot node's `src` is swapped to the
-active overlay's blob. Result is wrapped in a `{ ...base, nodes }` copy.
+It maps `base.nodes`: **every** node — text **and** image overlay — gets that
+overlay's unified override `itemNodeOverrides[overlayId][nodeId]` (a single
+`NodeOverride`) applied. Text is per-item with no shared-vs-locked distinction (the
+lock model was retired in schema v4; see [[per-item-text-schema]]). The merge
+**strips the non-Node `hidden` flag, then spreads the whole override onto the
+node** via one generic `stripHidden` helper — for text nodes `content`, the style
+partial, **geometry (x/y) and size (width/height/fontSize)**; for image-overlay
+nodes **geometry (x/y/width/height)** — all fall through in one spread, so any
+future overridable field flows automatically without touching the merge. Hidden
+**text** nodes (override `hidden: true`) are **filtered out** of the derived node
+array entirely (not painted); overlay-hidden filtering is a later phase. The
+variable-slot node's `src` is swapped to the active overlay's blob, **layered on
+top of** any geometry override on that same node. Result is wrapped in a
+`{ ...base, nodes }` copy.
 
 **Why derived, not mutate:** the preview must reflect a per-item override without
 touching the shared template — switching variants, or selecting a node, must not

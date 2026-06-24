@@ -560,4 +560,108 @@ describe("usePreviewEditorState", () => {
 
     expect(result.current.nodes).toHaveLength(0);
   });
+
+  // ── Phase 4: per-variant IMAGE OVERLAY geometry (x/y/width/height) ─────────────
+
+  it("(ov-a) x/y/width/height override is applied to the active variant's overlay node", () => {
+    const SLOT_ID = "img-node";
+    const base = makeBaseWithOverlayNode(SLOT_ID, "blob:src"); // template at x:0 y:0 w:100 h:100
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [SLOT_ID]: { x: 120, y: 240, width: 300, height: 200 } },
+    };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, overrides),
+    );
+
+    const node = result.current.nodes.find((n) => n.id === makeNodeId(SLOT_ID))!;
+    expect(node).toHaveProperty("x", 120);
+    expect(node).toHaveProperty("y", 240);
+    expect(node).toHaveProperty("width", 300);
+    expect(node).toHaveProperty("height", 200);
+    // src untouched (geometry-only override)
+    expect((node as unknown as { src: string }).src).toBe("blob:src");
+  });
+
+  it("(ov-b) an unselected variant (different active overlay) keeps the template overlay geometry", () => {
+    const OVERLAY_B = "overlay-b";
+    const SLOT_ID = "img-node";
+    const base = makeBaseWithOverlayNode(SLOT_ID, "blob:src");
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [SLOT_ID]: { x: 120, y: 240 } },
+    };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_B, overrides),
+    );
+
+    // overlay-b has no override — base returned as-is, template geometry kept
+    expect(result.current).toBe(base);
+    const node = result.current.nodes.find((n) => n.id === makeNodeId(SLOT_ID))!;
+    expect(node).toHaveProperty("x", 0);
+    expect(node).toHaveProperty("y", 0);
+  });
+
+  it("(ov-c) early-return-base preserved when an overlay node has no override", () => {
+    const SLOT_ID = "img-node";
+    const base = makeBaseWithOverlayNode(SLOT_ID, "blob:src");
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, {}),
+    );
+
+    expect(result.current).toBe(base);
+  });
+
+  it("(ov-d) overlay geometry override and a text override apply together in one derived state", () => {
+    const SLOT_ID = "img-node";
+    const TEXT_ID = "text-node";
+    const base = makeBaseWithMixedNodes(SLOT_ID, "blob:src", TEXT_ID, "template text");
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: {
+        [SLOT_ID]: { x: 50, y: 75, width: 200 },
+        [TEXT_ID]: { content: "per-item text" },
+      },
+    };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, overrides),
+    );
+
+    const img = result.current.nodes.find((n) => n.id === makeNodeId(SLOT_ID))!;
+    const text = result.current.nodes.find((n) => n.id === makeNodeId(TEXT_ID))!;
+    expect(img).toHaveProperty("x", 50);
+    expect(img).toHaveProperty("y", 75);
+    expect(img).toHaveProperty("width", 200);
+    expect(text).toHaveProperty("content", "per-item text");
+  });
+
+  it("(ov-e) purity — base overlay node is not mutated by a geometry override", () => {
+    const SLOT_ID = "img-node";
+    const base = makeBaseWithOverlayNode(SLOT_ID, "blob:src");
+    const originalNode = base.nodes[0]!;
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [SLOT_ID]: { x: 999 } } };
+
+    renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, overrides),
+    );
+
+    expect(originalNode).toHaveProperty("x", 0);
+  });
+
+  it("(ov-f) overlay geometry override layers under the variable-slot src swap on the same node", () => {
+    const SLOT_ID = "slot-node";
+    const NEW_SRC = "blob:new-key";
+    const base = makeBaseWithOverlayNode(SLOT_ID, "blob:old-key");
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [SLOT_ID]: { x: 42 } } };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, overrides, makeNodeId(SLOT_ID), NEW_SRC),
+    );
+
+    const node = result.current.nodes.find((n) => n.id === makeNodeId(SLOT_ID))!;
+    // Both the geometry override AND the slot src swap apply.
+    expect(node).toHaveProperty("x", 42);
+    expect((node as unknown as { src: string }).src).toBe(NEW_SRC);
+  });
 });

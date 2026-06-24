@@ -10,9 +10,9 @@ import { coverCropDataUrl } from "@/lib/cover-crop";
 import { compositeFromElement } from "@/lib/export-helpers";
 import { patchOverlays } from "@/lib/overlay-patch";
 import { waitTwoFrames } from "@/lib/capture-helpers";
-import { isTextNode } from "@maga/editor";
-import type { EditorState, NodeId, TextNode } from "@maga/editor";
-import type { GeneratedOutput, ItemNodeOverrides, ProjectAsset, TextStyle, VariableSlot } from "@maga/projects";
+import { isTextNode, isOverlayNode } from "@maga/editor";
+import type { EditorState, NodeId, OverlayNode, TextNode } from "@maga/editor";
+import type { GeneratedOutput, ItemNodeOverrides, NodeOverride, ProjectAsset, TextStyle, VariableSlot } from "@maga/projects";
 
 /**
  * A text node's id paired with its template (original) content AND the full set
@@ -63,6 +63,60 @@ function perItemTextLayers(template: EditorState): TextLayer[] {
     .map((n) => ({ id: n.id, templateValue: n.content, templateStyle: templateStyleOf(n) }));
 }
 
+/**
+ * An overlay node's id paired with the template (original) geometry. The
+ * snapshot is the restore target: after applying a per-item geometry override
+ * the loop writes ALL of these fields back so a partial override can never leak
+ * into the shared template — mirrors {@link TextLayer} but uses `updateOverlayNode`.
+ */
+interface OverlayLayer {
+  id: NodeId;
+  templateGeometry: Pick<OverlayNode, "x" | "y" | "width" | "height">;
+}
+
+/** Snapshots the geometry fields of a template overlay node (the restore target). */
+function templateGeometryOf(node: OverlayNode): Pick<OverlayNode, "x" | "y" | "width" | "height"> {
+  return { x: node.x, y: node.y, width: node.width, height: node.height };
+}
+
+/**
+ * Collects every overlay node in the template, capturing its template geometry
+ * as the restore target so per-variant moves/resizes never leak to the template.
+ */
+function perItemOverlayLayers(template: EditorState): OverlayLayer[] {
+  return template.nodes
+    .filter((n): n is OverlayNode => isOverlayNode(n))
+    .map((n) => ({ id: n.id, templateGeometry: templateGeometryOf(n) }));
+}
+
+/** Picks only the overlay-geometry fields from an override patch (x/y/width/height). */
+function overlayGeometryPatch(override: NodeOverride): Partial<Pick<OverlayNode, "x" | "y" | "width" | "height">> {
+  const patch: Partial<Pick<OverlayNode, "x" | "y" | "width" | "height">> = {};
+  if (override.x !== undefined) patch.x = override.x;
+  if (override.y !== undefined) patch.y = override.y;
+  if (override.width !== undefined) patch.width = override.width;
+  if (override.height !== undefined) patch.height = override.height;
+  return patch;
+}
+
+/**
+ * Applies the per-item overlay geometry overrides to the explicit overlay-node
+ * array that the image post-pass composites. Image overlays are NOT read from the
+ * live DOM at capture (the DOM elements are suppressed); their geometry comes from
+ * this array, so the override must be spread here for the output to reflect it.
+ */
+function applyOverlayOverrides(
+  overlayNodes: OverlayNode[],
+  overlayOverrides: Record<string, NodeOverride> | undefined,
+): OverlayNode[] {
+  if (!overlayOverrides) return overlayNodes;
+  return overlayNodes.map((n) => {
+    const override = overlayOverrides[n.id as string];
+    if (!override) return n;
+    return { ...n, ...overlayGeometryPatch(override) };
+  });
+}
+
 interface Progress {
   current: number;
   total: number;
@@ -88,6 +142,7 @@ export function useBatchRender(
   slot: VariableSlot,
   itemNodeOverrides: ItemNodeOverrides = {},
   updateTextNode?: (id: NodeId, patch: Partial<Omit<TextNode, "id">>) => void,
+  updateOverlayNode?: (id: NodeId, patch: Partial<Omit<OverlayNode, "id">>) => void,
 ): UseBatchRenderResult {
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState<Progress>({ current: 0, total: 0 });
@@ -117,6 +172,11 @@ export function useBatchRender(
     // captured up front so it can be restored after each capture — the shared
     // template is never permanently mutated.
     const perItemLayers = updateTextNode ? perItemTextLayers(template) : [];
+
+    // Every overlay node is per-item too. Its template geometry is captured up
+    // front so a per-variant x/y/width/height override is restored after each
+    // capture via `updateOverlayNode` — the shared template stays pristine.
+    const perItemOverlays = updateOverlayNode ? perItemOverlayLayers(template) : [];
 
     const prevId = onDeselectForCapture();
     try {
@@ -149,11 +209,28 @@ export function useBatchRender(
             }
           }
 
+          // (1b) Write this item's overlay geometry override into the LIVE editor
+          // state via `updateOverlayNode`, so the captured canvas reflects the
+          // per-variant position/size. A missing override leaves the template
+          // geometry untouched. Restored from the snapshot in the finally.
+          for (const layer of perItemOverlays) {
+            const override = overlayOverrides?.[layer.id as string];
+            if (!override) continue;
+            const patch = overlayGeometryPatch(override);
+            if (Object.keys(patch).length > 0) updateOverlayNode!(layer.id, patch);
+          }
+
           // (2) Let React re-paint the canvas before capture.
           await waitTwoFrames();
 
           const croppedSrc = await coverCropDataUrl(overlay.blobKey, slot.width, slot.height);
-          const patchedOverlays = patchOverlays(template, slot.overlayNodeId, croppedSrc);
+          // Image overlays are composited from this explicit node array (a
+          // post-pass), NOT from the live DOM — so the per-variant geometry
+          // override must be applied to these nodes too, not only to live state.
+          const patchedOverlays = applyOverlayOverrides(
+            patchOverlays(template, slot.overlayNodeId, croppedSrc),
+            overlayOverrides,
+          );
           // (3) Capture the live canvas (text comes from the live DOM).
           outputBlobKey = await compositeFromElement(canvasEl, patchedOverlays);
         } finally {
@@ -163,6 +240,11 @@ export function useBatchRender(
           // overridden keys) prevents a partial override from leaking.
           for (const layer of perItemLayers) {
             updateTextNode!(layer.id, { content: layer.templateValue, ...layer.templateStyle });
+          }
+          // Restore each overlay node's full template geometry — even if capture
+          // threw — so a per-variant move/resize never leaks into the template.
+          for (const layer of perItemOverlays) {
+            updateOverlayNode!(layer.id, layer.templateGeometry);
           }
         }
 
@@ -177,7 +259,7 @@ export function useBatchRender(
       setIsRunning(false);
       onRestoreSelection(prevId);
     }
-  }, [overlays, template, slot, itemNodeOverrides, updateTextNode]);
+  }, [overlays, template, slot, itemNodeOverrides, updateTextNode, updateOverlayNode]);
 
   const cancel = useCallback(() => {
     cancelRef.current = true;

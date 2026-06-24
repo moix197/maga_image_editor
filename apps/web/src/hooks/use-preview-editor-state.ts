@@ -3,16 +3,23 @@
 import { useMemo } from "react";
 import { isTextNode } from "@maga/editor";
 import type { EditorState, NodeId } from "@maga/editor";
-import type { ItemNodeOverrides } from "@maga/projects";
+import type { ItemNodeOverrides, NodeOverride } from "@maga/projects";
+
+/** Drops the non-Node `hidden` flag, leaving only spreadable Node fields. */
+function stripHidden(override: NodeOverride): Partial<Omit<NodeOverride, "hidden">> {
+  const { hidden: _hidden, ...patch } = override;
+  return patch;
+}
 
 /**
  * Returns a memoized derived EditorState with per-item overrides applied to
- * every text layer for the active overlay variant.
+ * every text AND image-overlay node for the active overlay variant.
  *
  * - Overrides are read from the unified `itemNodeOverrides` store (schema v5):
  *   the full (non-`hidden`) override is spread onto the node, so every
- *   overridable field flows through — `content`, the style partial, AND geometry
- *   (x/y). A generic spread means future overridable fields apply automatically.
+ *   overridable field flows through — text `content`/style AND geometry
+ *   (x/y/width/height) for both text and overlay nodes. A generic spread means
+ *   future overridable fields apply automatically.
  * - Every text layer is per-item (the lock model was retired in schema v4); a
  *   layer with no override for the active variant retains the template value.
  * - Text nodes whose override carries `hidden: true` for the active overlay are
@@ -56,24 +63,25 @@ export function usePreviewEditorState(
         return true;
       })
       .map((node) => {
-        // Variable-slot overlay node: swap src to the active variant's image.
-        if (needsSlotSwap && node.id === variableSlotNodeId) {
-          return { ...node, src: activeOverlayBlobKey };
-        }
-
-        if (!isTextNode(node)) return node;
-
         const override = overlayOverrides?.[node.id as string];
-        if (!override) return node;
 
         // Strip the non-Node `hidden` flag, then spread every remaining override
-        // field onto the text node (content, style, AND geometry x/y all fall
-        // through). The base node IS the template, so un-overridden fields keep
-        // their template values.
-        const { hidden: _hidden, ...patch } = override;
-        if (Object.keys(patch).length === 0) return node;
+        // field onto the node — text content/style AND geometry (x/y/width/height)
+        // for both text and overlay nodes all fall through. The base node IS the
+        // template, so un-overridden fields keep their template values.
+        const patch = override ? stripHidden(override) : undefined;
+        const hasPatch = patch !== undefined && Object.keys(patch).length > 0;
 
-        return { ...node, ...patch };
+        const isSlot = needsSlotSwap && node.id === variableSlotNodeId;
+        if (!isSlot && !hasPatch) return node;
+
+        // The variable-slot overlay node also swaps its src to the active
+        // variant's image (layered on top of any geometry override).
+        return {
+          ...node,
+          ...(hasPatch ? patch : {}),
+          ...(isSlot ? { src: activeOverlayBlobKey } : {}),
+        };
       });
 
     return { ...base, nodes: derivedNodes };

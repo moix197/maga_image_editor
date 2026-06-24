@@ -148,6 +148,7 @@ function BatchWorkspaceInner() {
     variableSlot ?? { overlayNodeId: "" as never, width: 0, height: 0 },
     itemNodeOverrides ?? {},
     editorState.updateTextNode,
+    editorState.updateOverlayNode,
   );
 
   async function handleBackgroundFiles(files: File[]) {
@@ -166,27 +167,19 @@ function BatchWorkspaceInner() {
   function handleNodeMove(id: string, x: number, y: number) {
     const node = editorState.state.nodes.find((n) => n.id === id);
     if (!node) return;
-    // Text moves fan out a per-variant x/y override (selected variants only,
-    // active always included) — never the shared template. Image/overlay moves
-    // still hit the template until Phase 4.
-    if (isTextNode(node)) {
-      fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { x, y });
-    } else {
-      editorState.updateOverlayNode(id as NodeId, { x, y });
-    }
+    // Both text and image-overlay moves fan out a per-variant x/y override
+    // (selected variants only, active always included) — never the shared
+    // template.
+    fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { x, y });
   }
 
   function handleNodeResize(id: string, width: number, height: number) {
     const node = editorState.state.nodes.find((n) => n.id === id);
     if (!node) return;
-    // Text resizes fan out a per-variant size override (selected variants only,
-    // active always included) — never the shared template. Image/overlay resizes
-    // still hit the template until Phase 4.
-    if (isTextNode(node)) {
-      fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { width, height });
-    } else {
-      editorState.updateOverlayNode(id as NodeId, { width, height });
-    }
+    // Both text and image-overlay resizes fan out a per-variant size override
+    // (selected variants only, active always included) — never the shared
+    // template.
+    fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { width, height });
   }
 
   function handleToggleVariableSlot(nodeId: NodeId) {
