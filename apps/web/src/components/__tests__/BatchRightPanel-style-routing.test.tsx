@@ -66,8 +66,24 @@ function makeItemText(overrides: { getTextStyle?: ReturnType<typeof vi.fn> } = {
     setTextStyle: vi.fn(),
     isNodeHidden: vi.fn().mockReturnValue(false),
     setNodeHidden: vi.fn(),
+    setNodeOverride: vi.fn(),
   };
 }
+
+const OVERLAY_NODE_ID = makeNodeId("overlay-node-1");
+
+const BASE_OVERLAY_NODE: OverlayNode = {
+  id: OVERLAY_NODE_ID,
+  src: "data:image/png;base64,abc",
+  x: 10,
+  y: 20,
+  width: 200,
+  height: 100,
+  opacity: 1,
+  zIndex: 0,
+  overlayType: "image",
+  aspectRatioLocked: true,
+};
 
 /**
  * Renders BatchRightPanel in "template" section with a selected text node.
@@ -192,5 +208,62 @@ describe("BatchRightPanel — text style routing (Phase 1b fix)", () => {
     // Falls back to mutating the template (no overlay context)
     expect(editorState.updateTextNode).toHaveBeenCalledWith(NODE_ID, { color: "#00ff00" });
     expect(itemText.setTextStyle).not.toHaveBeenCalled();
+  });
+});
+
+describe("BatchRightPanel — overlay transform routing (Phase 5)", () => {
+  function renderOverlayPanel(
+    itemText: ReturnType<typeof makeItemText>,
+    editorState: ReturnType<typeof makeEditorState>,
+    activeOverlay: ProjectAsset | null = ACTIVE_OVERLAY,
+  ) {
+    render(
+      <BatchRightPanel
+        activeSection="template"
+        background={{ id: "bg", filename: "bg.png", blobKey: "blob:bg" }}
+        overlays={activeOverlay ? [ACTIVE_OVERLAY] : []}
+        onBackgroundFiles={vi.fn()}
+        onOverlayFiles={vi.fn()}
+        onImportZipFiles={vi.fn()}
+        onReorderOverlays={vi.fn()}
+        template={{ nodes: [BASE_OVERLAY_NODE] }}
+        editorState={editorState as never}
+        overlayInputRef={{ current: null }}
+        onOverlayFile={vi.fn()}
+        variableSlotNodeId={null}
+        selectedNodeId={OVERLAY_NODE_ID}
+        selectedNode={BASE_OVERLAY_NODE as unknown as TextNode | OverlayNode}
+        isSelectedText={false}
+        isSelectedOverlay
+        onSetSelectedNodeId={vi.fn()}
+        onDeleteOverlayNode={vi.fn()}
+        onToggleVariableSlot={vi.fn()}
+        activeOverlay={activeOverlay}
+        textNodes={[]}
+        itemText={itemText as never}
+      />,
+    );
+  }
+
+  it("transform change fans out via itemText.setNodeOverride — NOT editorState.updateOverlayNode", () => {
+    const editorState = makeEditorState(BASE_OVERLAY_NODE as never);
+    const itemText = makeItemText();
+    renderOverlayPanel(itemText, editorState);
+
+    fireEvent.change(screen.getByLabelText("Rotation value"), { target: { value: "45" } });
+
+    expect(itemText.setNodeOverride).toHaveBeenCalledWith(OVERLAY_ID, OVERLAY_NODE_ID, { rotation: 45 });
+    expect(editorState.updateOverlayNode).not.toHaveBeenCalled();
+  });
+
+  it("without activeOverlay, falls back to editorState.updateOverlayNode (template-only mode)", () => {
+    const editorState = makeEditorState(BASE_OVERLAY_NODE as never);
+    const itemText = makeItemText();
+    renderOverlayPanel(itemText, editorState, null);
+
+    fireEvent.change(screen.getByLabelText("Rotation value"), { target: { value: "90" } });
+
+    expect(editorState.updateOverlayNode).toHaveBeenCalledWith(OVERLAY_NODE_ID, { rotation: 90 });
+    expect(itemText.setNodeOverride).not.toHaveBeenCalled();
   });
 });

@@ -301,6 +301,7 @@ function BatchWorkspaceInner() {
     setTextValue: fanOut.handleSetItemTextValue,
     setTextStyle: fanOut.handleSetItemTextStyle,
     setNodeHidden: fanOut.handleSetNodeHidden,
+    setNodeOverride: fanOut.handleSetNodeOverride,
   };
   const textNodes = useMemo(
     () => editorState.state.nodes.filter((n): n is TextNode => isTextNode(n)),

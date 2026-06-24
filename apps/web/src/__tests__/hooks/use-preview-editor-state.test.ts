@@ -664,4 +664,47 @@ describe("usePreviewEditorState", () => {
     expect(node).toHaveProperty("x", 42);
     expect((node as unknown as { src: string }).src).toBe(NEW_SRC);
   });
+
+  // ── Phase 5: per-variant IMAGE OVERLAY style/transform (opacity/rotation/etc.) ──
+
+  it("(ov-t-a) transform override (opacity/rotation/cornerRadius/dropShadow/featherRadius) applies to the active variant's overlay node", () => {
+    const SLOT_ID = "img-node";
+    const base = makeBaseWithOverlayNode(SLOT_ID, "blob:src");
+    const dropShadow = { x: 5, y: 5, blur: 10, color: "#000000", opacity: 0.7 };
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: {
+        [SLOT_ID]: { opacity: 0.4, rotation: 45, cornerRadius: 12, dropShadow, featherRadius: 8, aspectRatioLocked: false },
+      },
+    };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, overrides),
+    );
+
+    const node = result.current.nodes.find((n) => n.id === makeNodeId(SLOT_ID))!;
+    expect(node).toHaveProperty("opacity", 0.4);
+    expect(node).toHaveProperty("rotation", 45);
+    expect(node).toHaveProperty("cornerRadius", 12);
+    expect(node).toHaveProperty("dropShadow", dropShadow);
+    expect(node).toHaveProperty("featherRadius", 8);
+    expect(node).toHaveProperty("aspectRatioLocked", false);
+  });
+
+  it("(ov-t-b) an unselected variant keeps the template transform (no override leak)", () => {
+    const OVERLAY_B = "overlay-b";
+    const SLOT_ID = "img-node";
+    const base = makeBaseWithOverlayNode(SLOT_ID, "blob:src"); // template opacity:1
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [SLOT_ID]: { opacity: 0.4, rotation: 90 } },
+    };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_B, overrides),
+    );
+
+    // overlay-b has no override — base returned as-is, template transform kept
+    expect(result.current).toBe(base);
+    const node = result.current.nodes.find((n) => n.id === makeNodeId(SLOT_ID))!;
+    expect(node).toHaveProperty("opacity", 1);
+  });
 });

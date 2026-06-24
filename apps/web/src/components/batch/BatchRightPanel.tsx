@@ -180,7 +180,19 @@ export function BatchRightPanel({
                   {isSelectedOverlay && (
                     <OverlayControlsPanel
                       node={selectedNode as OverlayNode}
-                      onChange={(patch) => editorState.updateOverlayNode(selectedNodeId!, patch)}
+                      onChange={(patch) => {
+                        if (activeOverlay && !isBorderOverlay(selectedNode as OverlayNode)) {
+                          // Fans the transform edit across every selected variant,
+                          // never mutating the shared template — mirrors the
+                          // per-variant TextStylePanel routing above.
+                          itemText.setNodeOverride(activeOverlay.id, selectedNodeId!, patch);
+                        } else {
+                          // No overlay context yet (template-only mode), or a border
+                          // overlay (border style is template-level, not per-variant) —
+                          // mutate the template directly.
+                          editorState.updateOverlayNode(selectedNodeId!, patch);
+                        }
+                      }}
                       onDelete={() => onDeleteOverlayNode(selectedNodeId!)}
                       onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
                       {...(!isBorderOverlay(selectedNode as OverlayNode) && {

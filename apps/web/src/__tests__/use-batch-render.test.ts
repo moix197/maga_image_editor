@@ -907,9 +907,9 @@ describe("useBatchRender", () => {
     // OVERLAY_ID has no override → only restored (snapshot), never applied with a
     // per-variant patch. node-1 (overridden) is applied + restored.
     const overlay2Calls = updateOverlayNode.mock.calls.filter((c) => c[0] === OVERLAY_ID);
-    // Only the restore call (template geometry) — no apply-with-override.
+    // Only the restore call (full template transform snapshot) — no apply-with-override.
     expect(overlay2Calls).toHaveLength(1);
-    expect(overlay2Calls[0]![1]).toEqual({ x: 10, y: 20, width: 80, height: 60 });
+    expect(overlay2Calls[0]![1]).toMatchObject({ x: 10, y: 20, width: 80, height: 60, opacity: 1 });
   });
 
   it("composited overlay-node array carries the per-item geometry override (post-pass output is correct)", async () => {
@@ -973,11 +973,150 @@ describe("useBatchRender", () => {
     expect(liveH).toBe(60);
     // The last call for OVERLAY_ID is the restore with the full snapshot.
     const overlayCalls = updateOverlayNode.mock.calls.filter((c) => c[0] === OVERLAY_ID);
-    expect(overlayCalls.at(-1)![1]).toEqual({ x: 10, y: 20, width: 80, height: 60 });
+    expect(overlayCalls.at(-1)![1]).toMatchObject({ x: 10, y: 20, width: 80, height: 60, opacity: 1 });
     // The shared template object itself is untouched.
     const node = template.nodes.find((n) => n.id === OVERLAY_ID) as unknown as { x: number; y: number };
     expect(node.x).toBe(10);
     expect(node.y).toBe(20);
+    expect(result.current.error).toBe("composite boom");
+  });
+
+  // ── Phase 5: per-variant IMAGE OVERLAY style/transform (opacity, rotation, etc.) ─
+
+  /** Template overlay carrying transform fields so restore can reset them. */
+  function styledOverlayTemplate(): EditorState {
+    return {
+      nodes: [
+        { id: "node-1" as NodeId, src: "data:orig", x: 0, y: 0, width: 200, height: 150, opacity: 1, zIndex: 0, overlayType: "image" },
+        {
+          id: OVERLAY_ID as NodeId,
+          src: "data:logo",
+          x: 10,
+          y: 20,
+          width: 80,
+          height: 60,
+          opacity: 1,
+          zIndex: 1,
+          overlayType: "image",
+          rotation: 0,
+          cornerRadius: 0,
+          featherRadius: 0,
+          aspectRatioLocked: true,
+        },
+      ],
+    };
+  }
+
+  const DROP_SHADOW = { x: 5, y: 5, blur: 10, color: "#000000", opacity: 0.7 };
+
+  it("applies per-item overlay transform overrides (opacity/rotation/dropShadow) via updateOverlayNode before capture", async () => {
+    const template = styledOverlayTemplate();
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = {
+      a: { [OVERLAY_ID]: { opacity: 0.4, rotation: 45, cornerRadius: 12, dropShadow: DROP_SHADOW, featherRadius: 8, aspectRatioLocked: false } },
+    };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    const applyCall = updateOverlayNode.mock.calls.find((c) => c[0] === OVERLAY_ID);
+    expect(applyCall![1]).toMatchObject({
+      opacity: 0.4,
+      rotation: 45,
+      cornerRadius: 12,
+      dropShadow: DROP_SHADOW,
+      featherRadius: 8,
+      aspectRatioLocked: false,
+    });
+  });
+
+  it("restore patch resets the FULL transform snapshot (opacity/rotation/dropShadow) to template", async () => {
+    const template = styledOverlayTemplate();
+    const overlays = [makeOverlay("a")];
+    // Override touches only opacity + dropShadow; restore must still reset all transform fields.
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { opacity: 0.3, dropShadow: DROP_SHADOW } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    const overlayCalls = updateOverlayNode.mock.calls.filter((c) => c[0] === OVERLAY_ID);
+    const restorePatch = overlayCalls.at(-1)![1] as Record<string, unknown>;
+    expect(restorePatch).toMatchObject({
+      x: 10,
+      y: 20,
+      width: 80,
+      height: 60,
+      opacity: 1,
+      rotation: 0,
+      cornerRadius: 0,
+      featherRadius: 0,
+      aspectRatioLocked: true,
+    });
+    // dropShadow was undefined on the template → snapshot restores it to undefined,
+    // clearing the per-variant shadow from the shared template.
+    expect(restorePatch.dropShadow).toBeUndefined();
+  });
+
+  it("composited overlay-node array carries the per-item transform override (post-pass output)", async () => {
+    const template = styledOverlayTemplate();
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { opacity: 0.4, rotation: 90, dropShadow: DROP_SHADOW } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    const composited = (mockCompositeFromElement.mock.calls[0] as unknown as [HTMLElement, OverlayNode[]])[1];
+    const overriddenNode = composited.find((n) => n.id === OVERLAY_ID)!;
+    expect(overriddenNode.opacity).toBe(0.4);
+    expect(overriddenNode.rotation).toBe(90);
+    expect(overriddenNode.dropShadow).toEqual(DROP_SHADOW);
+  });
+
+  it("THROW-RESTORE: finally restores overlay transform (opacity/dropShadow) when capture throws", async () => {
+    const template = styledOverlayTemplate();
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { opacity: 0.4, dropShadow: DROP_SHADOW } } };
+
+    let liveOpacity = 1;
+    let liveShadow: typeof DROP_SHADOW | undefined;
+    const updateOverlayNode = vi.fn<(id: NodeId, patch: { opacity?: number; dropShadow?: typeof DROP_SHADOW }) => void>(
+      (_id, patch) => {
+        if ("opacity" in patch && patch.opacity !== undefined) liveOpacity = patch.opacity;
+        if ("dropShadow" in patch) liveShadow = patch.dropShadow;
+      },
+    );
+
+    mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Despite the throw, the live transform ends back at the template values.
+    expect(liveOpacity).toBe(1);
+    expect(liveShadow).toBeUndefined();
     expect(result.current.error).toBe("composite boom");
   });
 });

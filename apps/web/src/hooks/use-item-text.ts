@@ -64,5 +64,6 @@ export function useItemText({
     setTextStyle,
     isNodeHidden: isHidden,
     setNodeHidden,
+    setNodeOverride,
   };
 }

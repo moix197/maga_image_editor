@@ -21,8 +21,12 @@ lock model was retired in schema v4; see [[per-item-text-schema]]). The merge
 **strips the non-Node `hidden` flag, then spreads the whole override onto the
 node** via one generic `stripHidden` helper — for text nodes `content`, the style
 partial, **geometry (x/y) and size (width/height/fontSize)**; for image-overlay
-nodes **geometry (x/y/width/height)** — all fall through in one spread, so any
-future overridable field flows automatically without touching the merge. Hidden
+nodes **geometry (x/y/width/height) and the full transform set (opacity, rotation,
+cornerRadius, dropShadow, featherRadius, aspectRatioLocked)** — all fall through in
+one spread, so any future overridable field flows automatically without touching the
+merge. (Overlay style/transform edits route through the same fan-out as text style —
+`OverlayControlsPanel.onChange` writes a per-variant `NodeOverride`, never the shared
+template; see [[batch-render-text-patch]].) Hidden
 **text** nodes (override `hidden: true`) are **filtered out** of the derived node
 array entirely (not painted); overlay-hidden filtering is a later phase. The
 variable-slot node's `src` is swapped to the active overlay's blob, **layered on
