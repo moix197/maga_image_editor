@@ -26,9 +26,10 @@ cornerRadius, dropShadow, featherRadius, aspectRatioLocked)** — all fall throu
 one spread, so any future overridable field flows automatically without touching the
 merge. (Overlay style/transform edits route through the same fan-out as text style —
 `OverlayControlsPanel.onChange` writes a per-variant `NodeOverride`, never the shared
-template; see [[batch-render-text-patch]].) Hidden
-**text** nodes (override `hidden: true`) are **filtered out** of the derived node
-array entirely (not painted); overlay-hidden filtering is a later phase. The
+template; see [[batch-render-text-patch]].) Nodes — **text or image overlay** — whose
+override carries `hidden: true` for the active overlay are **filtered out** of the
+derived node array entirely (not painted). The filter now applies uniformly to all
+node kinds: the old `isTextNode` guard in the filter was removed (Phase 6). The
 variable-slot node's `src` is swapped to the active overlay's blob, **layered on
 top of** any geometry override on that same node. Result is wrapped in a
 `{ ...base, nodes }` copy.

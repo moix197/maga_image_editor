@@ -151,6 +151,9 @@ function overlayTransformPatch(override: NodeOverride): Partial<OverlayTransform
  * live DOM at capture (the DOM elements are suppressed); their geometry/transforms
  * come from this array, so the override must be spread here for the output to
  * reflect it.
+ *
+ * When `hidden: true` is set, the overlay is invisible in the output: its opacity
+ * is forced to 0 in the composited array (mirrors the text-node opacity-0 path).
  */
 function applyOverlayOverrides(
   overlayNodes: OverlayNode[],
@@ -160,7 +163,11 @@ function applyOverlayOverrides(
   return overlayNodes.map((n) => {
     const override = overlayOverrides[n.id as string];
     if (!override) return n;
-    return { ...n, ...overlayTransformPatch(override) };
+    const patch = overlayTransformPatch(override);
+    // A hidden overlay must be invisible in the composited output.
+    if (override.hidden) patch.opacity = 0;
+    if (Object.keys(patch).length === 0) return n;
+    return { ...n, ...patch };
   });
 }
 
@@ -259,12 +266,14 @@ export function useBatchRender(
           // (1b) Write this item's overlay transform override (geometry + style)
           // into the LIVE editor state via `updateOverlayNode`, so the captured
           // canvas reflects the per-variant position/size/opacity/rotation/etc.
+          // A hidden overlay is set to opacity 0 so it is invisible in the output.
           // A missing override leaves the template transform untouched. Restored
           // from the snapshot in the finally.
           for (const layer of perItemOverlays) {
             const override = overlayOverrides?.[layer.id as string];
             if (!override) continue;
             const patch = overlayTransformPatch(override);
+            if (override.hidden) patch.opacity = 0;
             if (Object.keys(patch).length > 0) updateOverlayNode!(layer.id, patch);
           }
 

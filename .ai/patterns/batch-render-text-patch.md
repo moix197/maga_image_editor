@@ -34,10 +34,13 @@ aspectRatioLocked — via `updateOverlayNode`). Lives in
    spreads in `packages/editor`, so the snapshot-restore behaves identically across
    both). `dropShadow` is an object field; it rides through the spread whole.
    Overlays are **not** folded into the text path.
-2. **Hidden nodes** (`itemHiddenNodeIds[overlay.id]`) are mutated to `opacity: 0`
-   before capture so they don't paint — note the render path hides via opacity,
-   whereas the preview path filters the node out entirely. Restored in the same
-   `finally`.
+2. **Hidden nodes** — text or image overlay — are set to `opacity: 0` before capture
+   so they don't paint (render path hides via opacity; preview path filters the node
+   out entirely). For text, `updateTextNode(id, { opacity: 0 })`. For overlay nodes,
+   `updateOverlayNode(id, { opacity: 0 })` on the live state **and**
+   `applyOverlayOverrides` forces `patch.opacity = 0` on the composited post-pass array
+   (since image overlays are not read from the live DOM — see below). Restored in the
+   same `finally` from the full template snapshot.
 3. `await waitTwoFrames()` so React repaints the canvas with the new text + style.
 4. `compositeFromElement(canvasEl, …)` captures the **live DOM** — the text is
    read off the rendered element, which is why the mutations must hit live state.

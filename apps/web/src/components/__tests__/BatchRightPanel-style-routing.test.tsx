@@ -117,6 +117,7 @@ function renderPanel(
       onToggleVariableSlot={vi.fn()}
       activeOverlay={ACTIVE_OVERLAY}
       textNodes={[BASE_TEXT_NODE]}
+      overlayNodes={[]}
       itemText={itemText as never}
     />,
   );
@@ -198,6 +199,7 @@ describe("BatchRightPanel — text style routing (Phase 1b fix)", () => {
         onToggleVariableSlot={vi.fn()}
         activeOverlay={null}            // ← no active overlay
         textNodes={[BASE_TEXT_NODE]}
+        overlayNodes={[]}
         itemText={itemText as never}
       />,
     );
@@ -240,6 +242,7 @@ describe("BatchRightPanel — overlay transform routing (Phase 5)", () => {
         onToggleVariableSlot={vi.fn()}
         activeOverlay={activeOverlay}
         textNodes={[]}
+        overlayNodes={[]}
         itemText={itemText as never}
       />,
     );

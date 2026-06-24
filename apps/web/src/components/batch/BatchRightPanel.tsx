@@ -42,6 +42,7 @@ interface BatchRightPanelProps {
   onToggleVariableSlot: (id: NodeId) => void;
   activeOverlay: ProjectAsset | null;
   textNodes: TextNode[];
+  overlayNodes: OverlayNode[];
   itemText: ReturnType<typeof useItemText>;
 }
 
@@ -67,6 +68,7 @@ export function BatchRightPanel({
   onToggleVariableSlot,
   activeOverlay,
   textNodes,
+  overlayNodes,
   itemText,
 }: BatchRightPanelProps) {
   if (activeSection === "assets") {
@@ -217,6 +219,19 @@ export function BatchRightPanel({
                 </div>
               </Collapsible>
             )}
+
+            {activeOverlay && overlayNodes.length > 0 && (
+              <Collapsible title="Variant overlays">
+                <div className="pt-2">
+                  <ItemOverlayPanel
+                    overlayAssetId={activeOverlay.id}
+                    overlayLabel={activeOverlay.filename}
+                    overlayNodes={overlayNodes}
+                    itemText={itemText}
+                  />
+                </div>
+              </Collapsible>
+            )}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">Upload a background image first in the Assets section.</p>
@@ -227,6 +242,37 @@ export function BatchRightPanel({
 
   // results: panel is hidden (parent renders null for results)
   return null;
+}
+
+interface ItemOverlayPanelProps {
+  overlayAssetId: string;
+  overlayLabel: string;
+  overlayNodes: OverlayNode[];
+  itemText: ReturnType<typeof useItemText>;
+}
+
+export function ItemOverlayPanel({ overlayAssetId, overlayLabel, overlayNodes, itemText }: ItemOverlayPanelProps) {
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <h2 className="text-sm font-semibold tracking-tight">Overlays for {overlayLabel}</h2>
+      {overlayNodes.map((node, i) => {
+        const hidden = itemText.isNodeHidden(overlayAssetId, node.id);
+        return (
+          <div key={node.id} className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Image overlay {i + 1}</span>
+            <button
+              type="button"
+              aria-label={hidden ? "Show image overlay" : "Hide image overlay"}
+              onClick={() => itemText.setNodeHidden(overlayAssetId, node.id, !hidden)}
+              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+            >
+              {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 interface ItemTextPanelProps {

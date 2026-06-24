@@ -707,4 +707,46 @@ describe("usePreviewEditorState", () => {
     const node = result.current.nodes.find((n) => n.id === makeNodeId(SLOT_ID))!;
     expect(node).toHaveProperty("opacity", 1);
   });
+
+  // ── Phase 6: per-variant IMAGE OVERLAY hidden (filter out of derived nodes) ──
+
+  it("(ov-hidden-a) an overlay node hidden for the active overlay is excluded from derived nodes", () => {
+    const IMG_ID = "img-node";
+    const base = makeBaseWithOverlayNode(IMG_ID, "blob:src");
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [IMG_ID]: { hidden: true } } };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, overrides),
+    );
+
+    const ids = result.current.nodes.map((n) => n.id);
+    expect(ids).not.toContain(makeNodeId(IMG_ID));
+  });
+
+  it("(ov-hidden-b) an overlay node hidden for overlay-a is still present for overlay-b (base returned as-is)", () => {
+    const OVERLAY_B = "overlay-b";
+    const IMG_ID = "img-node";
+    const base = makeBaseWithOverlayNode(IMG_ID, "blob:src");
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [IMG_ID]: { hidden: true } } };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_B, overrides),
+    );
+
+    // overlay-b has no override — base returned as-is, node still present
+    expect(result.current).toBe(base);
+    const ids = result.current.nodes.map((n) => n.id);
+    expect(ids).toContain(makeNodeId(IMG_ID));
+  });
+
+  it("(ov-hidden-c) base is not mutated when an overlay node is hidden", () => {
+    const IMG_ID = "img-node";
+    const base = makeBaseWithOverlayNode(IMG_ID, "blob:src");
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [IMG_ID]: { hidden: true } } };
+
+    renderHook(() => usePreviewEditorState(base, OVERLAY_A, overrides));
+
+    expect(base.nodes).toHaveLength(1);
+    expect(base.nodes[0]).toHaveProperty("id", makeNodeId(IMG_ID));
+  });
 });

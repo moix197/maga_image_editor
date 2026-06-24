@@ -221,7 +221,10 @@ function BatchWorkspaceInner() {
       setVariableSlotNodeId(null);
       setVariableSlot(null);
     }
-    editorState.removeNode(nodeId);
+    // Hide the overlay node for the selected variants only — the template node
+    // survives so unselected variants keep the overlay. Fan-out mirrors the text
+    // hide path (trash button → per-variant hidden flag, not a real removeNode).
+    fanOut.handleSetNodeHidden(activeOverlayId ?? "", nodeId, true);
     setSelectedNodeId(null);
   }
 
@@ -305,6 +308,11 @@ function BatchWorkspaceInner() {
   };
   const textNodes = useMemo(
     () => editorState.state.nodes.filter((n): n is TextNode => isTextNode(n)),
+    [editorState.state.nodes],
+  );
+
+  const overlayNodes = useMemo(
+    () => editorState.state.nodes.filter((n): n is OverlayNode => isOverlayNode(n)),
     [editorState.state.nodes],
   );
 
@@ -472,6 +480,7 @@ function BatchWorkspaceInner() {
               onToggleVariableSlot={handleToggleVariableSlot}
               activeOverlay={activeOverlay}
               textNodes={textNodes}
+              overlayNodes={overlayNodes}
               itemText={fanOutItemText}
             />
           </aside>

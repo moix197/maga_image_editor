@@ -22,8 +22,8 @@ function stripHidden(override: NodeOverride): Partial<Omit<NodeOverride, "hidden
  *   future overridable fields apply automatically.
  * - Every text layer is per-item (the lock model was retired in schema v4); a
  *   layer with no override for the active variant retains the template value.
- * - Text nodes whose override carries `hidden: true` for the active overlay are
- *   excluded from the derived node list entirely.
+ * - Nodes (text OR overlay) whose override carries `hidden: true` for the active
+ *   overlay are excluded from the derived node list entirely.
  * - The base EditorState is never mutated.
  * - When activeOverlayId is null AND there is no slot swap pending, base is
  *   returned as-is (no copy).
@@ -58,8 +58,9 @@ export function usePreviewEditorState(
 
     const derivedNodes = base.nodes
       .filter((node) => {
-        // Hidden text nodes are excluded from the preview for the active variant.
-        if (isTextNode(node) && overlayOverrides?.[node.id as string]?.hidden) return false;
+        // Nodes hidden for the active variant are excluded from the preview —
+        // applies to both text nodes and image-overlay nodes.
+        if (overlayOverrides?.[node.id as string]?.hidden) return false;
         return true;
       })
       .map((node) => {

@@ -1119,4 +1119,101 @@ describe("useBatchRender", () => {
     expect(liveShadow).toBeUndefined();
     expect(result.current.error).toBe("composite boom");
   });
+
+  // ── Phase 6: per-variant IMAGE OVERLAY hidden (opacity:0 in composited array) ─
+
+  it("a hidden overlay gets opacity 0 in the composited array (post-pass output)", async () => {
+    const template = overlayTemplate(); // OVERLAY_ID at x:10 y:20 w:80 h:60 opacity:1
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { hidden: true } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    const composited = (mockCompositeFromElement.mock.calls[0] as unknown as [HTMLElement, OverlayNode[]])[1];
+    const hiddenNode = composited.find((n) => n.id === OVERLAY_ID)!;
+    expect(hiddenNode.opacity).toBe(0);
+  });
+
+  it("hidden overlay opacity is restored to template value in finally", async () => {
+    const template = overlayTemplate(); // OVERLAY_ID opacity:1
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { hidden: true } } };
+
+    let liveOpacity = 1;
+    const updateOverlayNode = vi.fn<(id: NodeId, patch: { opacity?: number }) => void>(
+      (_id, patch) => {
+        if (patch.opacity !== undefined) liveOpacity = patch.opacity;
+      },
+    );
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // After the run, the live opacity is back to the template value.
+    expect(liveOpacity).toBe(1);
+    // The restore call (last for OVERLAY_ID) includes opacity:1.
+    const overlayCalls = updateOverlayNode.mock.calls.filter((c) => c[0] === OVERLAY_ID);
+    expect(overlayCalls.at(-1)![1]).toMatchObject({ opacity: 1 });
+  });
+
+  it("THROW-RESTORE: hidden overlay opacity restored even when capture throws", async () => {
+    const template = overlayTemplate();
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { hidden: true } } };
+
+    let liveOpacity = 1;
+    const updateOverlayNode = vi.fn<(id: NodeId, patch: { opacity?: number }) => void>(
+      (_id, patch) => {
+        if (patch.opacity !== undefined) liveOpacity = patch.opacity;
+      },
+    );
+
+    mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Despite the throw, opacity is restored to the template value.
+    expect(liveOpacity).toBe(1);
+    expect(result.current.error).toBe("composite boom");
+  });
+
+  it("a hidden overlay for overlay-a is visible (opacity:1) in overlay-b's composited output", async () => {
+    const template = overlayTemplate();
+    const overlays = [makeOverlay("a"), makeOverlay("b")];
+    // OVERLAY_ID hidden only for "a"
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { hidden: true } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Two composite calls — one per overlay
+    const compositedA = (mockCompositeFromElement.mock.calls[0] as unknown as [HTMLElement, OverlayNode[]])[1];
+    const compositedB = (mockCompositeFromElement.mock.calls[1] as unknown as [HTMLElement, OverlayNode[]])[1];
+    expect(compositedA.find((n) => n.id === OVERLAY_ID)!.opacity).toBe(0);
+    expect(compositedB.find((n) => n.id === OVERLAY_ID)!.opacity).toBe(1);
+  });
 });

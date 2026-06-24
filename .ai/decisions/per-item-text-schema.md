@@ -87,10 +87,20 @@ persisted.
 
 Visibility is the `hidden` flag on a node's `NodeOverride`. `use-item-text.ts`
 exposes `isNodeHidden` / `setNodeHidden`; the fan-out `handleSetNodeHidden` hides a
-node for all selected variants (trash button), the eye-toggle restores it. The
-preview filters hidden text nodes out of the derived array; the render loop hides
-them via `opacity: 0` (see [[live-preview-derived-state]], [[batch-render-text-patch]]).
-(Overlay-node hiding is wired in a later phase of the per-variant geometry/image plan.)
+node for all selected variants (trash button / overlay Delete), the eye-toggle
+restores it. The preview filters **any** hidden node (text or overlay) out of the
+derived array; the render loop hides them via `opacity: 0`
+(see [[live-preview-derived-state]], [[batch-render-text-patch]]).
+
+**Overlay hide (Phase 6):** `OverlayControlsPanel.onDelete` → `handleDeleteOverlayNode`
+in `BatchWorkspace` now fans the `hidden: true` flag across selected variants via
+`fanOut.handleSetNodeHidden`, instead of calling `editorState.removeNode` (which
+would delete the template node). The template node survives; unselected variants keep
+the overlay unchanged. A new **"Variant overlays"** `Collapsible` in `BatchRightPanel`
+renders `ItemOverlayPanel` — a structural copy of `ItemTextPanel` — listing each
+image-overlay node of the active overlay with an eye/EyeOff toggle wired to
+`handleSetNodeHidden`. This is the sole un-hide entry point for overlay nodes
+(the overlay panel unmounts on hide because hide clears the selection).
 
 ## Migration & constraints
 
