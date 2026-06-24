@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { getTextValue, getTextStyle, isNodeHidden } from "@maga/projects";
+import { getTextValue, getTextStyle, isNodeHidden, getNodeOverride } from "@maga/projects";
 import type { ItemNodeOverrides, NodeOverride, TextStyle } from "@maga/projects";
 
 interface UseItemTextArgs {
@@ -57,6 +57,14 @@ export function useItemText({
     [itemNodeOverrides],
   );
 
+  // Returns the raw NodeOverride for an overlay node so callers can merge it
+  // onto the template node for display (read-only; write path is setNodeOverride).
+  const getOverrideForNode = useCallback(
+    (overlayAssetId: string, nodeId: string): NodeOverride =>
+      getNodeOverride(itemNodeOverrides, overlayAssetId, nodeId),
+    [itemNodeOverrides],
+  );
+
   return {
     getTextValue: getValue,
     setTextValue,
@@ -65,5 +73,6 @@ export function useItemText({
     isNodeHidden: isHidden,
     setNodeHidden,
     setNodeOverride,
+    getNodeOverride: getOverrideForNode,
   };
 }

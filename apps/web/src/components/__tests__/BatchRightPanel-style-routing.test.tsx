@@ -58,7 +58,7 @@ function makeEditorState(node: TextNode = BASE_TEXT_NODE) {
   };
 }
 
-function makeItemText(overrides: { getTextStyle?: ReturnType<typeof vi.fn> } = {}) {
+function makeItemText(overrides: { getTextStyle?: ReturnType<typeof vi.fn>; getNodeOverride?: ReturnType<typeof vi.fn> } = {}) {
   return {
     getTextValue: vi.fn().mockReturnValue(""),
     setTextValue: vi.fn(),
@@ -67,6 +67,7 @@ function makeItemText(overrides: { getTextStyle?: ReturnType<typeof vi.fn> } = {
     isNodeHidden: vi.fn().mockReturnValue(false),
     setNodeHidden: vi.fn(),
     setNodeOverride: vi.fn(),
+    getNodeOverride: overrides.getNodeOverride ?? vi.fn().mockReturnValue({}),
   };
 }
 
@@ -268,5 +269,29 @@ describe("BatchRightPanel — overlay transform routing (Phase 5)", () => {
 
     expect(editorState.updateOverlayNode).toHaveBeenCalledWith(OVERLAY_NODE_ID, { rotation: 90 });
     expect(itemText.setNodeOverride).not.toHaveBeenCalled();
+  });
+
+  it("read side: panel displays per-variant override merged with template base", () => {
+    // The active variant has rotation=45 overriding the template's rotation (0).
+    const getNodeOverrideMock = vi.fn().mockReturnValue({ rotation: 45 });
+    const editorState = makeEditorState(BASE_OVERLAY_NODE as never);
+    const itemText = makeItemText({ getNodeOverride: getNodeOverrideMock });
+    renderOverlayPanel(itemText, editorState);
+
+    // OverlayControlsPanel receives effectiveOverlayNode with rotation=45,
+    // not the template's rotation=0.
+    const rotationInput = screen.getByLabelText("Rotation value") as HTMLInputElement;
+    expect(rotationInput.value).toBe("45");
+    expect(getNodeOverrideMock).toHaveBeenCalledWith(OVERLAY_ID, OVERLAY_NODE_ID);
+  });
+
+  it("read side: with no override for the node, template values are shown unchanged", () => {
+    const editorState = makeEditorState(BASE_OVERLAY_NODE as never);
+    const itemText = makeItemText();
+    renderOverlayPanel(itemText, editorState);
+
+    // No override — panel shows the template's rotation (0).
+    const rotationInput = screen.getByLabelText("Rotation value") as HTMLInputElement;
+    expect(rotationInput.value).toBe("0");
   });
 });

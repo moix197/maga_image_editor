@@ -179,9 +179,22 @@ export function BatchRightPanel({
                       />
                     );
                   })()}
-                  {isSelectedOverlay && (
+                  {isSelectedOverlay && (() => {
+                    // Compute the effective overlay node for the active variant: merge
+                    // the template node's base values with any per-item override so the
+                    // panel displays the active variant's current geometry/style values.
+                    // Mirrors how TextStylePanel receives its effectiveNode above.
+                    const baseOverlayNode = selectedNode as OverlayNode;
+                    const perItemOverride = activeOverlay && !isBorderOverlay(baseOverlayNode)
+                      ? itemText.getNodeOverride(activeOverlay.id, selectedNodeId!)
+                      : {};
+                    // Strip the non-Node `hidden` flag before spreading (same semantics as
+                    // usePreviewEditorState's stripHidden and getTextStyle's hidden strip).
+                    const { hidden: _hidden, ...overridePatch } = perItemOverride;
+                    const effectiveOverlayNode: OverlayNode = { ...baseOverlayNode, ...overridePatch };
+                    return (
                     <OverlayControlsPanel
-                      node={selectedNode as OverlayNode}
+                      node={effectiveOverlayNode}
                       onChange={(patch) => {
                         if (activeOverlay && !isBorderOverlay(selectedNode as OverlayNode)) {
                           // Fans the transform edit across every selected variant,
@@ -197,12 +210,13 @@ export function BatchRightPanel({
                       }}
                       onDelete={() => onDeleteOverlayNode(selectedNodeId!)}
                       onReorder={(dir) => editorState.reorderNode(selectedNodeId!, dir)}
-                      {...(!isBorderOverlay(selectedNode as OverlayNode) && {
+                      {...(!isBorderOverlay(baseOverlayNode) && {
                         isVariableSlot: variableSlotNodeId === selectedNodeId,
                         onToggleVariableSlot: () => onToggleVariableSlot(selectedNodeId!),
                       })}
                     />
-                  )}
+                    );
+                  })()}
                 </div>
               </Collapsible>
             )}
