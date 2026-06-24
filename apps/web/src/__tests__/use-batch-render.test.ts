@@ -619,4 +619,103 @@ describe("useBatchRender", () => {
     expect(restorePatch.content).toBe("TEMPLATE");
     expect(restorePatch.opacity).toBe(1);
   });
+
+  // ── Phase 2: per-variant text POSITION (x/y) overrides ───────────────────────
+
+  it("applies a per-item x/y override in the merged apply call", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID);
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [TEXT_ID]: { content: "A-text", x: 120, y: 240 } } };
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // First call = apply: a single merged patch carrying content AND geometry.
+    const applyPatch = updateTextNode.mock.calls[0]![1] as { content: string; x?: number; y?: number };
+    expect(applyPatch.content).toBe("A-text");
+    expect(applyPatch.x).toBe(120);
+    expect(applyPatch.y).toBe(240);
+  });
+
+  it("restore patch resets x/y back to the template position", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID); // template node is at x:0, y:0
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [TEXT_ID]: { x: 120, y: 240 } } };
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Restore = the last call. It must reset x/y to the template values (0,0).
+    const restorePatch = updateTextNode.mock.calls.at(-1)![1] as { x: number; y: number };
+    expect(restorePatch.x).toBe(0);
+    expect(restorePatch.y).toBe(0);
+  });
+
+  it("template x/y is unchanged after a full batch run (immutability guard)", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID);
+    const overlays = [makeOverlay("a"), makeOverlay("b")];
+    const itemNodeOverrides = { a: { [TEXT_ID]: { x: 120, y: 240 } }, b: { [TEXT_ID]: { x: 50, y: 60 } } };
+    const updateTextNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    const textNode = template.nodes.find((n) => n.id === TEXT_ID) as unknown as { x: number; y: number };
+    expect(textNode.x).toBe(0);
+    expect(textNode.y).toBe(0);
+  });
+
+  it("THROW-RESTORE: finally restores x/y when capture throws mid-capture", async () => {
+    const TEXT_ID = "text-1";
+    const template = styleTemplate(TEXT_ID);
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { [TEXT_ID]: { x: 120, y: 240 } } };
+
+    let liveX = 0;
+    let liveY = 0;
+    const updateTextNode = vi.fn<(id: NodeId, patch: { x?: number; y?: number }) => void>(
+      (_id, patch) => {
+        if (patch.x !== undefined) liveX = patch.x;
+        if (patch.y !== undefined) liveY = patch.y;
+      },
+    );
+
+    mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    // Despite the throw, the live position ends back at the template (0,0).
+    expect(liveX).toBe(0);
+    expect(liveY).toBe(0);
+    const restorePatch = updateTextNode.mock.calls.at(-1)![1] as { x: number; y: number };
+    expect(restorePatch.x).toBe(0);
+    expect(restorePatch.y).toBe(0);
+    expect(result.current.error).toBe("composite boom");
+  });
 });

@@ -55,6 +55,27 @@ describe("useFanOutTextHandlers", () => {
     expect(setNodeOverride).toHaveBeenCalledWith("a", "node1", { content: "text" });
   });
 
+  it("handleSetNodeOverride fans an arbitrary patch across every selected id and ignores the overlayId", () => {
+    const setNodeOverride = vi.fn();
+    const selectedVariantIds = new Set(["a", "b", "c"]);
+
+    const { result } = renderHook(() =>
+      useFanOutTextHandlers({ selectedVariantIds, setNodeOverride, setNodeHidden: vi.fn() })
+    );
+
+    act(() => {
+      result.current.handleSetNodeOverride("ignored-overlay", "node1", { x: 10, y: 20 });
+    });
+
+    expect(setNodeOverride).toHaveBeenCalledTimes(3);
+    expect(setNodeOverride).toHaveBeenCalledWith("a", "node1", { x: 10, y: 20 });
+    expect(setNodeOverride).toHaveBeenCalledWith("b", "node1", { x: 10, y: 20 });
+    expect(setNodeOverride).toHaveBeenCalledWith("c", "node1", { x: 10, y: 20 });
+    // overlayId arg never leaks into the setter call (selection set decides targets)
+    const targetIds = setNodeOverride.mock.calls.map((c: string[]) => c[0]);
+    expect(targetIds).not.toContain("ignored-overlay");
+  });
+
   it("only calls setters for ids in the selected set — removed ids not called", () => {
     const setNodeOverride = vi.fn();
     // "c" was removed from selection

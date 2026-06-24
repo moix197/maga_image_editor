@@ -166,8 +166,14 @@ function BatchWorkspaceInner() {
   function handleNodeMove(id: string, x: number, y: number) {
     const node = editorState.state.nodes.find((n) => n.id === id);
     if (!node) return;
-    if (isTextNode(node)) editorState.updateTextNode(id as NodeId, { x, y });
-    else editorState.updateOverlayNode(id as NodeId, { x, y });
+    // Text moves fan out a per-variant x/y override (selected variants only,
+    // active always included) — never the shared template. Image/overlay moves
+    // still hit the template until Phase 4.
+    if (isTextNode(node)) {
+      fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { x, y });
+    } else {
+      editorState.updateOverlayNode(id as NodeId, { x, y });
+    }
   }
 
   function handleNodeResize(id: string, width: number, height: number) {

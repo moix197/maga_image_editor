@@ -238,6 +238,67 @@ describe("usePreviewEditorState", () => {
     expect(n2).toHaveProperty("content", "override-2");
   });
 
+  // --- Phase 2: per-variant text position (x/y) override ---
+
+  it("(geo-a) x/y override is applied to the active variant's text node", () => {
+    const base = makeBase({ id: NODE_1, content: "template text" });
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { x: 120, y: 240 } } };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, overrides),
+    );
+
+    const node = result.current.nodes[0]!;
+    expect(node).toHaveProperty("x", 120);
+    expect(node).toHaveProperty("y", 240);
+    // content untouched
+    expect(node).toHaveProperty("content", "template text");
+  });
+
+  it("(geo-b) an unselected variant (different active overlay) keeps the template position", () => {
+    const OVERLAY_B = "overlay-b";
+    const base = makeBase({ id: NODE_1, content: "template text" });
+    // position overridden only for overlay-a
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { x: 120, y: 240 } } };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_B, overrides),
+    );
+
+    // overlay-b has no override — node stays at the template x/y (0,0), base returned as-is
+    expect(result.current).toBe(base);
+    const node = result.current.nodes[0]!;
+    expect(node).toHaveProperty("x", 0);
+    expect(node).toHaveProperty("y", 0);
+  });
+
+  it("(geo-c) early-return-base preserved when there are no overrides", () => {
+    const base = makeBase({ id: NODE_1, content: "template text" });
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, {}),
+    );
+
+    expect(result.current).toBe(base);
+  });
+
+  it("(geo-d) x/y and content/style all apply together on a text node", () => {
+    const base = makeBase({ id: NODE_1, content: "old", fontSize: 16 });
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [NODE_1]: { content: "new", fontSize: 32, x: 50, y: 75 } },
+    };
+
+    const { result } = renderHook(() =>
+      usePreviewEditorState(base, OVERLAY_A, overrides),
+    );
+
+    const node = result.current.nodes[0]!;
+    expect(node).toHaveProperty("content", "new");
+    expect(node).toHaveProperty("fontSize", 32);
+    expect(node).toHaveProperty("x", 50);
+    expect(node).toHaveProperty("y", 75);
+  });
+
   // --- Variable-slot overlay-image swap (Change 1) ---
 
   it("(slot-a) slot node src is swapped to activeOverlayBlobKey when variableSlotNodeId matches", () => {

@@ -14,11 +14,14 @@ usePreviewEditorState(
 ): EditorState
 ```
 
-It maps `base.nodes`: **every** text node gets that overlay's
-`itemTextValues[overlayId][nodeId]` (content) and `itemTextStyles[overlayId][nodeId]`
-(style partial) applied — text is per-item with no shared-vs-locked distinction
-(the lock model was retired in schema v4; see [[per-item-text-schema]]). Nodes
-listed in `itemHiddenNodeIds[overlayId]` are **filtered out** of the derived node
+It maps `base.nodes`: **every** text node gets that overlay's unified override
+`itemNodeOverrides[overlayId][nodeId]` (a single `NodeOverride`) applied — text is
+per-item with no shared-vs-locked distinction (the lock model was retired in
+schema v4; see [[per-item-text-schema]]). The merge **strips the non-Node `hidden`
+flag, then spreads the whole override onto the node** — `content`, the style
+partial, **and geometry (x/y)** all fall through in one generic spread, so any
+future overridable field flows automatically without touching the merge. Nodes
+whose override carries `hidden: true` are **filtered out** of the derived node
 array entirely (not painted), and the variable-slot node's `src` is swapped to the
 active overlay's blob. Result is wrapped in a `{ ...base, nodes }` copy.
 

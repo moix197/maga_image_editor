@@ -6,12 +6,13 @@ import type { EditorState, NodeId } from "@maga/editor";
 import type { ItemNodeOverrides } from "@maga/projects";
 
 /**
- * Returns a memoized derived EditorState with per-item text and style overrides
- * applied to every text layer for the active overlay variant.
+ * Returns a memoized derived EditorState with per-item overrides applied to
+ * every text layer for the active overlay variant.
  *
  * - Overrides are read from the unified `itemNodeOverrides` store (schema v5):
- *   `content` is the per-item text, the remaining (non-`hidden`) override fields
- *   spread as the style partial.
+ *   the full (non-`hidden`) override is spread onto the node, so every
+ *   overridable field flows through — `content`, the style partial, AND geometry
+ *   (x/y). A generic spread means future overridable fields apply automatically.
  * - Every text layer is per-item (the lock model was retired in schema v4); a
  *   layer with no override for the active variant retains the template value.
  * - Text nodes whose override carries `hidden: true` for the active overlay are
@@ -65,9 +66,10 @@ export function usePreviewEditorState(
         const override = overlayOverrides?.[node.id as string];
         if (!override) return node;
 
-        // Strip the non-Node `hidden` flag before spreading the override onto the
-        // text node (content + style fields fall through). Fallback to the live
-        // node value is deliberate: the base node IS the template.
+        // Strip the non-Node `hidden` flag, then spread every remaining override
+        // field onto the text node (content, style, AND geometry x/y all fall
+        // through). The base node IS the template, so un-overridden fields keep
+        // their template values.
         const { hidden: _hidden, ...patch } = override;
         if (Object.keys(patch).length === 0) return node;
 

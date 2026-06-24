@@ -16,18 +16,22 @@ import type { GeneratedOutput, ItemNodeOverrides, ProjectAsset, TextStyle, Varia
 
 /**
  * A text node's id paired with its template (original) content AND the full set
- * of styleable fields. The style snapshot is the restore target: after applying
- * a per-item style partial the loop writes ALL of these fields back so a partial
- * override can never leak into the shared template.
+ * of overridable fields (style + geometry). The snapshot is the restore target:
+ * after applying a per-item partial the loop writes ALL of these fields back so
+ * a partial override can never leak into the shared template.
  */
 interface TextLayer {
   id: NodeId;
   templateValue: string;
-  templateStyle: TextStyle;
+  templateStyle: TextStyle & { x: number; y: number };
 }
 
-/** Snapshots the styleable fields of a template text node (the restore target). */
-function templateStyleOf(node: TextNode): TextStyle {
+/**
+ * Snapshots the overridable fields of a template text node (the restore target).
+ * Covers style AND geometry (x/y), so a per-variant move/restyle is fully
+ * reverted in the `finally`.
+ */
+function templateStyleOf(node: TextNode): TextStyle & { x: number; y: number } {
   return {
     fontSize: node.fontSize,
     color: node.color,
@@ -38,6 +42,8 @@ function templateStyleOf(node: TextNode): TextStyle {
     rotation: node.rotation,
     shadow: node.shadow,
     textBackground: node.textBackground,
+    x: node.x,
+    y: node.y,
   };
 }
 
