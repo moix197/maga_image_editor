@@ -259,11 +259,11 @@ selected variant at its overridden position.
 
 **Steps:**
 
-- [ ] Generalize `useFanOutTextHandlers` to a node-override fan-out; re-express the text-value/style/hidden handlers on top of it.
-- [ ] Reroute `handleNodeMove` for text nodes through the fan-out override (no `editorState.updateTextNode` for per-variant edits).
-- [ ] Extend preview merge to apply override geometry to text nodes.
-- [ ] Extend render apply + `finally` restore to include x/y in the snapshot/patch.
-- [ ] Update `.ai/patterns/live-preview-derived-state.md` and `.ai/patterns/batch-render-text-patch.md`: the merge/apply now carries geometry (x/y), not just content+style.
+- [x] Generalize `useFanOutTextHandlers` to a node-override fan-out; re-express the text-value/style/hidden handlers on top of it.
+- [x] Reroute `handleNodeMove` for text nodes through the fan-out override (no `editorState.updateTextNode` for per-variant edits).
+- [x] Extend preview merge to apply override geometry to text nodes. (Already generic strip-hidden-then-spread — x/y flows through.)
+- [x] Extend render apply + `finally` restore to include x/y in the snapshot/patch.
+- [x] Update `.ai/patterns/live-preview-derived-state.md` and `.ai/patterns/batch-render-text-patch.md`: the merge/apply now carries geometry (x/y), not just content+style.
 
 **Tests:**
 
@@ -275,20 +275,20 @@ selected variant at its overridden position.
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `apps/web`.
+- [x] Automated tests pass: `pnpm test` in `apps/web`. — 314/314 pass; `tsc --noEmit` clean.
 - [ ] Manual: select two variants, drag a text node; both move, the third stays; Generate All output shows the moved position only on the two (smoke).
 
 **Phase review:**
 
 - [ ] All Steps and Verification checkboxes ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Reviewer-driven changes reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd` (code-reviewer subagent used).
+- [x] Orchestrator cleared context and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
+- [x] Code-reviewer agent has verified this phase — verdict green (only cosmetic non-blocking nits).
+- [x] Reviewer-driven changes reflected back into this plan file
+- [x] Tests written and passing
+- [x] Documentation updated
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(batch): per-variant text position (drag) via unified node overrides`
+- [x] Changes committed: `feat(batch): per-variant text position (drag) via unified node overrides` — commit a8ae1bf.
 - [ ] Phase marked complete
 
 ---
