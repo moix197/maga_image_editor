@@ -415,10 +415,12 @@ and Generate All renders each selected variant's overlay with its transforms.
 
 **Steps:**
 
-- [ ] Reroute `OverlayControlsPanel.onChange` through the fan-out override.
-- [ ] Ensure render snapshot/restore covers all overlay transform fields.
-- [ ] Confirm preview merge spreads transform fields onto overlay nodes.
-- [ ] Update `.ai/index.md` cross-cutting rows + `.ai/patterns/*` to note overlay style/transform is now per-variant (no longer a direct template mutation).
+- [x] Reroute `OverlayControlsPanel.onChange` through the fan-out override. (Falls back to `editorState.updateOverlayNode` only for border overlays + template-only mode, where no active-overlay context exists.)
+- [x] Ensure render snapshot/restore covers all overlay transform fields. (`templateTransformOf`/`overlayTransformPatch` — full set incl. `dropShadow` object.)
+- [x] Confirm preview merge spreads transform fields onto overlay nodes. (Already generic — no code change.)
+- [x] Update `.ai/index.md` cross-cutting rows + `.ai/patterns/*` to note overlay style/transform is now per-variant (no longer a direct template mutation).
+
+> **Follow-up (out of Phase 5 scope, non-blocking — reviewer-confirmed):** `OverlayControlsPanel` still *displays* the template `selectedNode`, not the active-variant merged value, unlike `TextStylePanel`'s `effectiveNode`. Writes fan out correctly, but a slider may show the template value until re-selection. Mirror an `effectiveNode` merge for overlays in a follow-up.
 
 **Tests:**
 
@@ -429,20 +431,20 @@ and Generate All renders each selected variant's overlay with its transforms.
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `apps/web`.
+- [x] Automated tests pass: `pnpm test` in `apps/web`. — 340/340 pass; `tsc --noEmit` clean.
 - [ ] Manual: change opacity/rotation/cornerRadius/dropShadow/featherRadius/aspectRatioLocked on selected variants; template + other variants unchanged; Generate All confirms (smoke).
 
 **Phase review:**
 
 - [ ] All Steps and Verification checkboxes ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Reviewer-driven changes reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd`.
+- [x] Orchestrator cleared context and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
+- [x] Code-reviewer agent has verified this phase — verdict green; writes truly fan out (no template leak), full transform snapshot/restore. Read-side display gap recorded as non-blocking follow-up.
+- [x] Reviewer-driven changes reflected back into this plan file
+- [x] Tests written and passing
+- [x] Documentation updated
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(batch): per-variant image overlay style/transform via OverlayControlsPanel fan-out`
+- [x] Changes committed: `feat(batch): per-variant image overlay style/transform via OverlayControlsPanel fan-out` — commit 8b35be7.
 - [ ] Phase marked complete
 
 ---
