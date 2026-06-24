@@ -228,11 +228,11 @@ describe("useBatchRender", () => {
       ],
     };
     const overlays = [makeOverlay("a"), makeOverlay("b")];
-    const itemTextValues = { a: { [TEXT_ID]: "A-text" }, b: { [TEXT_ID]: "B-text" } };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { content: "A-text" } }, b: { [TEXT_ID]: { content: "B-text" } } };
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode)
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemNodeOverrides, updateTextNode)
     );
 
     await act(async () => {
@@ -256,7 +256,7 @@ describe("useBatchRender", () => {
       ],
     };
     const overlays = [makeOverlay("a")];
-    const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { content: "A-text" } } };
 
     // Simulate the live editor state mutated by updateTextNode so we can assert
     // its final value after the (throwing) run.
@@ -268,7 +268,7 @@ describe("useBatchRender", () => {
     mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode)
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemNodeOverrides, updateTextNode)
     );
 
     await act(async () => {
@@ -296,11 +296,11 @@ describe("useBatchRender", () => {
       ],
     };
     const overlays = [makeOverlay("a"), makeOverlay("b")];
-    const itemTextValues = { a: { [TEXT_ID]: "A-text" }, b: { [TEXT_ID]: "B-text" } };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { content: "A-text" } }, b: { [TEXT_ID]: { content: "B-text" } } };
     const updateTextNode = vi.fn<(id: NodeId, patch: { content?: string }) => void>();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode)
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemNodeOverrides, updateTextNode)
     );
 
     await act(async () => {
@@ -324,11 +324,11 @@ describe("useBatchRender", () => {
       ],
     };
     const overlays = [makeOverlay("a"), makeOverlay("b")];
-    const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { content: "A-text" } } };
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode)
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemNodeOverrides, updateTextNode)
     );
 
     await act(async () => {
@@ -387,12 +387,11 @@ describe("useBatchRender", () => {
     const TEXT_ID = "text-1";
     const template = styleTemplate(TEXT_ID);
     const overlays = [makeOverlay("a")];
-    const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
-    const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28 } } };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { content: "A-text", fontSize: 28 } } };
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, template, slot as VariableSlot, itemTextValues, updateTextNode, itemTextStyles),
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
     );
 
     await act(async () => {
@@ -409,11 +408,11 @@ describe("useBatchRender", () => {
     const TEXT_ID = "text-1";
     const template = styleTemplate(TEXT_ID);
     const overlays = [makeOverlay("a")];
-    const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28 } } };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { fontSize: 28 } } };
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, template, slot as VariableSlot, {}, updateTextNode, itemTextStyles),
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
     );
 
     await act(async () => {
@@ -429,11 +428,11 @@ describe("useBatchRender", () => {
     const TEXT_ID = "text-1";
     const template = styleTemplate(TEXT_ID);
     const overlays = [makeOverlay("a")];
-    const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28, color: "#ff0000" } } };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { fontSize: 28, color: "#ff0000" } } };
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, template, slot as VariableSlot, {}, updateTextNode, itemTextStyles),
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
     );
 
     await act(async () => {
@@ -456,14 +455,14 @@ describe("useBatchRender", () => {
     const TEXT_ID = "text-1";
     const template = styleTemplate(TEXT_ID);
     const overlays = [makeOverlay("a"), makeOverlay("b")];
-    const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28 } }, b: { [TEXT_ID]: { fontSize: 40 } } };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { fontSize: 28 } }, b: { [TEXT_ID]: { fontSize: 40 } } };
 
     // Simulate live editor mutation so we can assert the template arg is never
     // permanently changed.
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, template, slot as VariableSlot, {}, updateTextNode, itemTextStyles),
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
     );
 
     await act(async () => {
@@ -478,7 +477,7 @@ describe("useBatchRender", () => {
     const TEXT_ID = "text-1";
     const template = styleTemplate(TEXT_ID);
     const overlays = [makeOverlay("a")];
-    const itemTextStyles = { a: { [TEXT_ID]: { fontSize: 28, color: "#ff0000" } } };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { fontSize: 28, color: "#ff0000" } } };
 
     // Track the live style as updateTextNode mutates it.
     let liveFontSize = 12;
@@ -493,7 +492,7 @@ describe("useBatchRender", () => {
     mockCompositeFromElement.mockRejectedValueOnce(new Error("composite boom"));
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, template, slot as VariableSlot, {}, updateTextNode, itemTextStyles),
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, updateTextNode),
     );
 
     await act(async () => {
@@ -542,12 +541,11 @@ describe("useBatchRender", () => {
       ],
     };
     const overlays = [makeOverlay("a")];
-    const itemTextValues = { a: { [TEXT_ID]: "A-text" } };
-    const itemHiddenNodeIds = { a: [TEXT_ID] };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { content: "A-text", hidden: true } } };
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode, {}, itemHiddenNodeIds),
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemNodeOverrides, updateTextNode),
     );
 
     await act(async () => {
@@ -571,13 +569,15 @@ describe("useBatchRender", () => {
       ],
     };
     const overlays = [makeOverlay("a"), makeOverlay("b")];
-    const itemTextValues = { a: { [TEXT_ID]: "A-text" }, b: { [TEXT_ID]: "B-text" } };
     // node hidden only for overlay "a", NOT for overlay "b"
-    const itemHiddenNodeIds = { a: [TEXT_ID] };
+    const itemNodeOverrides = {
+      a: { [TEXT_ID]: { content: "A-text", hidden: true } },
+      b: { [TEXT_ID]: { content: "B-text" } },
+    };
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemTextValues, updateTextNode, {}, itemHiddenNodeIds),
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemNodeOverrides, updateTextNode),
     );
 
     await act(async () => {
@@ -603,11 +603,11 @@ describe("useBatchRender", () => {
       ],
     };
     const overlays = [makeOverlay("a")];
-    const itemHiddenNodeIds = { a: [TEXT_ID] };
+    const itemNodeOverrides = { a: { [TEXT_ID]: { hidden: true } } };
     const updateTextNode = vi.fn();
 
     const { result } = renderHook(() =>
-      useBatchRender(overlays, textTemplate, slot as VariableSlot, {}, updateTextNode, {}, itemHiddenNodeIds),
+      useBatchRender(overlays, textTemplate, slot as VariableSlot, itemNodeOverrides, updateTextNode),
     );
 
     await act(async () => {

@@ -14,14 +14,18 @@ Import only from `@maga/projects` — internal files are not part of the public 
 | `ProjectAsset` | type | Binary asset ref (`id`, `filename`, `blobKey`) — bytes live out-of-band |
 | `VariableSlot` | type | The variable image slot (`overlayNodeId` + cover-fit `width`/`height`) |
 | `GeneratedOutput` | type | One rendered composite (`overlayAssetId`, `outputBlobKey`, `timestamp`) |
-| `TextStyle` | type | Styleable subset of a `TextNode` (font, size, color, weight, style, opacity, rotation, shadow, text background) — value type of `itemTextStyles`; reexported so callers don't reach into `@maga/editor` |
-| `itemHiddenNodeIds` | field | Optional per-variant hidden-text-node store on `BatchProject` (`overlayAssetId → nodeId[]`); absent = nothing hidden. See Schema v4 |
-| `SchemaVersion` | type | Numeric literal type of the current schema version (`4`) |
-| `SCHEMA_VERSION` | const | The current schema version literal (`4`) |
+| `TextStyle` | type | Styleable subset of a `TextNode` (font, size, color, weight, style, opacity, rotation, shadow, text background); reexported so callers don't reach into `@maga/editor` |
+| `NodeOverride` | type | A per-`(overlay, node)` override value: `Partial<Omit<TextNode & OverlayNode, "id">> & { hidden?: boolean }` — content/style/geometry fields flat, plus the non-Node `hidden` flag. See Schema v5 |
+| `ItemNodeOverrides` | type | The unified store type (`Record<overlayId, Record<nodeId, NodeOverride>>`), value of `BatchProject.itemNodeOverrides` |
+| `SchemaVersion` | type | Numeric literal type of the current schema version (`5`) |
+| `SCHEMA_VERSION` | const | The current schema version literal (`5`) |
+| `getNodeOverride` / `setNodeOverride` / `setNodeHidden` | fn | Unified store accessors: read an override, merge a `NodeOverride` patch (immutable nested-map write), toggle the `hidden` flag (immutable + idempotent — no-op returns the same store ref) |
+| `getTextValue` / `getTextStyle` / `isNodeHidden` | fn | Thin reads over the unified store: content (`""` default), style partial (content/hidden stripped), and visibility |
 | `migrateToV2` | fn | First link in the chain: upgrades a `< 2` record to v2 (empty `itemTextValues` + a transient all-locked `textLayerLocks`). Gates on the v2 literal, not `SCHEMA_VERSION` |
-| `migrateToV3` | fn | Second link: adds empty `itemTextStyles` to a v2 record; idempotent (never resets an existing map) |
-| `migrateToV4` | fn | Third link: retires the lock model — fans each locked layer's template value/style into every overlay's per-item overrides, then drops `textLayerLocks`. Idempotent |
-| `migrateProject` | fn | Single forward-migration entry point — chains v1→v2→v3→v4. Idempotent on a current record. Used by both ZIP import and IDB load |
+| `migrateToV3` | fn | Second link: adds empty `itemTextStyles` to a v2 record, stamping the literal `3`; idempotent (never resets an existing map) |
+| `migrateToV4` | fn | Third link: retires the lock model — fans each locked layer's template value/style into every overlay's per-item text maps, then drops `textLayerLocks`. Idempotent |
+| `migrateToV5` | fn | Fourth link: collapses the three v4 text maps (`itemTextValues`, `itemTextStyles`, `itemHiddenNodeIds`) into the unified `itemNodeOverrides` store, then drops them. No-clobber + idempotent (gates on `>= 5`) |
+| `migrateProject` | fn | Single forward-migration entry point — chains v1→v2→v3→v4→v5. Idempotent on a current record. Used by both ZIP import and IDB load |
 | `exportProjectZip` | fn | Builds a portable project ZIP (`Promise<Blob>`) — see below |
 | `dataUrlToBlob` | fn | `data:<mime>;base64,...` → `Blob` (pure `atob` + `Uint8Array`) |
 | `openDb` | fn | Opens/creates the `maga-batch` IndexedDB (`projects` + `blobs` stores) |
@@ -37,7 +41,7 @@ Single database `maga-batch` (v1), two object stores: `projects` (keyed by proje
 
 ## ZIP import
 
-`importProjectZip(zipBlob)` reverses `exportProjectZip`: it parses `project.json`, validates `schemaVersion <= SCHEMA_VERSION` immediately (throwing `ZipImportError("Incompatible project version")` only for a version **newer** than this build, or a corruption message on missing/invalid JSON). Any older project (v1, v2, or v3, or version-less) is **migrated forward to v4 on load** via the shared `migrateProject` chain rather than rejected (see Schema versioning). It returns the project plus a `Map` of blobs **keyed by the same ZIP-relative paths the project refs use** (`background.<ext>`, `overlays/<i>-...`, `outputs/<i>-...`) so callers can reconcile bytes to refs directly.
+`importProjectZip(zipBlob)` reverses `exportProjectZip`: it parses `project.json`, validates `schemaVersion <= SCHEMA_VERSION` immediately (throwing `ZipImportError("Incompatible project version")` only for a version **newer** than this build, or a corruption message on missing/invalid JSON). Any older project (v1–v4, or version-less) is **migrated forward to v5 on load** via the shared `migrateProject` chain rather than rejected (see Schema versioning). It returns the project plus a `Map` of blobs **keyed by the same ZIP-relative paths the project refs use** (`background.<ext>`, `overlays/<i>-...`, `outputs/<i>-...`) so callers can reconcile bytes to refs directly.
 
 Nullable-field handling: `template` and `variableSlot` are optional in the JSON. Import never hard-throws on a missing field — an absent `template`/`variableSlot` is normalized to `null` (background-only drafts), while a legacy project that carries a non-null value keeps it as-is. Only `schemaVersion` mismatch and missing/corrupt JSON reject.
 
@@ -60,31 +64,32 @@ Nullable-field handling: a background-only draft carries `template: null` and `v
 
 ## Schema versioning
 
-`BatchProject.schemaVersion` is the `4` literal. ZIP import and IDB restore gate on it: a record **newer** than the current version is rejected as incompatible, while an **older** record is migrated forward on load. Bump `SCHEMA_VERSION` only on a breaking change to the project JSON shape.
+`BatchProject.schemaVersion` is the `5` literal. ZIP import and IDB restore gate on it: a record **newer** than the current version is rejected as incompatible, while an **older** record is migrated forward on load. Bump `SCHEMA_VERSION` only on a breaking change to the project JSON shape.
 
 `template` (`EditorState | null`) and `variableSlot` (`VariableSlot | null`) are nullable: a background-only draft is a valid project with both `null`. The IDB adapter and ZIP serialize/deserialize all tolerate `null` natively.
 
-### The per-item override model (current)
+### The unified per-item override model (current, schema v5)
 
-As of v4 **every text layer is per-item** — there is no shared/locked concept. A layer's content and style each resolve independently: a per-item override if one exists, otherwise the template node's own value. The model is three optional maps on `BatchProject`, all keyed by `overlayAssetId → textNodeId → …`:
+As of v4 **every node is per-item** — there is no shared/locked concept. As of v5 the three former parallel text maps are **collapsed into one unified store**:
 
-- `itemTextValues: Record<string, Record<string, string>>` — per-item text **content** overrides. A missing entry falls back to the template node's own text. Empty `{}` means no overrides.
-- `itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>` — per-item text **style** overrides (`Partial<TextStyle>`: font, size, color, weight, style, opacity, rotation, shadow, text background). A missing/empty entry falls back to the template node's own style.
-- `itemHiddenNodeIds?: Record<string, string[]>` — per-variant **hidden** text nodes (`overlayAssetId → nodeId[]`). A node listed for an overlay is excluded from that overlay's canvas preview and Generate All render. **Optional** and purely additive — absence defaults to `{}` / `[]` at read sites, so no schema bump was needed for it.
+- `itemNodeOverrides: Record<overlayAssetId, Record<nodeId, NodeOverride>>` — one `NodeOverride` per `(overlay, node)`. `NodeOverride` is `Partial<Omit<TextNode & OverlayNode, "id">> & { hidden?: boolean }`: content under `content`, style/geometry fields spread flat, and visibility on the `hidden` flag. A missing entry/field falls back to the template node's own value. Empty `{}` means no overrides.
 
-**Render application.** The render loop applies content and style in a **single merged `updateTextNode` call** per layer; a hidden layer is rendered with `opacity: 0` instead. Both the merged patch and the visibility change are restored from the full template snapshot in an exception-safe `finally` — a partial restore would leak a per-item value into the shared template, so the entire snapshot is rewritten.
+**Helpers.** Read/write the store via the exported `getNodeOverride` / `setNodeOverride` (immutable nested-map merge) / `setNodeHidden` (immutable + idempotent toggle), plus the thin reads `getTextValue` / `getTextStyle` / `isNodeHidden`. `getTextStyle` returns the override with `content` and `hidden` stripped.
 
-**Orphaned keys.** When a text node is deleted from the template or an overlay is removed, its key in any of the three maps may go stale. Stale keys are **silently ignored** by the render loop — there is no matching live node, so no mutation happens. No cleanup runs on load or save (cheap to leak, expensive to coordinate); revisit only if ZIP size becomes a concern.
+**Render application.** The render loop applies content and style in a **single merged `updateTextNode` call** per text layer; a layer whose override carries `hidden: true` is rendered with `opacity: 0` instead. Both the merged patch and the visibility change are restored from the full template snapshot in an exception-safe `finally` — a partial restore would leak a per-item value into the shared template, so the entire snapshot is rewritten.
 
-### Migration chain (v1 → v2 → v3 → v4)
+**Orphaned keys.** When a node is deleted from the template or an overlay is removed, its key in the store may go stale. Stale keys are **silently ignored** by the render loop — there is no matching live node, so no mutation happens. No cleanup runs on load or save (cheap to leak, expensive to coordinate); revisit only if ZIP size becomes a concern.
 
-`migrateProject(project)` is the single forward-migration entry point. It chains `migrateToV2`, `migrateToV3`, then `migrateToV4`:
+### Migration chain (v1 → v2 → v3 → v4 → v5)
 
-- `migrateToV2` upgrades a `< 2` record: empty `itemTextValues` plus a **transient** all-locked `textLayerLocks` derived from the template (preserving v1's shared-text behavior). Gates on the **v2 literal (`2`)**, not `SCHEMA_VERSION`, so a current-version bump never re-stamps a genuine v2 record.
-- `migrateToV3` adds `itemTextStyles: {}` to a v2 record. Idempotent — an existing map is preserved, never reset.
-- `migrateToV4` **retires the lock model**: each layer whose `textLayerLocks` entry is `true` has its template content/style fanned out into every overlay's `itemTextValues` / `itemTextStyles`, then `textLayerLocks` is dropped from the record. Edge cases are non-destructive: zero overlays → locks simply dropped; a stale lock key (node no longer in the template) → skipped; an existing per-item override for a locked node → preserved, never overwritten (keeps it idempotent and non-clobbering).
+`migrateProject(project)` is the single forward-migration entry point. It chains `migrateToV2`, `migrateToV3`, `migrateToV4`, then `migrateToV5`. **Each step stamps the literal version it produces** (2, 3, 4, 5), never `SCHEMA_VERSION`, so the chain steps monotonically and a current-version bump never lets an early step skip a later one's transform:
 
-`migrateProject` is idempotent on an already-current (v4) record: existing `itemTextValues` / `itemTextStyles` pass through unchanged and there is no `textLayerLocks` to drop. The **same** helper runs at both ingress points — `zip-import.ts` (via `normalizeNullableFields`) and `idb-adapter.ts` (`loadProject`) — with no forked copies, so legacy v1/v2/v3 records and current v4 ones all load identically. `exportProjectZip` always writes `schemaVersion: 4`.
+- `migrateToV2` upgrades a `< 2` record: empty `itemTextValues` plus a **transient** all-locked `textLayerLocks` derived from the template (preserving v1's shared-text behavior). Gates on the **v2 literal (`2`)**.
+- `migrateToV3` adds `itemTextStyles: {}` to a v2 record, stamping the literal `3`. Idempotent — an existing map is preserved, never reset.
+- `migrateToV4` **retires the lock model**: each layer whose `textLayerLocks` entry is `true` has its template content/style fanned out into every overlay's `itemTextValues` / `itemTextStyles`, then `textLayerLocks` is dropped. Non-destructive edge cases: zero overlays → locks dropped; stale lock key → skipped; an existing per-item override → preserved, never overwritten.
+- `migrateToV5` **collapses the three text maps** (`itemTextValues`, `itemTextStyles`, `itemHiddenNodeIds`) into the unified `itemNodeOverrides` store, then drops them. For each overlay key: content → `NodeOverride.content`, the style partial spreads in, each hidden nodeId → `hidden: true`. **No-clobber** (an existing `itemNodeOverrides` field is never overwritten), **idempotent** (gates on `>= 5`; re-run is a no-op), stale keys skipped, zero-overlay safe.
+
+`migrateProject` is idempotent on an already-current (v5) record: existing `itemNodeOverrides` passes through unchanged and there is no `textLayerLocks` to drop. The **same** helper runs at both ingress points — `zip-import.ts` (via `normalizeNullableFields`) and `idb-adapter.ts` (`loadProject`) — with no forked copies, so legacy v1–v4 records and current v5 ones all load identically. `exportProjectZip` always writes `schemaVersion: 5` and serializes `itemNodeOverrides`.
 
 ## Asset refs are out-of-band
 

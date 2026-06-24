@@ -1,60 +1,68 @@
 "use client";
 
 import { useCallback } from "react";
-import type { TextStyle } from "@maga/projects";
+import { getTextValue, getTextStyle, isNodeHidden } from "@maga/projects";
+import type { ItemNodeOverrides, NodeOverride, TextStyle } from "@maga/projects";
 
 interface UseItemTextArgs {
-  itemTextValues: Record<string, Record<string, string>>;
-  itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
-  itemHiddenNodeIds: Record<string, string[]>;
-  setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
-  setItemTextStyle: (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) => void;
-  setItemNodeHidden: (overlayAssetId: string, nodeId: string, hidden: boolean) => void;
+  itemNodeOverrides: ItemNodeOverrides;
+  setNodeOverride: (overlayAssetId: string, nodeId: string, patch: NodeOverride) => void;
+  setNodeHidden: (overlayAssetId: string, nodeId: string, hidden: boolean) => void;
 }
 
 /**
- * Thin per-item-text accessor over the `use-batch-project` mutation API. Reads
- * an overlay item's text override and its style override; a missing text
- * override returns `""` and a missing style override returns `{}`. Every text
- * layer is per-item (the lock model was retired in schema v4), so the accessors
- * always read the per-item map directly.
+ * Thin per-item-text accessor over the unified `itemNodeOverrides` store. Reads
+ * a text node's content/style override out of the unified `NodeOverride`; a
+ * missing content override returns `""` and a missing style override returns
+ * `{}`. Every text layer is per-item (the lock model was retired in schema v4),
+ * so the accessors always read the per-item store directly.
  *
- * Also exposes `isNodeHidden` / `setNodeHidden` for per-variant text-node
- * visibility (Phase 4). A node absent from `itemHiddenNodeIds[overlayId]` is
- * visible (default).
+ * Public method names (`getTextValue`/`setTextValue`/`getTextStyle`/
+ * `setTextStyle`/`isNodeHidden`/`setNodeHidden`) are preserved so consumers
+ * (`BatchRightPanel`) need no change; the writes route through the unified
+ * `setNodeOverride`/`setNodeHidden` setters.
  */
 export function useItemText({
-  itemTextValues,
-  itemTextStyles,
-  itemHiddenNodeIds,
-  setItemTextValue,
-  setItemTextStyle,
-  setItemNodeHidden,
+  itemNodeOverrides,
+  setNodeOverride,
+  setNodeHidden,
 }: UseItemTextArgs) {
-  const getTextValue = useCallback(
+  const getValue = useCallback(
     (overlayAssetId: string, textNodeId: string): string =>
-      itemTextValues[overlayAssetId]?.[textNodeId] ?? "",
-    [itemTextValues],
+      getTextValue(itemNodeOverrides, overlayAssetId, textNodeId),
+    [itemNodeOverrides],
   );
 
-  const getTextStyle = useCallback(
+  const getStyle = useCallback(
     (overlayAssetId: string, textNodeId: string): Partial<TextStyle> =>
-      itemTextStyles[overlayAssetId]?.[textNodeId] ?? {},
-    [itemTextStyles],
+      getTextStyle(itemNodeOverrides, overlayAssetId, textNodeId),
+    [itemNodeOverrides],
   );
 
-  const isNodeHidden = useCallback(
+  const setTextValue = useCallback(
+    (overlayAssetId: string, textNodeId: string, value: string) =>
+      setNodeOverride(overlayAssetId, textNodeId, { content: value }),
+    [setNodeOverride],
+  );
+
+  const setTextStyle = useCallback(
+    (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) =>
+      setNodeOverride(overlayAssetId, textNodeId, style),
+    [setNodeOverride],
+  );
+
+  const isHidden = useCallback(
     (overlayAssetId: string, nodeId: string): boolean =>
-      (itemHiddenNodeIds[overlayAssetId] ?? []).includes(nodeId),
-    [itemHiddenNodeIds],
+      isNodeHidden(itemNodeOverrides, overlayAssetId, nodeId),
+    [itemNodeOverrides],
   );
 
   return {
-    getTextValue,
-    setTextValue: setItemTextValue,
-    getTextStyle,
-    setTextStyle: setItemTextStyle,
-    isNodeHidden,
-    setNodeHidden: setItemNodeHidden,
+    getTextValue: getValue,
+    setTextValue,
+    getTextStyle: getStyle,
+    setTextStyle,
+    isNodeHidden: isHidden,
+    setNodeHidden,
   };
 }

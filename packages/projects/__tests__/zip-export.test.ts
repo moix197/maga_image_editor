@@ -20,8 +20,7 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     template: { nodes: [] },
     variableSlot: { overlayNodeId: "slot" as NodeId, width: 100, height: 100 },
     outputs: [],
-    itemTextValues: {},
-    itemTextStyles: {},
+    itemNodeOverrides: {},
     ...overrides,
   };
 }
@@ -40,30 +39,32 @@ describe("exportProjectZip", () => {
     expect(blob.size).toBeGreaterThan(0);
 
     const { parsed } = await readProjectJson(blob);
-    expect(parsed.schemaVersion).toBe(4);
+    expect(parsed.schemaVersion).toBe(5);
     expect(parsed.id).toBe("project-1");
     expect(parsed.background).toBeDefined();
   });
 
-  it("writes schemaVersion 4 and the v3 field (itemTextStyles) alongside v2 fields", async () => {
+  it("writes schemaVersion 5 and serializes itemNodeOverrides", async () => {
     const project = makeProject({
-      itemTextValues: { "ov-1": { "node-1": "hello" } },
-      itemTextStyles: { "ov-1": { "node-1": { fontSize: 32 } } },
+      itemNodeOverrides: { "ov-1": { "node-1": { content: "hello", fontSize: 32 } } },
     });
     const blob = await exportProjectZip(project, PNG_DATA_URL, [], []);
     const { parsed } = await readProjectJson(blob);
 
-    expect(parsed.schemaVersion).toBe(4);
-    expect(parsed.itemTextValues).toEqual({ "ov-1": { "node-1": "hello" } });
-    expect(parsed.itemTextStyles).toEqual({ "ov-1": { "node-1": { fontSize: 32 } } });
+    expect(parsed.schemaVersion).toBe(5);
+    expect(parsed.itemNodeOverrides).toEqual({
+      "ov-1": { "node-1": { content: "hello", fontSize: 32 } },
+    });
     expect("textLayerLocks" in parsed).toBe(false);
+    expect("itemTextValues" in parsed).toBe(false);
+    expect("itemTextStyles" in parsed).toBe(false);
   });
 
-  it("forces schemaVersion 4 on export even if the in-memory record is older", async () => {
+  it("forces schemaVersion 5 on export even if the in-memory record is older", async () => {
     const stale = { ...makeProject(), schemaVersion: 1 as unknown as BatchProject["schemaVersion"] };
     const blob = await exportProjectZip(stale, PNG_DATA_URL, [], []);
     const { parsed } = await readProjectJson(blob);
-    expect(parsed.schemaVersion).toBe(4);
+    expect(parsed.schemaVersion).toBe(5);
   });
 
   it("includes one entry per overlay and per output", async () => {
@@ -114,7 +115,7 @@ describe("exportProjectZip", () => {
     expect(blob.size).toBeGreaterThan(0);
 
     const { raw, parsed } = await readProjectJson(blob);
-    expect(parsed.schemaVersion).toBe(4);
+    expect(parsed.schemaVersion).toBe(5);
     expect(parsed.template).toBeNull();
     expect(parsed.variableSlot).toBeNull();
     // null fields are written natively as JSON null

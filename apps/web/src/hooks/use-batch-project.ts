@@ -3,7 +3,18 @@
 import { useState, useCallback } from "react";
 import { fileToDataUrl } from "@/lib/image-helpers";
 import { safeRandomId } from "@/lib/id";
-import type { BatchProject, GeneratedOutput, ProjectAsset, TextStyle, VariableSlot } from "@maga/projects";
+import {
+  setNodeOverride as setNodeOverrideOn,
+  setNodeHidden as setNodeHiddenOn,
+} from "@maga/projects";
+import type {
+  BatchProject,
+  GeneratedOutput,
+  ItemNodeOverrides,
+  NodeOverride,
+  ProjectAsset,
+  VariableSlot,
+} from "@maga/projects";
 import type { EditorState } from "@maga/editor";
 
 interface UseBatchProjectResult {
@@ -12,9 +23,7 @@ interface UseBatchProjectResult {
   template: EditorState | null;
   variableSlot: VariableSlot | null;
   outputs: GeneratedOutput[];
-  itemTextValues: Record<string, Record<string, string>>;
-  itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
-  itemHiddenNodeIds: Record<string, string[]>;
+  itemNodeOverrides: ItemNodeOverrides;
   setBackground: (file: File) => Promise<void>;
   addOverlays: (files: File[]) => Promise<void>;
   setTemplate: (editorState: EditorState, slot: VariableSlot) => void;
@@ -24,9 +33,8 @@ interface UseBatchProjectResult {
   clearProject: () => void;
   setProject: (project: BatchProject) => void;
   setVariableSlot: (slot: VariableSlot | null) => void;
-  setItemTextValue: (overlayAssetId: string, textNodeId: string, value: string) => void;
-  setItemTextStyle: (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) => void;
-  setItemNodeHidden: (overlayAssetId: string, nodeId: string, hidden: boolean) => void;
+  setNodeOverride: (overlayAssetId: string, nodeId: string, patch: NodeOverride) => void;
+  setNodeHidden: (overlayAssetId: string, nodeId: string, hidden: boolean) => void;
   reorderOverlays: (newOrder: ProjectAsset[]) => void;
 }
 
@@ -36,9 +44,7 @@ export function useBatchProject(): UseBatchProjectResult {
   const [template, setTemplateState] = useState<EditorState | null>(null);
   const [variableSlot, setVariableSlotState] = useState<VariableSlot | null>(null);
   const [outputs, setOutputs] = useState<GeneratedOutput[]>([]);
-  const [itemTextValues, setItemTextValuesState] = useState<Record<string, Record<string, string>>>({});
-  const [itemTextStyles, setItemTextStylesState] = useState<Record<string, Record<string, Partial<TextStyle>>>>({});
-  const [itemHiddenNodeIds, setItemHiddenNodeIdsState] = useState<Record<string, string[]>>({});
+  const [itemNodeOverrides, setItemNodeOverridesState] = useState<ItemNodeOverrides>({});
 
   const setBackground = useCallback(async (file: File) => {
     const blobKey = await fileToDataUrl(file);
@@ -88,9 +94,7 @@ export function useBatchProject(): UseBatchProjectResult {
     setTemplateState(null);
     setVariableSlotState(null);
     setOutputs([]);
-    setItemTextValuesState({});
-    setItemTextStylesState({});
-    setItemHiddenNodeIdsState({});
+    setItemNodeOverridesState({});
   }, []);
 
   const setProject = useCallback((project: BatchProject) => {
@@ -99,56 +103,32 @@ export function useBatchProject(): UseBatchProjectResult {
     setTemplateState(project.template);
     setVariableSlotState(project.variableSlot);
     setOutputs(project.outputs);
-    setItemTextValuesState(project.itemTextValues);
-    setItemTextStylesState(project.itemTextStyles);
-    setItemHiddenNodeIdsState(project.itemHiddenNodeIds ?? {});
+    setItemNodeOverridesState(project.itemNodeOverrides ?? {});
   }, []);
 
   const setVariableSlot = useCallback((slot: VariableSlot | null) => {
     setVariableSlotState(slot);
   }, []);
 
-  const setItemTextValue = useCallback(
-    (overlayAssetId: string, textNodeId: string, value: string) => {
-      setItemTextValuesState((prev) => ({
-        ...prev,
-        [overlayAssetId]: { ...prev[overlayAssetId], [textNodeId]: value },
-      }));
-    },
-    [],
-  );
-
-  const setItemTextStyle = useCallback(
-    (overlayAssetId: string, textNodeId: string, style: Partial<TextStyle>) => {
-      setItemTextStylesState((prev) => ({
-        ...prev,
-        [overlayAssetId]: {
-          ...prev[overlayAssetId],
-          [textNodeId]: { ...prev[overlayAssetId]?.[textNodeId], ...style },
-        },
-      }));
+  /**
+   * Merges a {@link NodeOverride} patch onto one overlay's node override.
+   * Immutable nested-map update delegated to the package helper.
+   */
+  const setNodeOverride = useCallback(
+    (overlayAssetId: string, nodeId: string, patch: NodeOverride) => {
+      setItemNodeOverridesState((prev) => setNodeOverrideOn(prev, overlayAssetId, nodeId, patch));
     },
     [],
   );
 
   /**
-   * Toggles a text node's hidden state for one overlay. Immutable and
-   * idempotent: a no-op toggle (hiding an already-hidden node, or revealing a
-   * non-hidden one) returns the previous state object so referential equality
-   * is preserved and no re-render is triggered.
+   * Toggles a node's hidden state for one overlay. Immutable and idempotent: a
+   * no-op toggle returns the previous state object so referential equality is
+   * preserved and no re-render is triggered (handled by the package helper).
    */
-  const setItemNodeHidden = useCallback(
+  const setNodeHidden = useCallback(
     (overlayAssetId: string, nodeId: string, hidden: boolean) => {
-      setItemHiddenNodeIdsState((prev) => {
-        const current = prev[overlayAssetId] ?? [];
-        const alreadyHidden = current.includes(nodeId);
-        if (hidden && alreadyHidden) return prev;
-        if (!hidden && !alreadyHidden) return prev;
-        const next = hidden
-          ? [...current, nodeId]
-          : current.filter((id) => id !== nodeId);
-        return { ...prev, [overlayAssetId]: next };
-      });
+      setItemNodeOverridesState((prev) => setNodeHiddenOn(prev, overlayAssetId, nodeId, hidden));
     },
     [],
   );
@@ -159,9 +139,7 @@ export function useBatchProject(): UseBatchProjectResult {
     template,
     variableSlot,
     outputs,
-    itemTextValues,
-    itemTextStyles,
-    itemHiddenNodeIds,
+    itemNodeOverrides,
     setBackground,
     addOverlays,
     setTemplate,
@@ -171,9 +149,8 @@ export function useBatchProject(): UseBatchProjectResult {
     clearProject,
     setProject,
     setVariableSlot,
-    setItemTextValue,
-    setItemTextStyle,
-    setItemNodeHidden,
+    setNodeOverride,
+    setNodeHidden,
     reorderOverlays,
   };
 }

@@ -12,7 +12,7 @@ import { patchOverlays } from "@/lib/overlay-patch";
 import { waitTwoFrames } from "@/lib/capture-helpers";
 import { isTextNode } from "@maga/editor";
 import type { EditorState, NodeId, TextNode } from "@maga/editor";
-import type { GeneratedOutput, ProjectAsset, TextStyle, VariableSlot } from "@maga/projects";
+import type { GeneratedOutput, ItemNodeOverrides, ProjectAsset, TextStyle, VariableSlot } from "@maga/projects";
 
 /**
  * A text node's id paired with its template (original) content AND the full set
@@ -75,10 +75,8 @@ export function useBatchRender(
   overlays: ProjectAsset[],
   template: EditorState,
   slot: VariableSlot,
-  itemTextValues: Record<string, Record<string, string>> = {},
+  itemNodeOverrides: ItemNodeOverrides = {},
   updateTextNode?: (id: NodeId, patch: Partial<Omit<TextNode, "id">>) => void,
-  itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {},
-  itemHiddenNodeIds: Record<string, string[]> = {},
 ): UseBatchRenderResult {
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState<Progress>({ current: 0, total: 0 });
@@ -121,7 +119,7 @@ export function useBatchRender(
         // Layers hidden for this overlay are excluded from the render: we set
         // their opacity to 0 before capture so they are invisible in the output.
         // They are restored (along with all other layers) in the finally block.
-        const hiddenIds = itemHiddenNodeIds[overlay.id] ?? [];
+        const overlayOverrides = itemNodeOverrides[overlay.id];
 
         let outputBlobKey: string;
         try {
@@ -130,12 +128,12 @@ export function useBatchRender(
           // per-item text and styling (no detached clone). A missing override
           // falls back to the template value/style. Hidden layers get opacity 0.
           for (const layer of perItemLayers) {
-            const isHidden = hiddenIds.includes(layer.id as string);
-            if (isHidden) {
+            const override = overlayOverrides?.[layer.id as string];
+            if (override?.hidden) {
               updateTextNode!(layer.id, { opacity: 0 });
             } else {
-              const value = itemTextValues[overlay.id]?.[layer.id] ?? layer.templateValue;
-              const stylePatch = itemTextStyles[overlay.id]?.[layer.id];
+              const { content, hidden: _hidden, ...stylePatch } = override ?? {};
+              const value = content ?? layer.templateValue;
               updateTextNode!(layer.id, { ...stylePatch, content: value });
             }
           }
@@ -168,7 +166,7 @@ export function useBatchRender(
       setIsRunning(false);
       onRestoreSelection(prevId);
     }
-  }, [overlays, template, slot, itemTextValues, updateTextNode, itemTextStyles, itemHiddenNodeIds]);
+  }, [overlays, template, slot, itemNodeOverrides, updateTextNode]);
 
   const cancel = useCallback(() => {
     cancelRef.current = true;

@@ -1,6 +1,6 @@
 /**
  * Tests that text-style edits (color, fontSize, etc.) in BatchRightPanel fan out
- * to per-variant itemTextStyles via itemText.setTextStyle — NOT to the shared
+ * to per-variant node overrides via itemText.setTextStyle — NOT to the shared
  * template via editorState.updateTextNode. This is the Phase 1b fix.
  *
  * Also tests the read side: the TextStylePanel receives the effective merged node

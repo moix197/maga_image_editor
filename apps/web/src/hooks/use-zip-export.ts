@@ -6,8 +6,8 @@ import { safeRandomId } from "@/lib/id";
 import type {
   BatchProject,
   GeneratedOutput,
+  ItemNodeOverrides,
   ProjectAsset,
-  TextStyle,
   VariableSlot,
 } from "@maga/projects";
 import type { EditorState } from "@maga/editor";
@@ -18,8 +18,7 @@ interface ProjectState {
   template: EditorState | null;
   variableSlot: VariableSlot | null;
   outputs: GeneratedOutput[];
-  itemTextValues?: Record<string, Record<string, string>>;
-  itemTextStyles?: Record<string, Record<string, Partial<TextStyle>>>;
+  itemNodeOverrides?: ItemNodeOverrides;
 }
 
 interface UseZipExportResult {
@@ -53,8 +52,7 @@ function assembleProject(
       height: 0,
     },
     outputs: state.outputs,
-    itemTextValues: state.itemTextValues ?? {},
-    itemTextStyles: state.itemTextStyles ?? {},
+    itemNodeOverrides: state.itemNodeOverrides ?? {},
   };
 }
 

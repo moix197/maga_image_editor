@@ -20,11 +20,10 @@ export class ZipImportError extends Error {
  * This replaces the previous hard-throw-on-missing behavior so incomplete and
  * pre-refactor projects import without crashing.
  *
- * Also applies the full v1→v2→v3→v4 schema migration via {@link migrateProject}:
- * a record below the current version gains the v2 field (`itemTextValues`) and
- * the v3 field (`itemTextStyles: {}`), and the v4 step fans any legacy locked
- * layers into per-item overrides then drops `textLayerLocks`; a record already
- * current passes through with those fields intact (idempotent).
+ * Also applies the full v1→v2→v3→v4→v5 schema migration via {@link migrateProject}:
+ * a record below the current version is fanned through the lock model (v4) and
+ * then collapsed into the unified `itemNodeOverrides` store (v5); a record
+ * already current passes through with that field intact (idempotent).
  */
 function normalizeNullableFields(project: BatchProject): BatchProject {
   return migrateProject({

@@ -24,8 +24,7 @@ function makeProject(overrides: Partial<BatchProject> = {}): BatchProject {
     template: { nodes: [] },
     variableSlot: { overlayNodeId: "slot" as NodeId, width: 100, height: 100 },
     outputs: [],
-    itemTextValues: {},
-    itemTextStyles: {},
+    itemNodeOverrides: {},
     ...overrides,
   };
 }
@@ -45,7 +44,7 @@ describe("idb-adapter", () => {
     const project = makeProject();
     await saveProject(db, project);
     const loaded = await loadProject(db, project.id);
-    // The fixture is already a v4 record (no textLayerLocks); loadProject's
+    // The fixture is already a v5 record (no legacy maps); loadProject's
     // migration is a no-op, so it round-trips unchanged.
     expect(loaded).toEqual(project);
   });
@@ -96,7 +95,7 @@ describe("idb-adapter", () => {
     expect(await loadProject(db, futuristic.id)).toBeNull();
   });
 
-  it("loadProject migrates a stored v1 record to v4 (itemTextValues {}, no textLayerLocks, itemTextStyles {})", async () => {
+  it("loadProject migrates a stored v1 record to v5 (empty itemNodeOverrides, no textLayerLocks)", async () => {
     const db = await openDb();
     // A legacy v1 record: schemaVersion 1, no v2/v3 fields, two text layers.
     const v1 = {
@@ -122,13 +121,14 @@ describe("idb-adapter", () => {
     expect(loaded).not.toBeNull();
     expect(loaded!.schemaVersion).toBe(SCHEMA_VERSION);
     // v1 had no overlays, so the all-locked layers fan into nothing and the
-    // lock map drops entirely on v4 migration.
-    expect(loaded!.itemTextValues).toEqual({});
+    // lock map drops entirely; v5 collapse yields an empty unified store.
+    expect(loaded!.itemNodeOverrides).toEqual({});
     expect("textLayerLocks" in loaded!).toBe(false);
-    expect(loaded!.itemTextStyles).toEqual({});
+    expect("itemTextValues" in loaded!).toBe(false);
+    expect("itemTextStyles" in loaded!).toBe(false);
   });
 
-  it("loadProject migrates a stored v2 record to v4 (preserves values, drops locks, adds itemTextStyles {})", async () => {
+  it("loadProject migrates a stored v2 record to v5 (preserves values in itemNodeOverrides, drops locks)", async () => {
     const db = await openDb();
     const v2 = {
       schemaVersion: 2,
@@ -149,21 +149,21 @@ describe("idb-adapter", () => {
     const loaded = await loadProject(db, "v2rec");
     expect(loaded).not.toBeNull();
     expect(loaded!.schemaVersion).toBe(SCHEMA_VERSION);
-    // t1 was unlocked (false) so it is not fanned into per-item values; the
-    // lock map drops on v4 migration.
-    expect(loaded!.itemTextValues).toEqual({ "ov-1": { t1: "kept" } });
+    // t1 was unlocked (false) so it is not fanned out; its existing per-item
+    // value collapses into the unified store; the lock map drops.
+    expect(loaded!.itemNodeOverrides).toEqual({ "ov-1": { t1: { content: "kept" } } });
     expect("textLayerLocks" in loaded!).toBe(false);
-    expect(loaded!.itemTextStyles).toEqual({});
+    expect("itemTextValues" in loaded!).toBe(false);
   });
 
-  it("loadProject is idempotent on an already-v4 record (itemTextStyles preserved)", async () => {
+  it("loadProject is idempotent on an already-v5 record (itemNodeOverrides preserved)", async () => {
     const db = await openDb();
-    const v3 = makeProject({ itemTextStyles: { "ov-1": { t1: { fontSize: 19 } } } });
-    await saveProject(db, v3);
+    const v5 = makeProject({ itemNodeOverrides: { "ov-1": { t1: { fontSize: 19 } } } });
+    await saveProject(db, v5);
 
-    const loaded = await loadProject(db, v3.id);
+    const loaded = await loadProject(db, v5.id);
     expect(loaded).not.toBeNull();
     expect(loaded!.schemaVersion).toBe(SCHEMA_VERSION);
-    expect(loaded!.itemTextStyles).toEqual({ "ov-1": { t1: { fontSize: 19 } } });
+    expect(loaded!.itemNodeOverrides).toEqual({ "ov-1": { t1: { fontSize: 19 } } });
   });
 });

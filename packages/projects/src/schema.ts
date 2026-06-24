@@ -1,5 +1,5 @@
 import { isTextNode } from "@maga/editor";
-import type { EditorState, NodeId, TextNode } from "@maga/editor";
+import type { EditorState, NodeId, OverlayNode, TextNode } from "@maga/editor";
 
 /**
  * The styleable subset of a {@link TextNode}: every field a per-item override
@@ -21,11 +21,27 @@ export type TextStyle = Pick<
 >;
 
 /**
+ * A per-(overlay, node) override value: a `Partial` of the overridable fields
+ * shared across both node kinds (`TextNode` and `OverlayNode`, minus `id`) plus
+ * an optional `hidden` flag that is NOT a real Node field.
+ *
+ * `id` is `Omit`ted because the override is keyed by nodeId. `hidden: true` means
+ * the node is hidden for that variant (absent/`false` = visible); the merge path
+ * strips `hidden` before spreading the rest onto a real Node, so the flag never
+ * lands on a Node and never reaches the DOM.
+ *
+ * Field-collision note: `TextNode` and `OverlayNode` overlap only on `x`, `y`,
+ * `rotation`, `zIndex`, `opacity`, all typed `number`, so the intersection is
+ * well-formed; under `Partial<…>` every field is optional. See decision D2.
+ */
+export type NodeOverride = Partial<Omit<TextNode & OverlayNode, "id">> & { hidden?: boolean };
+
+/**
  * Schema version for {@link BatchProject}. Bump on any breaking change to the
  * project JSON shape; consumers (ZIP import, IDB restore) gate on this literal
  * to reject incompatible projects.
  */
-export const SCHEMA_VERSION = 4 as const;
+export const SCHEMA_VERSION = 5 as const;
 
 /** Numeric literal type for the current schema version. */
 export type SchemaVersion = typeof SCHEMA_VERSION;
@@ -87,7 +103,7 @@ export interface GeneratedOutput {
  * };
  */
 export interface BatchProject {
-  /** Discriminant pinning the project to its schema version (current: v4). */
+  /** Discriminant pinning the project to its schema version (current: v5). */
   schemaVersion: SchemaVersion;
   /** Stable uuid for the project. */
   id: string;
@@ -114,27 +130,15 @@ export interface BatchProject {
   /** Generated composites; defaults to `[]` before any render. */
   outputs: GeneratedOutput[];
   /**
-   * Per-item text overrides keyed `overlayAssetId → textNodeId → value`. Every
-   * text layer is per-item (schema v4 retired the lock model); a missing entry
-   * falls back to the template's own text value. Empty `{}` means no overrides.
+   * Unified per-(overlay, node) override store keyed
+   * `overlayAssetId → nodeId → {@link NodeOverride}` (schema v5). Collapses the
+   * former v4 trio (`itemTextValues`, `itemTextStyles`, `itemHiddenNodeIds`)
+   * into one map: content lives under `content`, the style partial is spread
+   * into the override, and visibility rides on the `hidden` flag. Every node is
+   * per-item; a missing entry/field falls back to the template node's own value.
+   * Empty `{}` means no overrides.
    */
-  itemTextValues: Record<string, Record<string, string>>;
-  /**
-   * Per-item text STYLE overrides keyed `overlayAssetId → textNodeId → style
-   * partial` (schema v3). Mirrors {@link itemTextValues} but carries a
-   * {@link TextStyle} partial instead of a string. Every text layer is per-item
-   * (schema v4 retired the lock model); a missing/empty entry falls back to the
-   * template node's own style. Empty `{}` means no style overrides.
-   */
-  itemTextStyles: Record<string, Record<string, Partial<TextStyle>>>;
-  /**
-   * Per-variant hidden node ids keyed `overlayAssetId → nodeId[]`. A text node
-   * listed here for a given overlay is excluded from that overlay's canvas
-   * preview and Generate All render. Absent means nothing is hidden for that
-   * overlay. Added without a schema version bump — purely additive and
-   * backward-compatible; absence defaults to `{}` / `[]` at read sites.
-   */
-  itemHiddenNodeIds?: Record<string, string[]>;
+  itemNodeOverrides: Record<string, Record<string, NodeOverride>>;
 }
 
 /**
@@ -163,6 +167,20 @@ function textStyleOf(node: TextNode): TextStyle {
  * model was retired in v4, so this is no longer part of the public surface; it
  * survives only to feed the v2→v3→v4 fan-out for legacy v1 records.
  */
+/**
+ * Retired v4 per-item text **content** map shape (`overlayId → nodeId → value`).
+ * No longer a field on {@link BatchProject} (collapsed into `itemNodeOverrides`
+ * in v5); retained as a standalone alias for the migration steps that produce
+ * and consume it.
+ */
+type LegacyItemTextValues = Record<string, Record<string, string>>;
+
+/** Retired v4 per-item text **style** map shape (`overlayId → nodeId → partial`). */
+type LegacyItemTextStyles = Record<string, Record<string, Partial<TextStyle>>>;
+
+/** Retired v4 per-variant **hidden** node-id map shape (`overlayId → nodeId[]`). */
+type LegacyItemHiddenNodeIds = Record<string, string[]>;
+
 function v1LockMap(template: EditorState | null): Record<string, boolean> {
   const locks: Record<string, boolean> = {};
   for (const node of template?.nodes ?? []) {
@@ -184,11 +202,11 @@ function v1LockMap(template: EditorState | null): Record<string, boolean> {
  */
 export function migrateToV2<T extends { schemaVersion: number; template: EditorState | null }>(
   project: T,
-): T & { schemaVersion: number; itemTextValues: BatchProject["itemTextValues"]; textLayerLocks?: Record<string, boolean> } {
+): T & { schemaVersion: number; itemTextValues: LegacyItemTextValues; textLayerLocks?: Record<string, boolean> } {
   if (project.schemaVersion >= 2) {
     return project as T & {
       schemaVersion: number;
-      itemTextValues: BatchProject["itemTextValues"];
+      itemTextValues: LegacyItemTextValues;
       textLayerLocks?: Record<string, boolean>;
     };
   }
@@ -207,11 +225,11 @@ export function migrateToV2<T extends { schemaVersion: number; template: EditorS
  * Run after {@link migrateToV2} via {@link migrateProject}.
  */
 export function migrateToV3<
-  T extends { schemaVersion: number; itemTextStyles?: BatchProject["itemTextStyles"] },
->(project: T): T & Pick<BatchProject, "schemaVersion" | "itemTextStyles"> {
+  T extends { schemaVersion: number; itemTextStyles?: LegacyItemTextStyles },
+>(project: T): T & { schemaVersion: number; itemTextStyles: LegacyItemTextStyles } {
   return {
     ...project,
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: 3,
     itemTextStyles: project.itemTextStyles ?? {},
   };
 }
@@ -238,19 +256,19 @@ export function migrateToV4<
     schemaVersion: number;
     template: EditorState | null;
     textLayerLocks?: Record<string, boolean>;
-    itemTextValues: BatchProject["itemTextValues"];
-    itemTextStyles: BatchProject["itemTextStyles"];
+    itemTextValues: LegacyItemTextValues;
+    itemTextStyles: LegacyItemTextStyles;
     overlays: BatchProject["overlays"];
   },
 >(
   project: T,
-): Omit<T, "textLayerLocks"> & Pick<BatchProject, "schemaVersion" | "itemTextValues" | "itemTextStyles"> {
+): Omit<T, "textLayerLocks"> & { schemaVersion: number; itemTextValues: LegacyItemTextValues; itemTextStyles: LegacyItemTextStyles } {
   const { textLayerLocks, ...rest } = project;
   const templateNodeIds = new Set(
     (project.template?.nodes ?? []).filter(isTextNode).map((node) => node.id),
   );
-  const itemTextValues: BatchProject["itemTextValues"] = { ...project.itemTextValues };
-  const itemTextStyles: BatchProject["itemTextStyles"] = { ...project.itemTextStyles };
+  const itemTextValues: LegacyItemTextValues = { ...project.itemTextValues };
+  const itemTextStyles: LegacyItemTextStyles = { ...project.itemTextStyles };
 
   for (const [nodeId, locked] of Object.entries(textLayerLocks ?? {})) {
     if (!locked || !templateNodeIds.has(nodeId as NodeId)) continue;
@@ -269,22 +287,216 @@ export function migrateToV4<
   return { ...rest, schemaVersion: 4, itemTextValues, itemTextStyles };
 }
 
+/** The v5-shaped output of {@link migrateToV5}: legacy maps dropped, unified store added. */
+type MigratedToV5<T> = Omit<T, "itemTextValues" | "itemTextStyles" | "itemHiddenNodeIds" | "itemNodeOverrides"> &
+  Pick<BatchProject, "schemaVersion" | "itemNodeOverrides">;
+
 /**
- * Single forward-migration entry point: chains v1→v2→v3→v4 by composing
- * {@link migrateToV2}, {@link migrateToV3}, then {@link migrateToV4}. Idempotent
- * on an already-current record (existing `itemTextValues` / `itemTextStyles` are
- * preserved, never reset; `textLayerLocks` is dropped). Shared by ZIP import and
- * IDB load so both apply an identical migration path — no forked copies.
+ * Upgrades a v4 record to v5 by collapsing the three parallel per-item text maps
+ * (`itemTextValues`, `itemTextStyles`, `itemHiddenNodeIds`) into the single
+ * unified {@link BatchProject.itemNodeOverrides} store, then dropping the three
+ * old maps. For each overlay key present across the three maps:
+ * - a content entry folds into `NodeOverride.content`;
+ * - the style partial is spread into the override;
+ * - each hidden nodeId becomes `hidden: true`.
+ *
+ * Edge cases (mirror the v3→v4 handling):
+ * - **idempotent** — a record already at v5 (`schemaVersion >= 5`) is returned
+ *   as-is, so re-running the chain is a no-op;
+ * - **no-clobber** — an existing `itemNodeOverrides[overlay][node]` field is
+ *   never overwritten by the fold;
+ * - **stale keys skipped** — collapse iterates the existing map keys only, so an
+ *   overlay/node with no source entry yields nothing;
+ * - **zero-overlay safe** — empty maps fold into an empty `itemNodeOverrides`.
+ *
+ * Run after {@link migrateToV4} via {@link migrateProject}.
+ */
+export function migrateToV5<
+  T extends {
+    schemaVersion: number;
+    itemTextValues: LegacyItemTextValues;
+    itemTextStyles: LegacyItemTextStyles;
+    itemHiddenNodeIds?: LegacyItemHiddenNodeIds;
+    itemNodeOverrides?: ItemNodeOverrides;
+  },
+>(
+  project: T,
+): MigratedToV5<T> {
+  if (project.schemaVersion >= 5) {
+    // Input is gated to `<= SCHEMA_VERSION` (5) by both ingress points and the
+    // `>= 5` guard, so an already-current record is exactly v5; re-stamp the
+    // literal and pass `itemNodeOverrides` through untouched (idempotent).
+    const {
+      itemTextValues: _v,
+      itemTextStyles: _s,
+      itemHiddenNodeIds: _h,
+      ...rest
+    } = project;
+    return {
+      ...rest,
+      schemaVersion: SCHEMA_VERSION,
+      itemNodeOverrides: project.itemNodeOverrides ?? {},
+    } as MigratedToV5<T>;
+  }
+
+  const {
+    itemTextValues,
+    itemTextStyles,
+    itemHiddenNodeIds,
+    itemNodeOverrides: existing,
+    ...rest
+  } = project;
+
+  const overrides: BatchProject["itemNodeOverrides"] = { ...(existing ?? {}) };
+
+  /**
+   * Returns (creating if absent) the override object for `(overlay, node)`,
+   * copying the nested maps before write so the input record is never mutated.
+   */
+  const overrideFor = (overlayId: string, nodeId: string): NodeOverride => {
+    const perOverlay = (overrides[overlayId] = { ...(overrides[overlayId] ?? {}) });
+    return (perOverlay[nodeId] = { ...(perOverlay[nodeId] ?? {}) });
+  };
+
+  for (const [overlayId, nodeMap] of Object.entries(itemTextValues)) {
+    for (const [nodeId, content] of Object.entries(nodeMap)) {
+      const override = overrideFor(overlayId, nodeId);
+      if (!("content" in override)) override.content = content;
+    }
+  }
+
+  for (const [overlayId, nodeMap] of Object.entries(itemTextStyles)) {
+    for (const [nodeId, style] of Object.entries(nodeMap)) {
+      const override = overrideFor(overlayId, nodeId);
+      for (const [field, value] of Object.entries(style)) {
+        if (!(field in override)) (override as Record<string, unknown>)[field] = value;
+      }
+    }
+  }
+
+  for (const [overlayId, nodeIds] of Object.entries(itemHiddenNodeIds ?? {})) {
+    for (const nodeId of nodeIds) {
+      const override = overrideFor(overlayId, nodeId);
+      if (!("hidden" in override)) override.hidden = true;
+    }
+  }
+
+  return { ...rest, schemaVersion: 5, itemNodeOverrides: overrides } as MigratedToV5<T>;
+}
+
+/**
+ * Single forward-migration entry point: chains v1→v2→v3→v4→v5 by composing
+ * {@link migrateToV2}, {@link migrateToV3}, {@link migrateToV4}, then
+ * {@link migrateToV5}. Idempotent on an already-current record (existing
+ * `itemNodeOverrides` is preserved, never reset; `textLayerLocks` is dropped).
+ * Shared by ZIP import and IDB load so both apply an identical migration path —
+ * no forked copies.
  */
 export function migrateProject<
   T extends {
     schemaVersion: number;
     template: EditorState | null;
     overlays: BatchProject["overlays"];
-    itemTextStyles?: BatchProject["itemTextStyles"];
+    itemTextStyles?: LegacyItemTextStyles;
   },
 >(
   project: T,
-): Omit<T, "textLayerLocks"> & Pick<BatchProject, "schemaVersion" | "itemTextValues" | "itemTextStyles"> {
-  return migrateToV4(migrateToV3(migrateToV2(project)));
+): Omit<T, "textLayerLocks" | "itemTextValues" | "itemTextStyles" | "itemHiddenNodeIds"> &
+  Pick<BatchProject, "schemaVersion" | "itemNodeOverrides"> {
+  const migrated = migrateToV5(migrateToV4(migrateToV3(migrateToV2(project))));
+  return migrated as Omit<T, "textLayerLocks" | "itemTextValues" | "itemTextStyles" | "itemHiddenNodeIds"> &
+    Pick<BatchProject, "schemaVersion" | "itemNodeOverrides">;
+}
+
+/** The unified per-item override store: `overlayId → nodeId → NodeOverride`. */
+export type ItemNodeOverrides = BatchProject["itemNodeOverrides"];
+
+/**
+ * Reads the override for `(overlayId, nodeId)` from the unified store, or `{}`
+ * when none exists. Pure read — never mutates the store.
+ */
+export function getNodeOverride(
+  store: ItemNodeOverrides,
+  overlayId: string,
+  nodeId: string,
+): NodeOverride {
+  return store[overlayId]?.[nodeId] ?? {};
+}
+
+/**
+ * Returns a new store with `patch` merged onto the existing override for
+ * `(overlayId, nodeId)` (existing fields kept, patch fields win). Immutable:
+ * the input store and its nested maps are never mutated.
+ */
+export function setNodeOverride(
+  store: ItemNodeOverrides,
+  overlayId: string,
+  nodeId: string,
+  patch: NodeOverride,
+): ItemNodeOverrides {
+  return {
+    ...store,
+    [overlayId]: {
+      ...store[overlayId],
+      [nodeId]: { ...store[overlayId]?.[nodeId], ...patch },
+    },
+  };
+}
+
+/**
+ * Returns a new store with the `hidden` flag of `(overlayId, nodeId)` set to
+ * `hidden`. Immutable and idempotent: a no-op toggle (setting the flag to a
+ * value it already holds) returns the same store reference so referential
+ * equality is preserved and no re-render is triggered.
+ */
+export function setNodeHidden(
+  store: ItemNodeOverrides,
+  overlayId: string,
+  nodeId: string,
+  hidden: boolean,
+): ItemNodeOverrides {
+  const current = store[overlayId]?.[nodeId]?.hidden ?? false;
+  if (current === hidden) return store;
+  return setNodeOverride(store, overlayId, nodeId, { hidden });
+}
+
+/**
+ * Thin read of a text node's per-item **content** override out of the unified
+ * store; returns `""` when none exists (the template node's own content is the
+ * fallback at the read site).
+ */
+export function getTextValue(
+  store: ItemNodeOverrides,
+  overlayId: string,
+  nodeId: string,
+): string {
+  return store[overlayId]?.[nodeId]?.content ?? "";
+}
+
+/**
+ * Thin read of a text node's per-item **style** override out of the unified
+ * store: the {@link TextStyle} subset of the override, with `content` and
+ * `hidden` stripped. Returns `{}` when none exists.
+ */
+export function getTextStyle(
+  store: ItemNodeOverrides,
+  overlayId: string,
+  nodeId: string,
+): Partial<TextStyle> {
+  const override = store[overlayId]?.[nodeId];
+  if (!override) return {};
+  const { content: _content, hidden: _hidden, ...style } = override;
+  return style as Partial<TextStyle>;
+}
+
+/**
+ * True when `(overlayId, nodeId)` is hidden for that variant in the unified
+ * store (its override carries `hidden: true`).
+ */
+export function isNodeHidden(
+  store: ItemNodeOverrides,
+  overlayId: string,
+  nodeId: string,
+): boolean {
+  return store[overlayId]?.[nodeId]?.hidden === true;
 }

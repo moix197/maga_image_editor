@@ -32,7 +32,7 @@ function BatchWorkspaceInner() {
   const searchParams = useSearchParams();
   const activeSection = resolveSection(searchParams.get("section"));
 
-  const { background, overlays, template, variableSlot, outputs, itemTextValues, itemTextStyles, itemHiddenNodeIds, addOutput, clearOutputs, clearProject, setBackground, addOverlays, reorderOverlays, setEditorTemplate, setProject, setVariableSlot, setItemTextValue, setItemTextStyle, setItemNodeHidden } =
+  const { background, overlays, template, variableSlot, outputs, itemNodeOverrides, addOutput, clearOutputs, clearProject, setBackground, addOverlays, reorderOverlays, setEditorTemplate, setProject, setVariableSlot, setNodeOverride, setNodeHidden } =
     useBatchProject();
   const { compositeDataUrl, isRendering, error: compositeError, generate } = useSingleComposite({ overlays });
   const { isExporting, error: exportError, exportZip } = useZipExport();
@@ -106,11 +106,9 @@ function BatchWorkspaceInner() {
       template,
       variableSlot,
       outputs,
-      itemTextValues: itemTextValues ?? {},
-      itemTextStyles: itemTextStyles ?? {},
-      itemHiddenNodeIds: itemHiddenNodeIds ?? {},
+      itemNodeOverrides: itemNodeOverrides ?? {},
     };
-  }, [background, overlays, template, variableSlot, outputs, itemTextValues, itemTextStyles, itemHiddenNodeIds]);
+  }, [background, overlays, template, variableSlot, outputs, itemNodeOverrides]);
 
   const { restored, pendingRestore, consumeRestore, clearPersisted, importError, quotaWarning, importZip } = useProjectPersistence({
     project: persistedProject,
@@ -148,10 +146,8 @@ function BatchWorkspaceInner() {
     overlays,
     template ?? { nodes: [] },
     variableSlot ?? { overlayNodeId: "" as never, width: 0, height: 0 },
-    itemTextValues ?? {},
+    itemNodeOverrides ?? {},
     editorState.updateTextNode,
-    itemTextStyles ?? {},
-    itemHiddenNodeIds ?? {},
   );
 
   async function handleBackgroundFiles(files: File[]) {
@@ -252,7 +248,7 @@ function BatchWorkspaceInner() {
   }
 
   async function handleExportZip() {
-    await exportZip({ background, overlays, template, variableSlot, outputs, itemTextValues: itemTextValues ?? {}, itemTextStyles: itemTextStyles ?? {} });
+    await exportZip({ background, overlays, template, variableSlot, outputs, itemNodeOverrides: itemNodeOverrides ?? {} });
   }
 
   async function handleClearProject() {
@@ -281,19 +277,15 @@ function BatchWorkspaceInner() {
   const isSelectedOverlay = selectedNode !== null && isOverlayNode(selectedNode);
 
   const itemText = useItemText({
-    itemTextValues: itemTextValues ?? {},
-    itemTextStyles: itemTextStyles ?? {},
-    itemHiddenNodeIds: itemHiddenNodeIds ?? {},
-    setItemTextValue,
-    setItemTextStyle,
-    setItemNodeHidden,
+    itemNodeOverrides: itemNodeOverrides ?? {},
+    setNodeOverride,
+    setNodeHidden,
   });
 
   const fanOut = useFanOutTextHandlers({
     selectedVariantIds,
-    setItemTextValue,
-    setItemTextStyle,
-    setItemNodeHidden,
+    setNodeOverride,
+    setNodeHidden,
   });
 
   const fanOutItemText = {
@@ -310,9 +302,7 @@ function BatchWorkspaceInner() {
   const previewEditorState = usePreviewEditorState(
     editorState.state,
     activeOverlayId,
-    itemTextValues ?? {},
-    itemTextStyles ?? {},
-    itemHiddenNodeIds ?? {},
+    itemNodeOverrides ?? {},
     variableSlotNodeId,
     activeOverlay?.blobKey ?? null,
   );

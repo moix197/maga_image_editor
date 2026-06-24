@@ -4,97 +4,112 @@ import { useBatchProject } from "@/hooks/use-batch-project";
 import { useFanOutTextHandlers } from "@/hooks/use-fan-out-text-handlers";
 import { useItemText } from "@/hooks/use-item-text";
 
-// ── useBatchProject: setItemNodeHidden ────────────────────────────────────────
+// ── useBatchProject: setNodeHidden ────────────────────────────────────────────
 
-describe("useBatchProject — setItemNodeHidden", () => {
+describe("useBatchProject — setNodeHidden", () => {
   it("hides a node for the given overlay without clobbering other overlays", () => {
     const { result } = renderHook(() => useBatchProject());
 
     act(() => {
-      result.current.setItemNodeHidden("overlay-a", "node-1", true);
+      result.current.setNodeHidden("overlay-a", "node-1", true);
     });
 
-    expect(result.current.itemHiddenNodeIds["overlay-a"]).toContain("node-1");
+    expect(result.current.itemNodeOverrides["overlay-a"]?.["node-1"]?.hidden).toBe(true);
     // overlay-b untouched
-    expect(result.current.itemHiddenNodeIds["overlay-b"]).toBeUndefined();
+    expect(result.current.itemNodeOverrides["overlay-b"]).toBeUndefined();
   });
 
-  it("does not duplicate a nodeId already hidden for an overlay", () => {
+  it("setting hidden=true on an already-hidden node is a no-op (referential equality)", () => {
     const { result } = renderHook(() => useBatchProject());
 
     act(() => {
-      result.current.setItemNodeHidden("overlay-a", "node-1", true);
-      result.current.setItemNodeHidden("overlay-a", "node-1", true);
+      result.current.setNodeHidden("overlay-a", "node-1", true);
     });
-
-    const ids = result.current.itemHiddenNodeIds["overlay-a"] ?? [];
-    expect(ids.filter((id) => id === "node-1")).toHaveLength(1);
+    const before = result.current.itemNodeOverrides;
+    act(() => {
+      result.current.setNodeHidden("overlay-a", "node-1", true);
+    });
+    expect(result.current.itemNodeOverrides).toBe(before);
   });
 
   it("unhides a previously hidden node", () => {
     const { result } = renderHook(() => useBatchProject());
 
     act(() => {
-      result.current.setItemNodeHidden("overlay-a", "node-1", true);
+      result.current.setNodeHidden("overlay-a", "node-1", true);
     });
     act(() => {
-      result.current.setItemNodeHidden("overlay-a", "node-1", false);
+      result.current.setNodeHidden("overlay-a", "node-1", false);
     });
 
-    expect(result.current.itemHiddenNodeIds["overlay-a"] ?? []).not.toContain("node-1");
+    expect(result.current.itemNodeOverrides["overlay-a"]?.["node-1"]?.hidden).toBe(false);
   });
 
   it("hides multiple nodes for the same overlay independently", () => {
     const { result } = renderHook(() => useBatchProject());
 
     act(() => {
-      result.current.setItemNodeHidden("overlay-a", "node-1", true);
-      result.current.setItemNodeHidden("overlay-a", "node-2", true);
+      result.current.setNodeHidden("overlay-a", "node-1", true);
+      result.current.setNodeHidden("overlay-a", "node-2", true);
     });
 
-    const ids = result.current.itemHiddenNodeIds["overlay-a"] ?? [];
-    expect(ids).toContain("node-1");
-    expect(ids).toContain("node-2");
+    expect(result.current.itemNodeOverrides["overlay-a"]?.["node-1"]?.hidden).toBe(true);
+    expect(result.current.itemNodeOverrides["overlay-a"]?.["node-2"]?.hidden).toBe(true);
   });
 
-  it("hiding a node for overlay-a does not affect overlay-b's hidden list", () => {
+  it("hiding a node for overlay-a does not affect overlay-b's overrides", () => {
     const { result } = renderHook(() => useBatchProject());
 
     act(() => {
-      result.current.setItemNodeHidden("overlay-a", "node-1", true);
-      result.current.setItemNodeHidden("overlay-b", "node-2", true);
+      result.current.setNodeHidden("overlay-a", "node-1", true);
+      result.current.setNodeHidden("overlay-b", "node-2", true);
     });
 
-    const a = result.current.itemHiddenNodeIds["overlay-a"] ?? [];
-    const b = result.current.itemHiddenNodeIds["overlay-b"] ?? [];
-    expect(a).toContain("node-1");
-    expect(a).not.toContain("node-2");
-    expect(b).toContain("node-2");
-    expect(b).not.toContain("node-1");
+    expect(result.current.itemNodeOverrides["overlay-a"]?.["node-1"]?.hidden).toBe(true);
+    expect(result.current.itemNodeOverrides["overlay-a"]?.["node-2"]).toBeUndefined();
+    expect(result.current.itemNodeOverrides["overlay-b"]?.["node-2"]?.hidden).toBe(true);
+    expect(result.current.itemNodeOverrides["overlay-b"]?.["node-1"]).toBeUndefined();
   });
 
-  it("unhiding a node from overlay-a does not clobber overlay-b's list", () => {
+  it("unhiding a node from overlay-a does not clobber overlay-b's override", () => {
     const { result } = renderHook(() => useBatchProject());
 
     act(() => {
-      result.current.setItemNodeHidden("overlay-a", "node-1", true);
-      result.current.setItemNodeHidden("overlay-b", "node-1", true);
+      result.current.setNodeHidden("overlay-a", "node-1", true);
+      result.current.setNodeHidden("overlay-b", "node-1", true);
     });
     act(() => {
-      result.current.setItemNodeHidden("overlay-a", "node-1", false);
+      result.current.setNodeHidden("overlay-a", "node-1", false);
     });
 
-    expect(result.current.itemHiddenNodeIds["overlay-a"] ?? []).not.toContain("node-1");
-    expect(result.current.itemHiddenNodeIds["overlay-b"] ?? []).toContain("node-1");
+    expect(result.current.itemNodeOverrides["overlay-a"]?.["node-1"]?.hidden).toBe(false);
+    expect(result.current.itemNodeOverrides["overlay-b"]?.["node-1"]?.hidden).toBe(true);
   });
 
-  it("itemHiddenNodeIds defaults to {} on load with no field in project", () => {
+  it("hiding preserves a pre-existing content/style override on the same node", () => {
     const { result } = renderHook(() => useBatchProject());
 
-    // Simulate loading a project without itemHiddenNodeIds (old project format)
+    act(() => {
+      result.current.setNodeOverride("overlay-a", "node-1", { content: "hi", fontSize: 24 });
+    });
+    act(() => {
+      result.current.setNodeHidden("overlay-a", "node-1", true);
+    });
+
+    expect(result.current.itemNodeOverrides["overlay-a"]?.["node-1"]).toEqual({
+      content: "hi",
+      fontSize: 24,
+      hidden: true,
+    });
+  });
+
+  it("itemNodeOverrides defaults to {} on load with no field in project", () => {
+    const { result } = renderHook(() => useBatchProject());
+
+    // Simulate loading a project without itemNodeOverrides (old project format)
     act(() => {
       result.current.setProject({
-        schemaVersion: 4,
+        schemaVersion: 5,
         id: "p1",
         name: "test",
         createdAt: 0,
@@ -104,42 +119,34 @@ describe("useBatchProject — setItemNodeHidden", () => {
         template: null,
         variableSlot: null,
         outputs: [],
-        itemTextValues: {},
-        itemTextStyles: {},
-        // itemHiddenNodeIds intentionally absent
-      });
+        // itemNodeOverrides intentionally absent
+      } as never);
     });
 
-    expect(result.current.itemHiddenNodeIds).toEqual({});
+    expect(result.current.itemNodeOverrides).toEqual({});
   });
 });
 
 // ── useItemText: isNodeHidden / setNodeHidden ─────────────────────────────────
 
 describe("useItemText — isNodeHidden / setNodeHidden", () => {
-  it("isNodeHidden returns false when no hidden ids exist for the overlay", () => {
+  it("isNodeHidden returns false when no override exists for the overlay", () => {
     const { result } = renderHook(() =>
       useItemText({
-        itemTextValues: {},
-        itemTextStyles: {},
-        itemHiddenNodeIds: {},
-        setItemTextValue: vi.fn(),
-        setItemTextStyle: vi.fn(),
-        setItemNodeHidden: vi.fn(),
+        itemNodeOverrides: {},
+        setNodeOverride: vi.fn(),
+        setNodeHidden: vi.fn(),
       }),
     );
     expect(result.current.isNodeHidden("overlay-a", "node-1")).toBe(false);
   });
 
-  it("isNodeHidden returns true when node is in the overlay's hidden list", () => {
+  it("isNodeHidden returns true when the override carries hidden: true", () => {
     const { result } = renderHook(() =>
       useItemText({
-        itemTextValues: {},
-        itemTextStyles: {},
-        itemHiddenNodeIds: { "overlay-a": ["node-1"] },
-        setItemTextValue: vi.fn(),
-        setItemTextStyle: vi.fn(),
-        setItemNodeHidden: vi.fn(),
+        itemNodeOverrides: { "overlay-a": { "node-1": { hidden: true } } },
+        setNodeOverride: vi.fn(),
+        setNodeHidden: vi.fn(),
       }),
     );
     expect(result.current.isNodeHidden("overlay-a", "node-1")).toBe(true);
@@ -148,27 +155,21 @@ describe("useItemText — isNodeHidden / setNodeHidden", () => {
   it("isNodeHidden for a different node in the same overlay returns false", () => {
     const { result } = renderHook(() =>
       useItemText({
-        itemTextValues: {},
-        itemTextStyles: {},
-        itemHiddenNodeIds: { "overlay-a": ["node-1"] },
-        setItemTextValue: vi.fn(),
-        setItemTextStyle: vi.fn(),
-        setItemNodeHidden: vi.fn(),
+        itemNodeOverrides: { "overlay-a": { "node-1": { hidden: true } } },
+        setNodeOverride: vi.fn(),
+        setNodeHidden: vi.fn(),
       }),
     );
     expect(result.current.isNodeHidden("overlay-a", "node-2")).toBe(false);
   });
 
-  it("setNodeHidden delegates to the provided setItemNodeHidden callback", () => {
+  it("setNodeHidden delegates to the provided setNodeHidden callback", () => {
     const mockSetNodeHidden = vi.fn();
     const { result } = renderHook(() =>
       useItemText({
-        itemTextValues: {},
-        itemTextStyles: {},
-        itemHiddenNodeIds: {},
-        setItemTextValue: vi.fn(),
-        setItemTextStyle: vi.fn(),
-        setItemNodeHidden: mockSetNodeHidden,
+        itemNodeOverrides: {},
+        setNodeOverride: vi.fn(),
+        setNodeHidden: mockSetNodeHidden,
       }),
     );
 
@@ -187,9 +188,8 @@ describe("useFanOutTextHandlers — handleSetNodeHidden", () => {
     const { result } = renderHook(() =>
       useFanOutTextHandlers({
         selectedVariantIds,
-        setItemTextValue: vi.fn(),
-        setItemTextStyle: vi.fn(),
-        setItemNodeHidden: mockSetNodeHidden,
+        setNodeOverride: vi.fn(),
+        setNodeHidden: mockSetNodeHidden,
       }),
     );
 
@@ -210,9 +210,8 @@ describe("useFanOutTextHandlers — handleSetNodeHidden", () => {
     const { result } = renderHook(() =>
       useFanOutTextHandlers({
         selectedVariantIds,
-        setItemTextValue: vi.fn(),
-        setItemTextStyle: vi.fn(),
-        setItemNodeHidden: mockSetNodeHidden,
+        setNodeOverride: vi.fn(),
+        setNodeHidden: mockSetNodeHidden,
       }),
     );
 
@@ -234,9 +233,8 @@ describe("useFanOutTextHandlers — handleSetNodeHidden", () => {
     const { result } = renderHook(() =>
       useFanOutTextHandlers({
         selectedVariantIds,
-        setItemTextValue: vi.fn(),
-        setItemTextStyle: vi.fn(),
-        setItemNodeHidden: mockSetNodeHidden,
+        setNodeOverride: vi.fn(),
+        setNodeHidden: mockSetNodeHidden,
       }),
     );
 
@@ -251,16 +249,15 @@ describe("useFanOutTextHandlers — handleSetNodeHidden", () => {
     expect(calledIds).not.toContain("overlay-z");
   });
 
-  it("with a single selected id, calls setItemNodeHidden exactly once", () => {
+  it("with a single selected id, calls setNodeHidden exactly once", () => {
     const mockSetNodeHidden = vi.fn();
     const selectedVariantIds = new Set(["overlay-a"]);
 
     const { result } = renderHook(() =>
       useFanOutTextHandlers({
         selectedVariantIds,
-        setItemTextValue: vi.fn(),
-        setItemTextStyle: vi.fn(),
-        setItemNodeHidden: mockSetNodeHidden,
+        setNodeOverride: vi.fn(),
+        setNodeHidden: mockSetNodeHidden,
       }),
     );
 

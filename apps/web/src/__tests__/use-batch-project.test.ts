@@ -171,97 +171,89 @@ describe("useBatchProject", () => {
     expect(result.current.outputs).toHaveLength(0);
   });
 
-  it("itemTextValues starts empty", () => {
+  it("itemNodeOverrides starts empty", () => {
     const { result } = renderHook(() => useBatchProject());
-    expect(result.current.itemTextValues).toEqual({});
+    expect(result.current.itemNodeOverrides).toEqual({});
   });
 
-  it("setItemTextValue stores a per-item override keyed by overlay then node", () => {
+  it("setNodeOverride stores a content override keyed by overlay then node", () => {
     const { result } = renderHook(() => useBatchProject());
 
     act(() => {
-      result.current.setItemTextValue("ov-1", "node-1", "hello");
-      result.current.setItemTextValue("ov-1", "node-2", "world");
-      result.current.setItemTextValue("ov-2", "node-1", "bye");
+      result.current.setNodeOverride("ov-1", "node-1", { content: "hello" });
+      result.current.setNodeOverride("ov-1", "node-2", { content: "world" });
+      result.current.setNodeOverride("ov-2", "node-1", { content: "bye" });
     });
 
-    expect(result.current.itemTextValues).toEqual({
-      "ov-1": { "node-1": "hello", "node-2": "world" },
-      "ov-2": { "node-1": "bye" },
+    expect(result.current.itemNodeOverrides).toEqual({
+      "ov-1": { "node-1": { content: "hello" }, "node-2": { content: "world" } },
+      "ov-2": { "node-1": { content: "bye" } },
     });
   });
 
-  it("itemTextStyles starts empty", () => {
-    const { result } = renderHook(() => useBatchProject());
-    expect(result.current.itemTextStyles).toEqual({});
-  });
-
-  it("setItemTextStyle merges a partial style keyed by overlay then node", () => {
+  it("setNodeOverride merges a partial style keyed by overlay then node", () => {
     const { result } = renderHook(() => useBatchProject());
 
     act(() => {
-      result.current.setItemTextStyle("ov-1", "node-1", { fontSize: 28 });
+      result.current.setNodeOverride("ov-1", "node-1", { fontSize: 28 });
     });
 
-    expect(result.current.itemTextStyles).toEqual({
+    expect(result.current.itemNodeOverrides).toEqual({
       "ov-1": { "node-1": { fontSize: 28 } },
     });
   });
 
-  it("a subsequent setItemTextStyle merges (not replaces) the previous partial", () => {
+  it("a subsequent setNodeOverride merges (not replaces) the previous override", () => {
     const { result } = renderHook(() => useBatchProject());
 
     act(() => {
-      result.current.setItemTextStyle("ov-1", "node-1", { fontSize: 28 });
+      result.current.setNodeOverride("ov-1", "node-1", { fontSize: 28 });
     });
     act(() => {
-      result.current.setItemTextStyle("ov-1", "node-1", { color: "#ff0000" });
+      result.current.setNodeOverride("ov-1", "node-1", { color: "#ff0000" });
     });
 
     // fontSize from the first call survives the second.
-    expect(result.current.itemTextStyles["ov-1"]?.["node-1"]).toEqual({
+    expect(result.current.itemNodeOverrides["ov-1"]?.["node-1"]).toEqual({
       fontSize: 28,
       color: "#ff0000",
     });
   });
 
-  it("setItemTextStyle overrides a field on a repeat call while keeping siblings", () => {
+  it("setNodeOverride overrides a field on a repeat call while keeping siblings", () => {
     const { result } = renderHook(() => useBatchProject());
 
     act(() => {
-      result.current.setItemTextStyle("ov-1", "node-1", { fontSize: 28, color: "#000000" });
+      result.current.setNodeOverride("ov-1", "node-1", { fontSize: 28, color: "#000000" });
     });
     act(() => {
-      result.current.setItemTextStyle("ov-1", "node-1", { fontSize: 40 });
+      result.current.setNodeOverride("ov-1", "node-1", { fontSize: 40 });
     });
 
-    expect(result.current.itemTextStyles["ov-1"]?.["node-1"]).toEqual({
+    expect(result.current.itemNodeOverrides["ov-1"]?.["node-1"]).toEqual({
       fontSize: 40,
       color: "#000000",
     });
   });
 
-  it("getTextValue reads the per-item override directly via useItemText", () => {
-    // The lock model is gone — useItemText always reads the per-item map.
+  it("getTextValue reads the content override directly via useItemText", () => {
+    // The lock model is gone — useItemText always reads the unified store.
     const { result } = renderHook(() => useBatchProject());
     act(() => {
-      result.current.setItemTextValue("ov-1", "node-1", "hi");
+      result.current.setNodeOverride("ov-1", "node-1", { content: "hi" });
     });
     const { result: itemText } = renderHook(() =>
       useItemText({
-        itemTextValues: result.current.itemTextValues,
-        itemTextStyles: result.current.itemTextStyles,
-        itemHiddenNodeIds: result.current.itemHiddenNodeIds,
-        setItemTextValue: result.current.setItemTextValue,
-        setItemTextStyle: result.current.setItemTextStyle,
-        setItemNodeHidden: result.current.setItemNodeHidden,
+        itemNodeOverrides: result.current.itemNodeOverrides,
+        setNodeOverride: result.current.setNodeOverride,
+        setNodeHidden: result.current.setNodeHidden,
       })
     );
     expect(itemText.current.getTextValue("ov-1", "node-1")).toBe("hi");
     expect(itemText.current.getTextValue("ov-1", "missing")).toBe("");
   });
 
-  it("setProject migrates a v1 project to v4 (no textLayerLocks, values fanned)", () => {
+  it("setProject migrates a v1 project to v5 (no textLayerLocks, values collapsed into itemNodeOverrides)", () => {
     const { result } = renderHook(() => useBatchProject());
     // Build a v1 project with one text layer and one overlay, migrate, load.
     const v1 = {
@@ -285,11 +277,11 @@ describe("useBatchProject", () => {
     expect("textLayerLocks" in migrated).toBe(false);
 
     act(() => {
-      result.current.setProject(migrated);
+      result.current.setProject(migrated as BatchProject);
     });
 
-    // The v1 layer's template value fanned into the overlay's per-item override.
-    expect(result.current.itemTextValues["ov-1"]?.["t1"]).toBe("A");
+    // The v1 layer's template value fanned into the overlay's unified override.
+    expect(result.current.itemNodeOverrides["ov-1"]?.["t1"]?.content).toBe("A");
   });
 
   it("reorderOverlays replaces overlays array in correct order", async () => {
@@ -338,8 +330,7 @@ function makeProject(templateNodeId: string): BatchProject {
     template,
     variableSlot: { overlayNodeId: templateNodeId as NodeId, width: 200, height: 150 },
     outputs: [],
-    itemTextValues: {},
-    itemTextStyles: {},
+    itemNodeOverrides: {},
   };
 }
 

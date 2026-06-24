@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { usePreviewEditorState } from "@/hooks/use-preview-editor-state";
 import type { EditorState } from "@maga/editor";
-import type { TextStyle } from "@maga/projects";
+import type { ItemNodeOverrides } from "@maga/projects";
 
 // --- helpers ---
 
@@ -100,11 +100,10 @@ const NODE_2 = "node-2";
 describe("usePreviewEditorState", () => {
   it("(1) text layer gets per-item content override applied", () => {
     const base = makeBase({ id: NODE_1, content: "template text" });
-    const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "per-item text" } };
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { content: "per-item text" } } };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, {}),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     const node = result.current.nodes[0]!;
@@ -113,13 +112,12 @@ describe("usePreviewEditorState", () => {
 
   it("(2) text layer gets per-item style override applied", () => {
     const base = makeBase({ id: NODE_1, content: "hello", fontSize: 16, color: "#000000" });
-    const itemTextValues: Record<string, Record<string, string>> = {};
-    const itemTextStyles = {
-      [OVERLAY_A]: { [NODE_1]: { fontSize: 32, color: "#ff0000" } as Partial<TextStyle> },
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [NODE_1]: { fontSize: 32, color: "#ff0000" } },
     };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, {}),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     const node = result.current.nodes[0]!;
@@ -133,13 +131,12 @@ describe("usePreviewEditorState", () => {
     // Pre-v4 this node would have been "locked" and retained the template value.
     // The lock model is gone, so the per-item override always wins.
     const base = makeBase({ id: NODE_1, content: "template text" });
-    const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "now applied" } };
-    const itemTextStyles = {
-      [OVERLAY_A]: { [NODE_1]: { fontSize: 99 } as Partial<TextStyle> },
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [NODE_1]: { content: "now applied", fontSize: 99 } },
     };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, {}),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     const node = result.current.nodes[0]!;
@@ -149,11 +146,10 @@ describe("usePreviewEditorState", () => {
 
   it("(4) returns base state unchanged when activeOverlayId is null", () => {
     const base = makeBase({ id: NODE_1, content: "template text" });
-    const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "per-item text" } };
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { content: "per-item text" } } };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, null, itemTextValues, itemTextStyles, {}),
+      usePreviewEditorState(base, null, overrides),
     );
 
     expect(result.current).toBe(base);
@@ -161,12 +157,10 @@ describe("usePreviewEditorState", () => {
 
   it("(5) memoization — same reference returned when deps unchanged", () => {
     const base = makeBase({ id: NODE_1, content: "template text" });
-    const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "per-item text" } };
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const itemHiddenNodeIds: Record<string, string[]> = {};
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { content: "per-item text" } } };
 
     const { result, rerender } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, itemHiddenNodeIds),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     const first = result.current;
@@ -176,11 +170,10 @@ describe("usePreviewEditorState", () => {
 
   it("(6) variant with empty override map returns base state unchanged (no crash)", () => {
     const base = makeBase({ id: NODE_1, content: "template text" });
-    const itemTextValues: Record<string, Record<string, string>> = {};
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const overrides: ItemNodeOverrides = {};
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, {}),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     // No overrides for OVERLAY_A — should return base unchanged (same reference)
@@ -192,14 +185,12 @@ describe("usePreviewEditorState", () => {
     // is not part of EditorState — it lives outside. But we simulate the key
     // concern: if `base` reference stays the same, derived result is the same.
     const base = makeBase({ id: NODE_1, content: "template text" });
-    const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "per-item text" } };
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const itemHiddenNodeIds: Record<string, string[]> = {};
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { content: "per-item text" } } };
 
     // Render once with base
     const { result, rerender } = renderHook(
       ({ b }: { b: EditorState }) =>
-        usePreviewEditorState(b, OVERLAY_A, itemTextValues, itemTextStyles, itemHiddenNodeIds),
+        usePreviewEditorState(b, OVERLAY_A, overrides),
       { initialProps: { b: base } },
     );
 
@@ -214,13 +205,12 @@ describe("usePreviewEditorState", () => {
 
   it("applies content and style together on a text layer", () => {
     const base = makeBase({ id: NODE_1, content: "old", fontSize: 12, color: "#aaa" });
-    const itemTextValues = { [OVERLAY_A]: { [NODE_1]: "new" } };
-    const itemTextStyles = {
-      [OVERLAY_A]: { [NODE_1]: { fontSize: 24, color: "#fff" } as Partial<TextStyle> },
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [NODE_1]: { content: "new", fontSize: 24, color: "#fff" } },
     };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, {}),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     const node = result.current.nodes[0]!;
@@ -234,13 +224,12 @@ describe("usePreviewEditorState", () => {
       { id: NODE_1, content: "template-1" },
       { id: NODE_2, content: "template-2" },
     );
-    const itemTextValues = {
-      [OVERLAY_A]: { [NODE_1]: "override-1", [NODE_2]: "override-2" },
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [NODE_1]: { content: "override-1" }, [NODE_2]: { content: "override-2" } },
     };
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, itemTextStyles, {}),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     const n1 = result.current.nodes.find((n) => n.id === NODE_1)!;
@@ -256,19 +245,9 @@ describe("usePreviewEditorState", () => {
     const OLD_SRC = "blob:old-key";
     const NEW_SRC = "blob:new-key";
     const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
-    const itemTextValues: Record<string, Record<string, string>> = {};
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(
-        base,
-        OVERLAY_A,
-        itemTextValues,
-        itemTextStyles,
-        {},
-        makeNodeId(SLOT_ID),
-        NEW_SRC,
-      ),
+      usePreviewEditorState(base, OVERLAY_A, {}, makeNodeId(SLOT_ID), NEW_SRC),
     );
 
     const node = result.current.nodes.find((n) => n.id === SLOT_ID)!;
@@ -292,19 +271,9 @@ describe("usePreviewEditorState", () => {
         } as unknown as EditorState["nodes"][number],
       ],
     };
-    const itemTextValues: Record<string, Record<string, string>> = {};
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(
-        base,
-        OVERLAY_A,
-        itemTextValues,
-        itemTextStyles,
-        {},
-        makeNodeId(SLOT_ID),
-        "blob:new-key",
-      ),
+      usePreviewEditorState(base, OVERLAY_A, {}, makeNodeId(SLOT_ID), "blob:new-key"),
     );
 
     const other = result.current.nodes.find((n) => n.id === OTHER_ID)!;
@@ -315,19 +284,9 @@ describe("usePreviewEditorState", () => {
     const SLOT_ID = "slot-node";
     const OLD_SRC = "blob:old-key";
     const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
-    const itemTextValues: Record<string, Record<string, string>> = {};
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(
-        base,
-        OVERLAY_A,
-        itemTextValues,
-        itemTextStyles,
-        {},
-        null,
-        "blob:new-key",
-      ),
+      usePreviewEditorState(base, OVERLAY_A, {}, null, "blob:new-key"),
     );
 
     // No text overrides and no slot swap — base returned as-is
@@ -339,15 +298,11 @@ describe("usePreviewEditorState", () => {
     const OLD_SRC = "blob:old-key";
     const NEW_SRC = "blob:new-key";
     const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
-    const itemTextValues: Record<string, Record<string, string>> = {};
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
 
     const { result } = renderHook(() =>
       usePreviewEditorState(
         base,
-        null,  // no active overlay id — but slot swap should still apply
-        itemTextValues,
-        itemTextStyles,
+        null, // no active overlay id — but slot swap should still apply
         {},
         makeNodeId(SLOT_ID),
         NEW_SRC,
@@ -364,19 +319,9 @@ describe("usePreviewEditorState", () => {
     const NEW_SRC = "blob:new-key";
     const base = makeBaseWithOverlayNode(SLOT_ID, OLD_SRC);
     const originalNode = base.nodes[0]!;
-    const itemTextValues: Record<string, Record<string, string>> = {};
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
 
     renderHook(() =>
-      usePreviewEditorState(
-        base,
-        OVERLAY_A,
-        itemTextValues,
-        itemTextStyles,
-        {},
-        makeNodeId(SLOT_ID),
-        NEW_SRC,
-      ),
+      usePreviewEditorState(base, OVERLAY_A, {}, makeNodeId(SLOT_ID), NEW_SRC),
     );
 
     // The original node in base must not be touched
@@ -387,21 +332,11 @@ describe("usePreviewEditorState", () => {
     const SLOT_ID = "slot-node";
     const NEW_SRC = "blob:new-key";
     const base = makeBaseWithOverlayNode(SLOT_ID, "blob:old-key");
-    const itemTextValues: Record<string, Record<string, string>> = {};
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
-    const itemHiddenNodeIds: Record<string, string[]> = {};
+    const overrides: ItemNodeOverrides = {};
     const slotNodeId = makeNodeId(SLOT_ID);
 
     const { result, rerender } = renderHook(() =>
-      usePreviewEditorState(
-        base,
-        OVERLAY_A,
-        itemTextValues,
-        itemTextStyles,
-        itemHiddenNodeIds,
-        slotNodeId,
-        NEW_SRC,
-      ),
+      usePreviewEditorState(base, OVERLAY_A, overrides, slotNodeId, NEW_SRC),
     );
 
     const first = result.current;
@@ -414,19 +349,10 @@ describe("usePreviewEditorState", () => {
     const TEXT_ID = "text-node";
     const NEW_SRC = "blob:new-key";
     const base = makeBaseWithMixedNodes(SLOT_ID, "blob:old-key", TEXT_ID, "template text");
-    const itemTextValues = { [OVERLAY_A]: { [TEXT_ID]: "per-item text" } };
-    const itemTextStyles: Record<string, Record<string, Partial<TextStyle>>> = {};
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [TEXT_ID]: { content: "per-item text" } } };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(
-        base,
-        OVERLAY_A,
-        itemTextValues,
-        itemTextStyles,
-        {},
-        makeNodeId(SLOT_ID),
-        NEW_SRC,
-      ),
+      usePreviewEditorState(base, OVERLAY_A, overrides, makeNodeId(SLOT_ID), NEW_SRC),
     );
 
     const slot = result.current.nodes.find((n) => n.id === makeNodeId(SLOT_ID))!;
@@ -442,10 +368,10 @@ describe("usePreviewEditorState", () => {
       { id: NODE_1, content: "template-1" },
       { id: NODE_2, content: "template-2" },
     );
-    const itemHiddenNodeIds = { [OVERLAY_A]: [NODE_1] };
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { hidden: true } } };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, {}, {}, itemHiddenNodeIds),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     const ids = result.current.nodes.map((n) => n.id);
@@ -455,10 +381,10 @@ describe("usePreviewEditorState", () => {
 
   it("(hidden-b) a node hidden for overlay-a is still present in the base (not mutated)", () => {
     const base = makeBase({ id: NODE_1, content: "template" });
-    const itemHiddenNodeIds = { [OVERLAY_A]: [NODE_1] };
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { hidden: true } } };
 
     renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, {}, {}, itemHiddenNodeIds),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     // The base object must not be mutated — its node list is intact.
@@ -469,10 +395,10 @@ describe("usePreviewEditorState", () => {
   it("(hidden-c) a node hidden for overlay-a is NOT hidden for overlay-b", () => {
     const OVERLAY_B = "overlay-b";
     const base = makeBase({ id: NODE_1, content: "template" });
-    const itemHiddenNodeIds = { [OVERLAY_A]: [NODE_1] };
+    const overrides: ItemNodeOverrides = { [OVERLAY_A]: { [NODE_1]: { hidden: true } } };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_B, {}, {}, itemHiddenNodeIds),
+      usePreviewEditorState(base, OVERLAY_B, overrides),
     );
 
     // overlay-b has no hidden nodes — node-1 should be present
@@ -485,11 +411,12 @@ describe("usePreviewEditorState", () => {
       { id: NODE_1, content: "template-1" },
       { id: NODE_2, content: "template-2" },
     );
-    const itemHiddenNodeIds = { [OVERLAY_A]: [NODE_1] };
-    const itemTextValues = { [OVERLAY_A]: { [NODE_2]: "override-2" } };
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [NODE_1]: { hidden: true }, [NODE_2]: { content: "override-2" } },
+    };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, itemTextValues, {}, itemHiddenNodeIds),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     const n2 = result.current.nodes.find((n) => n.id === makeNodeId(NODE_2))!;
@@ -498,14 +425,14 @@ describe("usePreviewEditorState", () => {
     expect(result.current.nodes.find((n) => n.id === makeNodeId(NODE_1))).toBeUndefined();
   });
 
-  it("(hidden-e) empty itemHiddenNodeIds has no effect — all nodes present", () => {
+  it("(hidden-e) empty overrides has no effect — all nodes present", () => {
     const base = makeBase(
       { id: NODE_1, content: "a" },
       { id: NODE_2, content: "b" },
     );
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, {}, {}, {}),
+      usePreviewEditorState(base, OVERLAY_A, {}),
     );
 
     // No overrides, no hidden nodes — should return base as-is
@@ -517,10 +444,12 @@ describe("usePreviewEditorState", () => {
       { id: NODE_1, content: "a" },
       { id: NODE_2, content: "b" },
     );
-    const itemHiddenNodeIds = { [OVERLAY_A]: [NODE_1, NODE_2] };
+    const overrides: ItemNodeOverrides = {
+      [OVERLAY_A]: { [NODE_1]: { hidden: true }, [NODE_2]: { hidden: true } },
+    };
 
     const { result } = renderHook(() =>
-      usePreviewEditorState(base, OVERLAY_A, {}, {}, itemHiddenNodeIds),
+      usePreviewEditorState(base, OVERLAY_A, overrides),
     );
 
     expect(result.current.nodes).toHaveLength(0);

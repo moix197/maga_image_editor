@@ -3,20 +3,19 @@
 import { useMemo } from "react";
 import { isTextNode } from "@maga/editor";
 import type { EditorState, NodeId } from "@maga/editor";
-import type { TextStyle } from "@maga/projects";
-
-type ItemTextValues = Record<string, Record<string, string>>;
-type ItemTextStyles = Record<string, Record<string, Partial<TextStyle>>>;
-type ItemHiddenNodeIds = Record<string, string[]>;
+import type { ItemNodeOverrides } from "@maga/projects";
 
 /**
  * Returns a memoized derived EditorState with per-item text and style overrides
  * applied to every text layer for the active overlay variant.
  *
+ * - Overrides are read from the unified `itemNodeOverrides` store (schema v5):
+ *   `content` is the per-item text, the remaining (non-`hidden`) override fields
+ *   spread as the style partial.
  * - Every text layer is per-item (the lock model was retired in schema v4); a
  *   layer with no override for the active variant retains the template value.
- * - Text nodes hidden for the active overlay via `itemHiddenNodeIds` are
- *   excluded from the derived node list entirely (Phase 4).
+ * - Text nodes whose override carries `hidden: true` for the active overlay are
+ *   excluded from the derived node list entirely.
  * - The base EditorState is never mutated.
  * - When activeOverlayId is null AND there is no slot swap pending, base is
  *   returned as-is (no copy).
@@ -26,14 +25,12 @@ type ItemHiddenNodeIds = Record<string, string[]>;
 export function usePreviewEditorState(
   base: EditorState,
   activeOverlayId: string | null,
-  itemTextValues: ItemTextValues,
-  itemTextStyles: ItemTextStyles,
-  itemHiddenNodeIds: ItemHiddenNodeIds,
+  itemNodeOverrides: ItemNodeOverrides,
   variableSlotNodeId?: NodeId | null,
   activeOverlayBlobKey?: string | null,
 ): EditorState {
   return useMemo(() => {
-    const hiddenIds = activeOverlayId ? (itemHiddenNodeIds[activeOverlayId] ?? []) : [];
+    const overlayOverrides = activeOverlayId ? itemNodeOverrides[activeOverlayId] : undefined;
 
     // Determine whether a slot-src swap is needed.
     const slotNode = variableSlotNodeId
@@ -46,21 +43,15 @@ export function usePreviewEditorState(
       !isTextNode(slotNode) &&
       (slotNode as { src?: string }).src !== activeOverlayBlobKey;
 
-    const hasHidden = hiddenIds.length > 0;
+    const hasOverrides = overlayOverrides !== undefined && Object.keys(overlayOverrides).length > 0;
 
     // Nothing to do at all.
-    if (activeOverlayId === null && !needsSlotSwap && !hasHidden) return base;
-
-    const perItemValues = activeOverlayId ? itemTextValues[activeOverlayId] : undefined;
-    const perItemStyles = activeOverlayId ? itemTextStyles[activeOverlayId] : undefined;
-
-    // If neither text map has entries AND no slot swap AND no hidden nodes, skip.
-    if (!perItemValues && !perItemStyles && !needsSlotSwap && !hasHidden) return base;
+    if (!hasOverrides && !needsSlotSwap) return base;
 
     const derivedNodes = base.nodes
       .filter((node) => {
         // Hidden text nodes are excluded from the preview for the active variant.
-        if (isTextNode(node) && hiddenIds.includes(node.id as string)) return false;
+        if (isTextNode(node) && overlayOverrides?.[node.id as string]?.hidden) return false;
         return true;
       })
       .map((node) => {
@@ -71,21 +62,18 @@ export function usePreviewEditorState(
 
         if (!isTextNode(node)) return node;
 
-        const contentOverride = perItemValues?.[node.id];
-        const styleOverride = perItemStyles?.[node.id];
+        const override = overlayOverrides?.[node.id as string];
+        if (!override) return node;
 
-        if (contentOverride === undefined && !styleOverride) return node;
+        // Strip the non-Node `hidden` flag before spreading the override onto the
+        // text node (content + style fields fall through). Fallback to the live
+        // node value is deliberate: the base node IS the template.
+        const { hidden: _hidden, ...patch } = override;
+        if (Object.keys(patch).length === 0) return node;
 
-        // Fallback to the live node.content (not a template snapshot) is deliberate:
-        // the base node IS the template, so the two are equivalent.
-
-        return {
-          ...node,
-          ...(contentOverride !== undefined ? { content: contentOverride } : {}),
-          ...(styleOverride ?? {}),
-        };
+        return { ...node, ...patch };
       });
 
     return { ...base, nodes: derivedNodes };
-  }, [base, activeOverlayId, itemTextValues, itemTextStyles, itemHiddenNodeIds, variableSlotNodeId, activeOverlayBlobKey]);
+  }, [base, activeOverlayId, itemNodeOverrides, variableSlotNodeId, activeOverlayBlobKey]);
 }
