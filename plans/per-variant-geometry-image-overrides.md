@@ -306,15 +306,15 @@ Generate All renders each selected variant at its overridden size.
 **File changes:**
 | Action | File | What changes |
 |---|---|---|
-| modify | `apps/web/src/components/batch/BatchWorkspace.tsx` | Reroute `handleNodeResize` (~lines 170-178) for **text** nodes through `handleSetNodeOverride(activeOverlayId, nodeId, { width, height, fontSize })` instead of `editorState.updateTextNode`. |
+| modify | `apps/web/src/components/batch/BatchWorkspace.tsx` | Reroute `handleNodeResize` (~lines 170-178) for **text** nodes through `handleSetNodeOverride(activeOverlayId, nodeId, { width, height })` instead of `editorState.updateTextNode`. (**Exec note:** the canvas resize handler only provides `{ width, height }`; `fontSize` is not a resize input — it's set via the style panel, already per-variant since Phase 1. Text canvas-resize is also not wired today — `TextNodeLayer` has no resize handle — so this reroute is correct + future-proof but inert for text until a handle exists.) |
 | modify | `apps/web/src/hooks/use-preview-editor-state.ts` | Already spreads full override (Phase 2) — confirm size fields flow through; no new code if generic. |
 | modify | `apps/web/src/hooks/use-batch-render.ts` | Extend pre-loop snapshot + restore to cover width/height/fontSize (or confirm covered by the generic field set from Phase 2). |
 
 **Steps:**
 
-- [ ] Reroute `handleNodeResize` for text nodes through the fan-out override.
-- [ ] Confirm preview merge + render snapshot/restore already cover size fields generically; add fields if the merge is field-listed rather than full-spread.
-- [ ] Update the two pattern docs only if the field set widened beyond what Phase 2 noted.
+- [x] Reroute `handleNodeResize` for text nodes through the fan-out override.
+- [x] Confirm preview merge + render snapshot/restore already cover size fields generically; add fields if the merge is field-listed rather than full-spread. (Preview already generic; render snapshot extended for width/height — fontSize already covered.)
+- [x] Update the two pattern docs only if the field set widened beyond what Phase 2 noted. (Widened "geometry" → "geometry/size".)
 
 **Tests:**
 
@@ -325,20 +325,20 @@ Generate All renders each selected variant at its overridden size.
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` in `apps/web`.
-- [ ] Manual: resize a text node on selected variants; size diverges per selection; Generate All confirms (smoke).
+- [x] Automated tests pass: `pnpm test` in `apps/web`. — 320/320 pass; `tsc --noEmit` clean.
+- [ ] Manual: resize a text node on selected variants; size diverges per selection; Generate All confirms (smoke). — **Note:** text canvas-resize is not wired today (no `TextNodeLayer` handle); per-variant text size is exercised via the style panel `fontSize` (already per-variant). Smoke applies once a text resize handle exists.
 
 **Phase review:**
 
 - [ ] All Steps and Verification checkboxes ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Reviewer-driven changes reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated (if applicable)
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd`.
+- [x] Orchestrator cleared context and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
+- [x] Code-reviewer agent has verified this phase — verdict green (plan-only nit reconciled: fan `{width,height}`, not fontSize).
+- [x] Reviewer-driven changes reflected back into this plan file
+- [x] Tests written and passing
+- [x] Documentation updated (if applicable)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(batch): per-variant text size (resize) via unified node overrides`
+- [x] Changes committed: `feat(batch): per-variant text size (resize) via unified node overrides` — commit 7040c5c.
 - [ ] Phase marked complete
 
 ---
