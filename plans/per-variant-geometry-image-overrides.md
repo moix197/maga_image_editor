@@ -420,7 +420,7 @@ and Generate All renders each selected variant's overlay with its transforms.
 - [x] Confirm preview merge spreads transform fields onto overlay nodes. (Already generic — no code change.)
 - [x] Update `.ai/index.md` cross-cutting rows + `.ai/patterns/*` to note overlay style/transform is now per-variant (no longer a direct template mutation).
 
-> **Follow-up (out of Phase 5 scope, non-blocking — reviewer-confirmed):** `OverlayControlsPanel` still *displays* the template `selectedNode`, not the active-variant merged value, unlike `TextStylePanel`'s `effectiveNode`. Writes fan out correctly, but a slider may show the template value until re-selection. Mirror an `effectiveNode` merge for overlays in a follow-up.
+> **Follow-up — RESOLVED (commit 76abbec):** `OverlayControlsPanel` previously *displayed* the template `selectedNode`, not the active-variant merged value, so image controls (rotation/opacity/etc.) didn't track per-variant overrides even though writes fanned out. Fixed by passing an `effectiveOverlayNode = { ...template, ...override }` (hidden stripped) computed via the shared `getNodeOverride` accessor, mirroring `TextStylePanel`'s `effectiveNode`. Read-only; write/fan-out path unchanged. Reviewed green.
 
 **Tests:**
 
