@@ -189,15 +189,27 @@ migrated project, now through `itemNodeOverrides`.
 | modify | `apps/web/src/hooks/use-preview-editor-state.ts` | Read content/style/hidden from `itemNodeOverrides[activeOverlayId][nodeId]` instead of the three maps; preserve early-return-base and minimal `useMemo` deps. |
 | modify | `apps/web/src/hooks/use-batch-render.ts` | Read per-item content/style/hidden from `itemNodeOverrides` instead of the three maps; snapshot/apply/restore behavior identical. |
 | modify | `apps/web/src/components/batch/BatchWorkspace.tsx` | Update the wiring of the renamed store/setters/preview args (no new entry-point logic yet). |
+| modify | `packages/projects/src/zip-export.ts` | **(scope-add, discovered during exec)** `serializeProjectJson` reads/emits `itemTextValues`/`itemTextStyles`; serialize `itemNodeOverrides` instead (ZIP is a shared migration ingress per Dependencies & Risks). |
+| modify | `apps/web/src/hooks/use-zip-export.ts` | **(scope-add)** `ProjectState` + `assembleProject` build the three old maps; build `itemNodeOverrides` instead. |
+| modify | `apps/web/src/__tests__/use-batch-project.test.ts` | **(scope-add)** update assertions from old API to unified store. |
+| modify | `apps/web/src/__tests__/item-node-hidden.test.ts` | **(scope-add)** update to unified `setNodeHidden`/`hidden` flag. |
+| modify | `apps/web/src/__tests__/hooks/use-preview-editor-state.test.ts` | **(scope-add)** update to read overrides from `itemNodeOverrides`. |
+| modify | `apps/web/src/components/__tests__/BatchRightPanel-style-routing.test.tsx` | **(scope-add)** update setter-shape assertions to unified store. |
+| modify | `apps/web/src/__tests__/use-project-persistence.test.ts` | **(scope-add)** build projects with `itemNodeOverrides`. |
+| modify | `packages/projects/__tests__/idb-adapter.test.ts` | **(scope-add)** migrated-output assertions now expect v5 + `itemNodeOverrides`. |
+| modify | `packages/projects/__tests__/zip-import.test.ts` | **(scope-add)** migrated-output assertions → `itemNodeOverrides`. |
+| modify | `packages/projects/__tests__/zip-export.test.ts` | **(scope-add)** expect `schemaVersion: 5` + serialized `itemNodeOverrides`. |
+| modify | `apps/web/src/__tests__/use-fan-out-text-handlers.test.ts` | **(scope-add)** unified setter arg contract (`setNodeOverride`/`setNodeHidden`). |
+| modify | `packages/projects/README.md` | **(scope-add)** document unified `NodeOverride` API + schema v5 (per Documentation table). |
 
 **Steps:**
 
-- [ ] Define `NodeOverride` and `itemNodeOverrides` in `schema.ts`; bump `SCHEMA_VERSION` to 5.
-- [ ] Write `migrateToV5(p)`: for each overlay key present across the three v4 maps, fold `content` → `NodeOverride.content`, the style partial → spread into the override, and each hidden nodeId → `hidden: true`; **no-clobber** (never overwrite an existing `itemNodeOverrides[overlay][node]` field), **idempotent** (re-run on a v5 record is a no-op), **stale keys skipped**, **zero-overlay** safe; drop the three old maps. Append to `migrateProject` chain after `migrateToV4`.
+- [x] Define `NodeOverride` and `itemNodeOverrides` in `schema.ts`; bump `SCHEMA_VERSION` to 5.
+- [x] Write `migrateToV5(p)`: for each overlay key present across the three v4 maps, fold `content` → `NodeOverride.content`, the style partial → spread into the override, and each hidden nodeId → `hidden: true`; **no-clobber** (never overwrite an existing `itemNodeOverrides[overlay][node]` field), **idempotent** (re-run on a v5 record is a no-op), **stale keys skipped**, **zero-overlay** safe; drop the three old maps. Append to `migrateProject` chain after `migrateToV4`.
   - **Guard the version-literal monotonicity:** today `migrateToV3` sets `schemaVersion: SCHEMA_VERSION` (currently `4`) while `migrateToV4` sets the literal `4` (schema.ts ~lines 214, 269). Bumping `SCHEMA_VERSION` to 5 would make `migrateToV3` jump a v2 record straight to 5, skipping the v3→v4 fan-out. Fix `migrateToV3` to set the **literal** `3`, and have only `migrateToV5` (the new last link) set the literal `5`, so the chain steps 2→3→4→5 monotonically. Mirror the existing `migrateToV4` version-gate pattern in `migrateToV5` (gate on `schemaVersion >= 5` → return as-is for idempotency).
-- [ ] Add unified helpers `getNodeOverride`/`setNodeOverride`/`setNodeHidden` to `@maga/projects`; keep `getTextValue`/`getTextStyle` as thin reads over the unified store if callers still want them.
-- [ ] Rewire `use-batch-project`, `use-item-text`, `use-fan-out-text-handlers`, `use-preview-editor-state`, `use-batch-render`, and `BatchWorkspace` onto the unified store **with no observable text behavior change**.
-- [ ] Update `.ai/decisions/per-item-text-schema.md` → rename/retitle to schema v5: unified `itemNodeOverrides`, the v4→v5 collapse, the `hidden`-flag representation (D2). Update `.ai/index.md` `@maga/projects` row to "schema v5 (unified per-item node overrides …), v1→v5 chain".
+- [x] Add unified helpers `getNodeOverride`/`setNodeOverride`/`setNodeHidden` to `@maga/projects`; keep `getTextValue`/`getTextStyle` as thin reads over the unified store if callers still want them.
+- [x] Rewire `use-batch-project`, `use-item-text`, `use-fan-out-text-handlers`, `use-preview-editor-state`, `use-batch-render`, and `BatchWorkspace` onto the unified store **with no observable text behavior change**.
+- [x] Update `.ai/decisions/per-item-text-schema.md` → rename/retitle to schema v5: unified `itemNodeOverrides`, the v4→v5 collapse, the `hidden`-flag representation (D2). Update `.ai/index.md` `@maga/projects` row to "schema v5 (unified per-item node overrides …), v1→v5 chain".
 
 **Tests:**
 
@@ -208,20 +220,20 @@ migrated project, now through `itemNodeOverrides`.
 
 **Verification:**
 
-- [ ] Automated tests pass: `pnpm test` (run in `packages/projects` and `apps/web`).
+- [x] Automated tests pass: `pnpm test` (run in `packages/projects` and `apps/web`). — projects 55/55, web 305/305; both `tsc --noEmit` clean.
 - [ ] Load an existing v4 project: text content/style edits + hide/restore for selected variants still work; Generate All renders per-variant text correctly (manual smoke).
 
 **Phase review:**
 
 - [ ] All Steps and Verification checkboxes ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Reviewer-driven changes reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated (see Documentation section)
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd` (code-reviewer subagent used instead).
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
+- [x] Code-reviewer agent has verified this phase — verdict green (nits: stale JSDoc link fixed; residual `{hidden:false}` noted for later).
+- [x] Reviewer-driven changes reflected back into this plan file
+- [x] Tests written and passing
+- [x] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `refactor(projects): collapse v4 text maps into unified itemNodeOverrides (schema v5)`
+- [x] Changes committed: `refactor(projects): collapse v4 text maps into unified itemNodeOverrides (schema v5)` — code commit f406e30; plan checkboxes + JSDoc nit in orchestrator follow-up commit.
 - [ ] Phase marked complete
 
 ---

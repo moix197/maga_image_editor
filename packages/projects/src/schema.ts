@@ -3,8 +3,8 @@ import type { EditorState, NodeId, OverlayNode, TextNode } from "@maga/editor";
 
 /**
  * The styleable subset of a {@link TextNode}: every field a per-item override
- * may carry except identity/content/position. Used as the value type of
- * {@link BatchProject.itemTextStyles} so callers (and the render loop) can
+ * may carry except identity/content/position. Folded into {@link NodeOverride}
+ * (and surfaced via `getTextStyle`) so callers (and the render loop) can
  * apply a `Partial<TextStyle>` without reaching across to `@maga/editor`.
  */
 export type TextStyle = Pick<
