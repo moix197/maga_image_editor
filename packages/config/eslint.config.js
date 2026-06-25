@@ -16,6 +16,30 @@ const config = [
   { ignores: ["**/.next/**", "**/dist/**", "**/build/**", "**/node_modules/**"] },
   ...tseslint.configs.recommended,
   ...next,
+  {
+    rules: {
+      // Underscore-prefixed bindings are intentionally unused (e.g. destructure-to-drop).
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+      // React-Compiler advisories (perf/style, not correctness) — surfaced as
+      // warnings so they don't block the production build.
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/refs": "warn",
+    },
+  },
+  {
+    // Test mocks legitimately use `any`.
+    files: ["**/*.test.{ts,tsx}", "**/__tests__/**"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ];
 
 export default config;

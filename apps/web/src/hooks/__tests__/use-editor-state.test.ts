@@ -11,7 +11,6 @@ describe("useEditorState – addTextNode zIndex", () => {
     act(() => result.current.addTextNode());
     act(() => result.current.addTextNode());
 
-    const [a, , c] = result.current.state.nodes;
     expect(result.current.state.nodes).toHaveLength(3);
 
     // Delete the middle node — leaves zIndex 0 and 2; array length drops to 2

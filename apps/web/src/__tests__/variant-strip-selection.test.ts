@@ -83,13 +83,11 @@ describe("VariantStrip selection invariants", () => {
   });
 
   it("select-all toggle selects all when not all selected", () => {
-    const partial = new Set(["a"]);
     const allSelected = new Set(allIds); // simulate handleSelectAll when !allSelected
     expect(allSelected.size).toBe(allIds.length);
   });
 
   it("select-all toggle deselects to active-only when all selected", () => {
-    const all = new Set(allIds);
     const afterDeselect = new Set([activeId]); // simulate handleSelectAll when allSelected
     expect(afterDeselect.size).toBe(1);
     expect(afterDeselect.has(activeId)).toBe(true);

@@ -9,11 +9,13 @@ import { cn } from "@/lib/utils";
 interface SelectContextValue {
   value?: string;
   onValueChange?: (v: string) => void;
-  selectRef: React.RefObject<HTMLSelectElement | null>;
+  selectEl: HTMLSelectElement | null;
+  setSelectEl: (el: HTMLSelectElement | null) => void;
 }
 
 const SelectContext = React.createContext<SelectContextValue>({
-  selectRef: { current: null },
+  selectEl: null,
+  setSelectEl: () => {},
 });
 
 function Select({
@@ -25,9 +27,11 @@ function Select({
   onValueChange?: (v: string) => void;
   children?: React.ReactNode;
 }) {
-  const selectRef = React.useRef<HTMLSelectElement>(null);
+  // Callback ref in state so SelectContent re-renders once the <select> mounts,
+  // without reading a ref's `.current` during render.
+  const [selectEl, setSelectEl] = React.useState<HTMLSelectElement | null>(null);
   return (
-    <SelectContext.Provider value={{ value, onValueChange, selectRef }}>
+    <SelectContext.Provider value={{ value, onValueChange, selectEl, setSelectEl }}>
       {children}
     </SelectContext.Provider>
   );
@@ -42,11 +46,11 @@ function SelectTrigger({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const { value, onValueChange, selectRef } = React.useContext(SelectContext);
+  const { value, onValueChange, setSelectEl } = React.useContext(SelectContext);
   return (
     <div className={cn("relative h-9 w-full", className)}>
       <select
-        ref={selectRef}
+        ref={setSelectEl}
         value={value}
         onChange={(e) => onValueChange?.(e.target.value)}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -68,17 +72,12 @@ function SelectValue(_props: { placeholder?: string }) {
 // SelectContent renders its children (SelectItem → <option>) directly into the
 // native <select> via a ref-based portal equivalent.
 function SelectContent({ children }: { children?: React.ReactNode }) {
-  const { selectRef } = React.useContext(SelectContext);
-  const [mounted, setMounted] = React.useState(false);
+  const { selectEl } = React.useContext(SelectContext);
 
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted || !selectRef.current) return null;
+  if (!selectEl) return null;
 
   // Render options directly inside the <select> using a React portal
-  return createPortal(children, selectRef.current);
+  return createPortal(children, selectEl);
 }
 
 function SelectItem({
