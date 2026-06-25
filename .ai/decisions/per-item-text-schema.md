@@ -83,6 +83,18 @@ active variant **resets** selection to `{active}`; deleting/reordering overlays
 **prunes** stale ids and re-adds the active id. Selection is derived UI state, never
 persisted.
 
+**Read-side: both property panels display the active-variant merged value.** A
+property panel is a controlled view of one node, but the source of truth for a
+per-item field is `template ⊕ override`, not the template alone. So `BatchRightPanel`
+feeds each panel an **effective node** = `{ ...templateNode, ...activeVariantOverride }`
+with the non-Node `hidden` flag stripped: `TextStylePanel` gets `effectiveNode`
+(from `getTextStyle`), `OverlayControlsPanel` gets `effectiveOverlayNode` (from
+`getNodeOverride`). Without the merge, the panel would render the template's value
+while the canvas shows the override — desync. The write side still fans the raw
+`onChange` patch across `selectedVariantIds`; the merge is read-only. (Same strip
+semantics as `usePreviewEditorState.stripHidden` and `getTextStyle`'s `hidden`
+strip — see [[live-preview-derived-state]].)
+
 ## Per-variant node hiding
 
 Visibility is the `hidden` flag on a node's `NodeOverride`. `use-item-text.ts`

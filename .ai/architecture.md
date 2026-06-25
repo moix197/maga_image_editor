@@ -16,8 +16,9 @@ Three packages in a pnpm workspace, each owning one responsibility.
   — see [[framework-free-editor-package]]. Web reaches it only through the
   `apps/web/src/hooks/use-editor-state.ts` wrapper.
 - **`@maga/projects`** (`packages/projects`) — framework-free batch-project domain:
-  the persisted schema (overlay assets, per-item text + styles, per-variant hidden
-  nodes) and the ZIP/IDB serializers. No React, no DOM. See *Batch workspace* below.
+  the persisted schema v5 (overlay assets + one unified per-item `itemNodeOverrides`
+  store: content/style/geometry/transform/hidden per `(overlay, node)`) and the
+  ZIP/IDB serializers. No React, no DOM. See *Batch workspace* below.
 - **`@maga/config`** (`packages/config`) — static build configuration shared across
   the workspace: the base `tsconfig`, the ESLint config, and the Tailwind preset.
   No runtime code.
@@ -89,27 +90,30 @@ The center canvas renders a **live preview** of the active variant, derived
 copy-on-read from the template + that overlay's per-item overrides via
 `usePreviewEditorState` (`apps/web/src/hooks/use-preview-editor-state.ts`) — the
 shared template is never mutated for display; see [[live-preview-derived-state]].
-Every text layer is per-item (the lock model was removed in v4): text value, style,
-and visibility edits fan across the selected variants via `useFanOutTextHandlers`
-(`apps/web/src/hooks/use-fan-out-text-handlers.ts`) — `VariantStrip` multi-select
-chooses the targets, `reconcileVariantSelection`
-(`apps/web/src/lib/variant-selection.ts`) keeps that selection coherent across
-active-switch and deletion. This preview/display path is **orthogonal** to the
-Generate All render path below — the export loop owns output and is unaffected.
+Every node is per-item (the text lock model was removed in v4): text and
+image-overlay edits — content, style, geometry, overlay transforms, and
+visibility — fan across the selected variants via `useFanOutTextHandlers`
+(`apps/web/src/hooks/use-fan-out-text-handlers.ts`, whose `handleSetNodeOverride`
+is the generic patch primitive) — `VariantStrip` multi-select chooses the targets,
+`reconcileVariantSelection` (`apps/web/src/lib/variant-selection.ts`) keeps that
+selection coherent across active-switch and deletion. This preview/display path is
+**orthogonal** to the Generate All render path below — the export loop owns output
+and is unaffected.
 
 A batch project pairs a shared **template** (one `EditorState`: background, layers,
 text styles) with N **overlay assets** (each: id, original filename, blob key).
-Per-item text is stored as overrides, not per-item state — two parallel maps keyed
-`[overlayAssetId][textNodeId]`: `itemTextValues` (content string) and
-`itemTextStyles` (`Partial<TextStyle>`), plus an optional
-`itemHiddenNodeIds[overlayAssetId]` listing nodes hidden for that variant — see
-[[per-item-text-schema]]. This is the `@maga/projects` schema at
-`SCHEMA_VERSION = 4`.
+Per-item edits are stored as overrides, not per-item state — one **unified** store
+`itemNodeOverrides[overlayAssetId][nodeId]` of `NodeOverride`
+(`Partial<…overridable Node fields…> & { hidden? }`), covering text **and** image
+overlays in a single map; content lives under `content`, style/geometry/transform
+fields spread flat, visibility rides on `hidden` — see [[per-item-text-schema]].
+This is the `@maga/projects` schema at `SCHEMA_VERSION = 5`.
 
-Rendering each variant **mutates the live template (content + style), lets the DOM
-repaint, captures it, then restores both** — never a detached clone; the shared
-template is never permanently mutated, and the `finally` restore covers style
-fields, not just content. This is the load-bearing mechanism in
+Rendering each variant **mutates the live template (text content/style/geometry and
+overlay geometry/transforms), lets the DOM repaint, captures it, then restores
+everything** — never a detached clone; the shared template is never permanently
+mutated, and the `finally` restore covers all overridden fields, not just content.
+This is the load-bearing mechanism in
 `apps/web/src/hooks/use-batch-render.ts` — see [[batch-render-text-patch]].
 
 Reorder (asset list, layer stack) uses native HTML5 DnD with no library; layer
@@ -118,10 +122,13 @@ z-order reuses `reorderNode` from `@maga/editor` — see [[dnd-library-choice]].
 Projects persist two ways from `@maga/projects`: an IndexedDB adapter (live
 autosave) and a ZIP exporter/importer (portable file). Both load older records
 through the single shared `migrateProject` chain
-(`migrateToV4 ∘ migrateToV3 ∘ migrateToV2`, `packages/projects/src/schema.ts`),
-which upgrades v1→v4 and is idempotent on a v4 record; `migrateToV4` fans the
-retired lock model's shared values into per-item overrides. The version bump is
-one-way; see [[per-item-text-schema]].
+(`migrateToV5 ∘ migrateToV4 ∘ migrateToV3 ∘ migrateToV2`,
+`packages/projects/src/schema.ts`), which upgrades v1→v5 and is idempotent on a v5
+record; `migrateToV4` fans the retired lock model's shared values into the old
+per-item text maps, then `migrateToV5` collapses those three maps
+(`itemTextValues`/`itemTextStyles`/`itemHiddenNodeIds`) into the unified
+`itemNodeOverrides` store. The version bump is one-way; see
+[[per-item-text-schema]].
 
 ### Cartoonize (external service)
 
