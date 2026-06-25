@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { GripVertical } from "lucide-react";
 import type { EditorNode, NodeId } from "@maga/editor";
 import { isTextNode } from "@maga/editor";
@@ -19,7 +19,7 @@ function nodeLabel(node: EditorNode): string {
 }
 
 export function LayerStackPanel({ nodes, onReorderNode }: LayerStackPanelProps) {
-  const dragSrcIdx = useRef<number | null>(null);
+  const [dragSrcIdx, setDragSrcIdx] = useState<number | null>(null);
   const [dropTargetIdx, setDropTargetIdx] = useState<number | null>(null);
 
   if (nodes.length === 0) return null;
@@ -28,7 +28,7 @@ export function LayerStackPanel({ nodes, onReorderNode }: LayerStackPanelProps) 
   const sorted = [...nodes].sort((a, b) => b.zIndex - a.zIndex);
 
   function handleDragStart(idx: number) {
-    dragSrcIdx.current = idx;
+    setDragSrcIdx(idx);
   }
 
   function handleDragOver(e: React.DragEvent, idx: number) {
@@ -43,8 +43,8 @@ export function LayerStackPanel({ nodes, onReorderNode }: LayerStackPanelProps) 
   function handleDrop(e: React.DragEvent, targetIdx: number) {
     e.preventDefault();
     setDropTargetIdx(null);
-    const src = dragSrcIdx.current;
-    dragSrcIdx.current = null;
+    const src = dragSrcIdx;
+    setDragSrcIdx(null);
     if (src === null || src === targetIdx) return;
 
     const nodeId = sorted[src]!.id;
@@ -59,7 +59,7 @@ export function LayerStackPanel({ nodes, onReorderNode }: LayerStackPanelProps) 
   }
 
   function handleDragEnd() {
-    dragSrcIdx.current = null;
+    setDragSrcIdx(null);
     setDropTargetIdx(null);
   }
 
@@ -83,7 +83,7 @@ export function LayerStackPanel({ nodes, onReorderNode }: LayerStackPanelProps) 
             className={[
               "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
               "cursor-grab active:cursor-grabbing select-none",
-              dropTargetIdx === idx && dragSrcIdx.current !== idx
+              dropTargetIdx === idx && dragSrcIdx !== idx
                 ? "bg-primary/10 ring-2 ring-primary"
                 : "hover:bg-muted",
             ].join(" ")}

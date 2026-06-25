@@ -48,28 +48,32 @@ function BatchWorkspaceInner() {
   );
 
   // Track which generated output is highlighted in the Results big preview.
-  // Auto-selects the first output when outputs go from empty to non-empty.
-  // Resets to null when outputs are cleared.
+  // Auto-selects the first output when outputs go from empty to non-empty;
+  // resets to null when outputs are cleared. Reconciled during render (React's
+  // "adjust state when a prop changes" pattern), not in an effect.
   const [selectedOutputId, setSelectedOutputId] = useState<string | null>(null);
-  const prevOutputsLengthRef = useRef<number>(outputs.length);
-  useEffect(() => {
-    const prevLen = prevOutputsLengthRef.current;
-    const curLen = outputs.length;
-    prevOutputsLengthRef.current = curLen;
-    if (curLen === 0) {
+  const [prevOutputsLen, setPrevOutputsLen] = useState(outputs.length);
+  if (outputs.length !== prevOutputsLen) {
+    const wasEmpty = prevOutputsLen === 0;
+    setPrevOutputsLen(outputs.length);
+    if (outputs.length === 0) {
       setSelectedOutputId(null);
-    } else if (prevLen === 0 && curLen > 0) {
+    } else if (wasEmpty) {
       setSelectedOutputId(outputs[0]!.overlayAssetId);
     }
-  }, [outputs]);
+  }
 
-  useEffect(() => {
+  // Keep the active overlay valid: fall back to the first overlay when the
+  // active one is removed, or null when none remain. Reconciled during render.
+  const [prevOverlays, setPrevOverlays] = useState(overlays);
+  if (overlays !== prevOverlays) {
+    setPrevOverlays(overlays);
     setActiveOverlayId((prev) => {
       if (overlays.length === 0) return null;
       const stillExists = overlays.some((o) => o.id === prev);
       return stillExists ? prev : (overlays[0]?.id ?? null);
     });
-  }, [overlays]);
+  }
 
   const prevActiveIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -129,8 +133,11 @@ function BatchWorkspaceInner() {
   const { replace: replaceEditorState } = editorState;
   useEffect(() => {
     if (!pendingRestore) return;
+    // Imperative one-shot restore (consume + replace editor state); the state
+    // set below is part of applying that restore, not a render-derived value.
     consumeRestore();
     if (pendingRestore.template) replaceEditorState(pendingRestore.template);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVariableSlotNodeId(pendingRestore.variableSlot?.overlayNodeId ?? null);
   }, [pendingRestore, consumeRestore, replaceEditorState]);
 

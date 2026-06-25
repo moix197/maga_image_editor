@@ -23,8 +23,6 @@ interface TextStylePanelProps {
   hideControls?: boolean;
   /** Additional class names applied to the root <aside> element. */
   className?: string;
-  /** When true, marks the panel as disabled for assistive tech (aria-disabled). */
-  disabled?: boolean;
 }
 
 const DEFAULT_SHADOW: TextShadow = { color: "#000000", blur: 4, offsetX: 2, offsetY: 2 };
@@ -39,11 +37,10 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-export function TextStylePanel({ node, onChange, onDelete, onReorder, hideControls = false, className, disabled = false }: TextStylePanelProps) {
+export function TextStylePanel({ node, onChange, onDelete, onReorder, hideControls = false, className }: TextStylePanelProps) {
   return (
     <aside
       aria-label="Text style panel"
-      aria-disabled={disabled || undefined}
       className={className ?? "flex w-64 flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm"}
     >
       <h2 className="text-sm font-semibold tracking-tight">Text Style</h2>

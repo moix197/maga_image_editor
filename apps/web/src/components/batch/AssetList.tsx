@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { ProjectAsset } from "@maga/projects";
 
 interface AssetListProps {
@@ -10,13 +10,13 @@ interface AssetListProps {
 }
 
 export function AssetList({ label, assets, onReorder }: AssetListProps) {
-  const dragSrcIdx = useRef<number | null>(null);
+  const [dragSrcIdx, setDragSrcIdx] = useState<number | null>(null);
   const [dropTargetIdx, setDropTargetIdx] = useState<number | null>(null);
 
   if (assets.length === 0) return null;
 
   function handleDragStart(idx: number) {
-    dragSrcIdx.current = idx;
+    setDragSrcIdx(idx);
   }
 
   function handleDragOver(e: React.DragEvent, idx: number) {
@@ -32,17 +32,17 @@ export function AssetList({ label, assets, onReorder }: AssetListProps) {
   function handleDrop(e: React.DragEvent, targetIdx: number) {
     e.preventDefault();
     setDropTargetIdx(null);
-    const src = dragSrcIdx.current;
+    const src = dragSrcIdx;
     if (src === null || src === targetIdx || !onReorder) return;
     const next = [...assets];
     const [item] = next.splice(src, 1);
     next.splice(targetIdx, 0, item!);
     onReorder(next);
-    dragSrcIdx.current = null;
+    setDragSrcIdx(null);
   }
 
   function handleDragEnd() {
-    dragSrcIdx.current = null;
+    setDragSrcIdx(null);
     setDropTargetIdx(null);
   }
 
@@ -64,7 +64,7 @@ export function AssetList({ label, assets, onReorder }: AssetListProps) {
             onDragEnd={handleDragEnd}
             className={[
               "overflow-hidden rounded-lg border bg-card transition-colors",
-              dropTargetIdx === idx && dragSrcIdx.current !== idx
+              dropTargetIdx === idx && dragSrcIdx !== idx
                 ? "border-primary ring-2 ring-primary"
                 : "border-border",
               draggable ? "cursor-grab active:cursor-grabbing" : "",
@@ -72,6 +72,8 @@ export function AssetList({ label, assets, onReorder }: AssetListProps) {
               .filter(Boolean)
               .join(" ")}
           >
+            {/* blobKey is a client-side object/data URL the next/image optimizer can't process. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={asset.blobKey}
               alt={asset.filename}

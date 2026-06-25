@@ -27,10 +27,6 @@ const config = [
           caughtErrorsIgnorePattern: "^_",
         },
       ],
-      // React-Compiler advisories (perf/style, not correctness) — surfaced as
-      // warnings so they don't block the production build.
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/refs": "warn",
     },
   },
   {
