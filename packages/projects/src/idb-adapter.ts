@@ -55,7 +55,7 @@ export function saveProject(db: IDBDatabase, project: BatchProject): Promise<voi
  * Loads a project by id. Returns `null` if absent, or if the stored record's
  * `schemaVersion` is newer than this build understands (logs a warning and
  * discards it). Older records are migrated in-memory via {@link migrateProject}
- * (the shared v1→v2→v3 chain the ZIP import also applies) so legacy IDB records
+ * (the shared v1→v2→v3→v4→v5 chain the ZIP import also applies) so legacy IDB records
  * load without error.
  */
 export async function loadProject(db: IDBDatabase, id: string): Promise<BatchProject | null> {

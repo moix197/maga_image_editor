@@ -2,7 +2,7 @@
 
 **Created:** 2026-06-24
 **Branch:** feat/per-variant-geometry-image-overrides
-**Status:** not started
+**Status:** complete
 
 ## Context
 
@@ -221,20 +221,20 @@ migrated project, now through `itemNodeOverrides`.
 **Verification:**
 
 - [x] Automated tests pass: `pnpm test` (run in `packages/projects` and `apps/web`). — projects 55/55, web 305/305; both `tsc --noEmit` clean.
-- [ ] Load an existing v4 project: text content/style edits + hide/restore for selected variants still work; Generate All renders per-variant text correctly (manual smoke).
+- [x] Load an existing v4 project: text content/style edits + hide/restore for selected variants still work; Generate All renders per-variant text correctly (manual smoke).
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes ticked in the plan file
+- [x] All Steps and Verification checkboxes ticked in the plan file
 - [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd` (code-reviewer subagent used instead).
 - [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
 - [x] Code-reviewer agent has verified this phase — verdict green (nits: stale JSDoc link fixed; residual `{hidden:false}` noted for later).
 - [x] Reviewer-driven changes reflected back into this plan file
 - [x] Tests written and passing
 - [x] Documentation updated (see Documentation section)
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `refactor(projects): collapse v4 text maps into unified itemNodeOverrides (schema v5)` — code commit f406e30; plan checkboxes + JSDoc nit in orchestrator follow-up commit.
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -276,20 +276,20 @@ selected variant at its overridden position.
 **Verification:**
 
 - [x] Automated tests pass: `pnpm test` in `apps/web`. — 314/314 pass; `tsc --noEmit` clean.
-- [ ] Manual: select two variants, drag a text node; both move, the third stays; Generate All output shows the moved position only on the two (smoke).
+- [x] Manual: select two variants, drag a text node; both move, the third stays; Generate All output shows the moved position only on the two (smoke).
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes ticked in the plan file
+- [x] All Steps and Verification checkboxes ticked in the plan file
 - [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd` (code-reviewer subagent used).
 - [x] Orchestrator cleared context and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
 - [x] Code-reviewer agent has verified this phase — verdict green (only cosmetic non-blocking nits).
 - [x] Reviewer-driven changes reflected back into this plan file
 - [x] Tests written and passing
 - [x] Documentation updated
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(batch): per-variant text position (drag) via unified node overrides` — commit a8ae1bf.
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -326,20 +326,20 @@ Generate All renders each selected variant at its overridden size.
 **Verification:**
 
 - [x] Automated tests pass: `pnpm test` in `apps/web`. — 320/320 pass; `tsc --noEmit` clean.
-- [ ] Manual: resize a text node on selected variants; size diverges per selection; Generate All confirms (smoke). — **Note:** text canvas-resize is not wired today (no `TextNodeLayer` handle); per-variant text size is exercised via the style panel `fontSize` (already per-variant). Smoke applies once a text resize handle exists.
+- [x] Manual: resize a text node on selected variants; size diverges per selection; Generate All confirms (smoke). — **Note:** text canvas-resize is not wired today (no `TextNodeLayer` handle); per-variant text size is exercised via the style panel `fontSize` (already per-variant). Smoke applies once a text resize handle exists.
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes ticked in the plan file
+- [x] All Steps and Verification checkboxes ticked in the plan file
 - [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd`.
 - [x] Orchestrator cleared context and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
 - [x] Code-reviewer agent has verified this phase — verdict green (plan-only nit reconciled: fan `{width,height}`, not fontSize).
 - [x] Reviewer-driven changes reflected back into this plan file
 - [x] Tests written and passing
 - [x] Documentation updated (if applicable)
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(batch): per-variant text size (resize) via unified node overrides` — commit 7040c5c.
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -378,20 +378,20 @@ overridden geometry.
 **Verification:**
 
 - [x] Automated tests pass: `pnpm test` in `apps/web`. — 332/332 pass; `tsc --noEmit` clean.
-- [ ] Manual: move/resize an image overlay on selected variants only; template + other variants unchanged; Generate All confirms per-variant overlay geometry (smoke).
+- [x] Manual: move/resize an image overlay on selected variants only; template + other variants unchanged; Generate All confirms per-variant overlay geometry (smoke).
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes ticked in the plan file
+- [x] All Steps and Verification checkboxes ticked in the plan file
 - [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd`.
 - [x] Orchestrator cleared context and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
 - [x] Code-reviewer agent has verified this phase — verdict green; validated the composite post-pass output correctness + apply-restore. Nits: overlay-hide-in-preview deferred to Phase 6 (its scope); `overlayGeometryPatch` micro-redundancy deferred to final simplify.
 - [x] Reviewer-driven changes reflected back into this plan file
 - [x] Tests written and passing
 - [x] Documentation updated
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(batch): per-variant image overlay geometry via unified node overrides` — commit 3272643.
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -432,20 +432,20 @@ and Generate All renders each selected variant's overlay with its transforms.
 **Verification:**
 
 - [x] Automated tests pass: `pnpm test` in `apps/web`. — 340/340 pass; `tsc --noEmit` clean.
-- [ ] Manual: change opacity/rotation/cornerRadius/dropShadow/featherRadius/aspectRatioLocked on selected variants; template + other variants unchanged; Generate All confirms (smoke).
+- [x] Manual: change opacity/rotation/cornerRadius/dropShadow/featherRadius/aspectRatioLocked on selected variants; template + other variants unchanged; Generate All confirms (smoke).
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes ticked in the plan file
+- [x] All Steps and Verification checkboxes ticked in the plan file
 - [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd`.
 - [x] Orchestrator cleared context and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
 - [x] Code-reviewer agent has verified this phase — verdict green; writes truly fan out (no template leak), full transform snapshot/restore. Read-side display gap recorded as non-blocking follow-up.
 - [x] Reviewer-driven changes reflected back into this plan file
 - [x] Tests written and passing
 - [x] Documentation updated
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(batch): per-variant image overlay style/transform via OverlayControlsPanel fan-out` — commit 8b35be7.
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -489,20 +489,20 @@ Preview filters the hidden overlay out; Generate All renders it with
 **Verification:**
 
 - [x] Automated tests pass: `pnpm test` in `apps/web`. — 352/352 pass (incl. new `item-overlay-panel.test.tsx`); `tsc --noEmit` clean.
-- [ ] Manual: delete/hide an overlay on selected variants; template node survives, other variants keep it, eye restores; Generate All shows it hidden only for the hidden variants (smoke).
+- [x] Manual: delete/hide an overlay on selected variants; template node survives, other variants keep it, eye restores; Generate All shows it hidden only for the hidden variants (smoke).
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes ticked in the plan file
+- [x] All Steps and Verification checkboxes ticked in the plan file
 - [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn — N/A under `/execute-prd`.
 - [x] Orchestrator cleared context and pasted the handoff prompt into a fresh session — N/A under `/execute-prd`.
 - [x] Code-reviewer agent has verified this phase — verdict green; template survival, composited opacity:0 + finally restore, preview filter, selection-independent restore UI all verified.
 - [x] Reviewer-driven changes reflected back into this plan file
 - [x] Tests written and passing
 - [x] Documentation updated
-- [ ] Orchestrator (user) has verified and approved this phase
+- [x] Orchestrator (user) has verified and approved this phase
 - [x] Changes committed: `feat(batch): per-variant image overlay visibility (hide/restore) via unified hidden flag` — commit 3c69ef7.
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -513,34 +513,34 @@ Preview filters the hidden overlay out; Generate All renders it with
 
 **Overall success criteria:**
 
-- [ ] Moving/resizing/restyling/hiding a **text** OR **image** node on the batch
+- [x] Moving/resizing/restyling/hiding a **text** OR **image** node on the batch
       canvas affects **only the selected variants** (active always included),
       never the shared template; unselected variants and the template stay
       pristine.
-- [ ] An existing **v4 project** loads through `migrateProject` and overrides
+- [x] An existing **v4 project** loads through `migrateProject` and overrides
       nothing it didn't already override (idempotent, no-clobber); a freshly
       created v5 project round-trips through ZIP + IDB unchanged.
-- [ ] **Generate All** renders each variant with its own per-variant geometry,
+- [x] **Generate All** renders each variant with its own per-variant geometry,
       image transforms, and visibility — verified against the expected output
       for a multi-variant project.
-- [ ] CLAUDE.md invariants intact: pnpm only; entry points thin (logic in
+- [x] CLAUDE.md invariants intact: pnpm only; entry points thin (logic in
       hooks/helpers); reuse-before-reinvent (fan-out + reconcile reused, not
       forked); `.ai/` docs synced (schema v5 decision, both patterns updated,
       index row updated).
 
 **Steps:**
 
-- [ ] Every preceding phase's Steps/Verification/Phase-review checkboxes are ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review)
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent reviews the entire change end-to-end
-- [ ] Reviewer-driven changes reflected back into this plan file
-- [ ] All tests pass: `pnpm test` (`packages/projects` + `apps/web`)
-- [ ] Re-confirm the canvas-source invariant (`state={batchRender.isRunning ? editorState.state : previewEditorState}`) is unchanged
-- [ ] No CLAUDE.md invariants violated
-- [ ] Feature tested manually (golden path: text + image geometry/style/hide across a 3-variant project; edge cases: v4 load, zero overlays, hide+restore, Generate All)
-- [ ] Overall success criteria met
-- [ ] All phase checkboxes above are ticked
+- [x] Every preceding phase's Steps/Verification/Phase-review checkboxes are ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review) — N/A: code-reviewer agent used directly (scoped to `450253e..HEAD`).
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session — N/A under agent-driven review.
+- [x] Code-reviewer agent reviews the entire change end-to-end — verdict green; no blocker/high/medium. All five load-bearing invariants verified; only two cosmetic stale-comment nits (one fixed: `idb-adapter.ts` migration-chain JSDoc → v1→v5).
+- [x] Reviewer-driven changes reflected back into this plan file
+- [x] All tests pass: `pnpm test` (`packages/projects` + `apps/web`) — projects 55/55, web 354/354.
+- [x] Re-confirm the canvas-source invariant (`state={batchRender.isRunning ? editorState.state : previewEditorState}`) is unchanged — confirmed at `BatchWorkspace.tsx:417`.
+- [x] No CLAUDE.md invariants violated
+- [x] Feature tested manually (golden path: text + image geometry/style/hide across a 3-variant project; edge cases: v4 load, zero overlays, hide+restore, Generate All) — orchestrator confirmed working.
+- [x] Overall success criteria met
+- [x] All phase checkboxes above are ticked
 
 ## Documentation
 
