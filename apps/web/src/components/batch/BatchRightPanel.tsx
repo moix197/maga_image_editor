@@ -150,15 +150,30 @@ export function BatchRightPanel({
                     const perItemStyle = activeOverlay
                       ? itemText.getTextStyle(activeOverlay.id, selectedNodeId!)
                       : {};
-                    const effectiveNode: TextNode = { ...baseNode, ...perItemStyle };
+                    // width is NOT in the TextStyle Pick — pull it from getNodeOverride directly.
+                    const perItemWidth = activeOverlay
+                      ? itemText.getNodeOverride(activeOverlay.id, selectedNodeId!).width
+                      : undefined;
+                    const effectiveNode: TextNode = {
+                      ...baseNode,
+                      ...perItemStyle,
+                      ...(perItemWidth !== undefined && { width: perItemWidth }),
+                    };
                     return (
                       <TextStylePanel
                         node={effectiveNode}
                         onChange={(patch) => {
+                          const { width, ...stylePatch } = patch;
                           if (activeOverlay) {
                             // Fans the style edit across every selected variant,
                             // never mutating the shared template.
-                            itemText.setTextStyle(activeOverlay.id, selectedNodeId!, patch);
+                            if (Object.keys(stylePatch).length > 0) {
+                              itemText.setTextStyle(activeOverlay.id, selectedNodeId!, stylePatch);
+                            }
+                            // width is NOT in the TextStyle Pick — route via setNodeOverride directly.
+                            if (width !== undefined) {
+                              itemText.setNodeOverride(activeOverlay.id, selectedNodeId!, { width });
+                            }
                           } else {
                             // No overlay context yet (template-only mode) — fall back to
                             // mutating the template directly so the panel still works.

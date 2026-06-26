@@ -144,5 +144,22 @@ boundary is the point: the provider key never reaches the client, see
 [[deepai-toonify-provider]]. The result is ephemeral page state, not persisted —
 see [[ephemeral-cartoonize-result-state]].
 
+### TextNode width field
+
+`TextNode` (`packages/editor/src/types.ts`) has an optional `width?: number` field (added in Phase 1 of text-box-resize). When absent the node auto-sizes to content (old behavior, no migration needed). When set, the root div in `TextNodeLayer` receives an inline `width: <n>px` style.
+
+The `textBackground` wrapper in `TextNodeLayer` was changed from an inline `<span>` to a `display:block; width:100%` span so the background fills the full box width when `width` is set, while still auto-wrapping to content when `width` is absent.
+
+`TextNodeLayer` (`apps/web/src/components/text-node-layer.tsx`) accepts:
+- `onResize?: (width: number) => void` — called during right-edge drag with the new pixel width (min-clamped to 20).
+
+The right-edge drag handle (a `<span aria-label="Resize handle">`) is rendered inside the node when `isSelected` is true, mirroring the SE-handle pattern of `OverlayNodeLayer`. It uses pointer capture (`setPointerCapture`/`releasePointerCapture`) and `e.stopPropagation()` to prevent the move handler from also firing.
+
+`TextOverlayCanvas` wires `onResize` → `onNodeTextResize(id, width)` (a separate prop from `onNodeResize` for overlay nodes).
+
+`BatchWorkspace` exposes `handleNodeTextResize(id, width)` which calls `fanOut.handleSetNodeOverride(activeOverlayId, id, { width })` — width-only patch, height is auto.
+
+`width` is **not** in the `TextStyle` Pick (`packages/projects/src/schema.ts`). Width changes from the panel (`TextStylePanel`) are split by `BatchRightPanel.onChange`: `width` routes via `itemText.setNodeOverride`; the remaining style keys route via `itemText.setTextStyle`. See `decisions/text-node-width-resize.md`.
+
 > Update via the `sync-knowledge` skill when an architectural boundary, package,
 > or flow is introduced or changed.

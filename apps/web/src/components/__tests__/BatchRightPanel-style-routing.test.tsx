@@ -153,8 +153,11 @@ describe("BatchRightPanel — text style routing (Phase 1b fix)", () => {
   it("style change fans out to the activeOverlay id passed in the call", () => {
     renderPanel(itemText, editorState);
 
-    const spinbutton = screen.getByRole("spinbutton") as HTMLInputElement; // fontSize input
-    fireEvent.change(spinbutton, { target: { value: "32" } });
+    // There are now two spinbuttons: fontSize (max=200) and width (placeholder=Auto).
+    // Select the fontSize input by its max attribute.
+    const inputs = screen.getAllByRole("spinbutton") as HTMLInputElement[];
+    const fontSizeInput = inputs.find((i) => i.max === "200")!;
+    fireEvent.change(fontSizeInput, { target: { value: "32" } });
 
     expect(itemText.setTextStyle).toHaveBeenCalledWith(OVERLAY_ID, NODE_ID, { fontSize: 32 });
   });
@@ -170,9 +173,11 @@ describe("BatchRightPanel — text style routing (Phase 1b fix)", () => {
     const colorInput = screen.getByLabelText("Text color") as HTMLInputElement;
     expect(colorInput.value).toBe("#ff0000");
 
-    // fontSize spinbutton should reflect the override (24), not the template base (16)
-    const spinbutton = screen.getByRole("spinbutton") as HTMLInputElement;
-    expect(spinbutton.value).toBe("24");
+    // fontSize spinbutton should reflect the override (24), not the template base (16).
+    // Disambiguate by max attribute (fontSize has max=200; width has no max).
+    const inputs = screen.getAllByRole("spinbutton") as HTMLInputElement[];
+    const fontSizeInput = inputs.find((i) => i.max === "200")!;
+    expect(fontSizeInput.value).toBe("24");
   });
 
   it("without activeOverlay, falls back to editorState.updateTextNode (template-only mode)", () => {

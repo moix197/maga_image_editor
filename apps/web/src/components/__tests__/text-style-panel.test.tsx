@@ -48,15 +48,19 @@ describe("TextStylePanel", () => {
 
   it("fires onChange with fontSize when number input changes", () => {
     render(<TextStylePanel node={mockNode} onChange={onChange} onDelete={noop} onReorder={noop} />);
-    const input = screen.getByRole("spinbutton") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "48" } });
+    // Use getAllByRole — there are now two spinbuttons: fontSize and width.
+    // Font Size comes first in DOM order.
+    const inputs = screen.getAllByRole("spinbutton") as HTMLInputElement[];
+    const fontSizeInput = inputs.find((i) => i.max === "200")!;
+    fireEvent.change(fontSizeInput, { target: { value: "48" } });
     expect(onChange).toHaveBeenCalledWith({ fontSize: 48 });
   });
 
   it("passes current fontSize as the input value", () => {
     render(<TextStylePanel node={{ ...mockNode, fontSize: 36 }} onChange={onChange} onDelete={noop} onReorder={noop} />);
-    const input = screen.getByRole("spinbutton") as HTMLInputElement;
-    expect(input.value).toBe("36");
+    const inputs = screen.getAllByRole("spinbutton") as HTMLInputElement[];
+    const fontSizeInput = inputs.find((i) => i.max === "200")!;
+    expect(fontSizeInput.value).toBe("36");
   });
 
   // ── Color ────────────────────────────────────────────────────────────────────

@@ -32,6 +32,8 @@ export interface TextNode {
   /** Clockwise rotation in degrees applied via CSS transform. */
   rotation: number;
   zIndex: number;
+  /** Explicit box width in px. When absent, the box auto-sizes to content. */
+  width?: number;
   fontSize: number;
   color: string;
   opacity: number;

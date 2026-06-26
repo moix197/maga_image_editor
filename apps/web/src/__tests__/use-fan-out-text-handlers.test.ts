@@ -76,6 +76,23 @@ describe("useFanOutTextHandlers", () => {
     expect(targetIds).not.toContain("ignored-overlay");
   });
 
+  it("width patch { width: 120 } fans out via setNodeOverride to all selected variants", () => {
+    const setNodeOverride = vi.fn();
+    const selectedVariantIds = new Set(["a", "b"]);
+
+    const { result } = renderHook(() =>
+      useFanOutTextHandlers({ selectedVariantIds, setNodeOverride, setNodeHidden: vi.fn() })
+    );
+
+    act(() => {
+      result.current.handleSetNodeOverride("ignored-overlay", "node1", { width: 120 });
+    });
+
+    expect(setNodeOverride).toHaveBeenCalledTimes(2);
+    expect(setNodeOverride).toHaveBeenCalledWith("a", "node1", { width: 120 });
+    expect(setNodeOverride).toHaveBeenCalledWith("b", "node1", { width: 120 });
+  });
+
   it("only calls setters for ids in the selected set — removed ids not called", () => {
     const setNodeOverride = vi.fn();
     // "c" was removed from selection

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ItemOverlayPanel } from "@/components/batch/BatchRightPanel";
-import type { OverlayNode, NodeId } from "@maga/editor";
+import { TextStylePanel } from "@/components/text-style-panel";
+import type { OverlayNode, NodeId, TextNode } from "@maga/editor";
 import type { useItemText } from "@/hooks/use-item-text";
 
 const OVERLAY_ASSET_ID = "overlay-a";
@@ -123,5 +124,126 @@ describe("ItemOverlayPanel", () => {
     );
 
     expect(screen.getAllByRole("button", { name: /hide image overlay/i })).toHaveLength(2);
+  });
+});
+
+function makeTextNode(overrides: Partial<TextNode> = {}): TextNode {
+  return {
+    id: "text-node-1" as NodeId,
+    content: "Hello",
+    x: 50,
+    y: 50,
+    rotation: 0,
+    zIndex: 0,
+    fontSize: 16,
+    color: "#000000",
+    opacity: 1,
+    fontFamily: "Inter",
+    fontWeight: "normal",
+    fontStyle: "normal",
+    shadow: null,
+    textBackground: null,
+    ...overrides,
+  };
+}
+
+describe("TextStylePanel — Width field", () => {
+  it("renders a Width input with placeholder Auto when node.width is undefined", () => {
+    const node = makeTextNode({ width: undefined });
+    render(
+      <TextStylePanel
+        node={node}
+        onChange={vi.fn()}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+      />,
+    );
+    const input = screen.getByPlaceholderText("Auto") as HTMLInputElement;
+    expect(input).toBeDefined();
+    expect(input.value).toBe("");
+  });
+
+  it("renders a Width input showing the current width when set", () => {
+    const node = makeTextNode({ width: 200 });
+    render(
+      <TextStylePanel
+        node={node}
+        onChange={vi.fn()}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+      />,
+    );
+    const input = screen.getByPlaceholderText("Auto") as HTMLInputElement;
+    expect(input.value).toBe("200");
+  });
+
+  it("onChange is called with { width: number } when user types a value", () => {
+    const onChange = vi.fn();
+    const node = makeTextNode({ width: undefined });
+    render(
+      <TextStylePanel
+        node={node}
+        onChange={onChange}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+      />,
+    );
+    const input = screen.getByPlaceholderText("Auto");
+    fireEvent.change(input, { target: { value: "150" } });
+    expect(onChange).toHaveBeenCalledWith({ width: 150 });
+  });
+
+  it("onChange is called with { width: undefined } when input is cleared", () => {
+    const onChange = vi.fn();
+    const node = makeTextNode({ width: 200 });
+    render(
+      <TextStylePanel
+        node={node}
+        onChange={onChange}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+      />,
+    );
+    const input = screen.getByPlaceholderText("Auto");
+    fireEvent.change(input, { target: { value: "" } });
+    expect(onChange).toHaveBeenCalledWith({ width: undefined });
+  });
+
+  it("onChange clamps width to 20 minimum", () => {
+    const onChange = vi.fn();
+    const node = makeTextNode({ width: undefined });
+    render(
+      <TextStylePanel
+        node={node}
+        onChange={onChange}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+      />,
+    );
+    const input = screen.getByPlaceholderText("Auto");
+    fireEvent.change(input, { target: { value: "5" } });
+    expect(onChange).toHaveBeenCalledWith({ width: 20 });
+  });
+
+  it("width patch routes to onChange which callers must forward via setNodeOverride (not setTextStyle)", () => {
+    // This test verifies that TextStylePanel fires onChange with { width }
+    // in a patch that contains ONLY width — the caller (BatchRightPanel) must
+    // then split that patch and route width via setNodeOverride, not setTextStyle.
+    const onChange = vi.fn();
+    const node = makeTextNode();
+    render(
+      <TextStylePanel
+        node={node}
+        onChange={onChange}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+      />,
+    );
+    const input = screen.getByPlaceholderText("Auto");
+    fireEvent.change(input, { target: { value: "120" } });
+    // The patch must only contain width — no style keys mixed in.
+    expect(onChange).toHaveBeenCalledWith({ width: 120 });
+    const patch = onChange.mock.calls[0]![0];
+    expect(Object.keys(patch)).toEqual(["width"]);
   });
 });

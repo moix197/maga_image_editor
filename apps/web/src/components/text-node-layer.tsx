@@ -8,6 +8,7 @@ interface TextNodeLayerProps {
   onMove: (x: number, y: number) => void;
   onSelect: () => void;
   isSelected: boolean;
+  onResize?: (width: number) => void;
 }
 
 /** Maps FONT_FAMILIES names to their CSS variable so next/font loads them. */
@@ -40,14 +41,19 @@ function hexToRgba(hex: string, alpha: number): string {
 
 function buildBackgroundSpanStyle(bg: TextBackground): React.CSSProperties {
   return {
+    display: "block",
+    width: "100%",
     backgroundColor: hexToRgba(bg.color, bg.opacity),
     padding: `${bg.paddingY}px ${bg.paddingX}px`,
     borderRadius: "2px",
+    boxSizing: "border-box",
   };
 }
 
-export function TextNodeLayer({ node, onMove, onSelect, isSelected }: TextNodeLayerProps) {
+export function TextNodeLayer({ node, onMove, onSelect, isSelected, onResize }: TextNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const resizeStart = useRef<{ clientX: number; width: number } | null>(null);
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -71,10 +77,32 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected }: TextNodeLa
     e.currentTarget.releasePointerCapture(e.pointerId);
   }
 
+  function handleResizePointerDown(e: ReactPointerEvent<HTMLSpanElement>) {
+    e.stopPropagation();
+    resizeStart.current = {
+      clientX: e.clientX,
+      width: node.width ?? containerRef.current?.offsetWidth ?? 100,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handleResizePointerMove(e: ReactPointerEvent<HTMLSpanElement>) {
+    if (!resizeStart.current || e.buttons === 0) return;
+    const dw = e.clientX - resizeStart.current.clientX;
+    const newWidth = Math.max(20, resizeStart.current.width + dw);
+    onResize?.(newWidth);
+  }
+
+  function handleResizePointerUp(e: ReactPointerEvent<HTMLSpanElement>) {
+    resizeStart.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  }
+
   const bg = node.textBackground;
 
   return (
     <div
+      ref={containerRef}
       role="button"
       tabIndex={0}
       aria-label={`Text node: ${node.content}`}
@@ -104,12 +132,33 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected }: TextNodeLa
         outline: isSelected ? "2px solid #2563EB" : "none",
         outlineOffset: "4px",
         backdropFilter: bg && bg.blur > 0 ? `blur(${bg.blur}px)` : undefined,
+        ...(node.width !== undefined && { width: `${node.width}px` }),
       }}
     >
       {bg ? (
         <span style={buildBackgroundSpanStyle(bg)}>{node.content}</span>
       ) : (
         node.content
+      )}
+      {isSelected && (
+        <span
+          aria-label="Resize handle"
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={handleResizePointerUp}
+          style={{
+            position: "absolute",
+            right: -6,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 12,
+            height: 12,
+            background: "#3b82f6",
+            borderRadius: 2,
+            cursor: "ew-resize",
+            zIndex: 10,
+          }}
+        />
       )}
     </div>
   );
