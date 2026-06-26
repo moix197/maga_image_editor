@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, fireEvent, act } from "@testing-library/react";
 import { TextNodeLayer } from "@/components/text-node-layer";
 import type { TextNode, NodeId } from "@maga/editor";
 
