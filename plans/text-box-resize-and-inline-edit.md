@@ -365,11 +365,10 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 - [ ] **Step 11 — Add `handleNodeContentChange` to `BatchWorkspace.tsx`.**
   ```ts
   const handleNodeContentChange = useCallback((id: string, content: string) => {
-    if (!activeOverlayId) return;
-    itemText.setTextValue(activeOverlayId, id, content);
-  }, [itemText, activeOverlayId]);
+    fanOut.handleSetItemTextValue(activeOverlayId ?? "", id, content);
+  }, [fanOut, activeOverlayId]);
   ```
-  Pass `onNodeContentChange={handleNodeContentChange}` to `TextOverlayCanvas`. **Logic lives in `use-item-text.ts`. `BatchWorkspace` stays thin — no business logic here.**
+  Pass `onNodeContentChange={handleNodeContentChange}` to `TextOverlayCanvas`. **Routes through `fanOut.handleSetItemTextValue` (matching `handleNodeTextResize` which uses `fanOut.handleSetNodeOverride`) so inline-edit commits fan out to all selected variants — not just the active overlay. This corrects an internal inconsistency with the success criterion: the panel Textarea and resize handler already fan out, but the original plan used raw `itemText.setTextValue` which only writes the active overlay.**
 
 - [ ] **Step 12 — Exit edit mode on node deselection.**
   In `text-node-layer.tsx`, add a `useEffect` that calls `handleEditCommit()` when `isSelected` changes from `true` to `false` while editing:

@@ -311,9 +311,8 @@ function BatchWorkspaceInner() {
   }, [fanOut, activeOverlayId]);
 
   const handleNodeContentChange = useCallback((id: string, content: string) => {
-    if (!activeOverlayId) return;
-    itemText.setTextValue(activeOverlayId, id, content);
-  }, [itemText, activeOverlayId]);
+    fanOut.handleSetItemTextValue(activeOverlayId ?? "", id, content);
+  }, [fanOut, activeOverlayId]);
 
   const fanOutItemText = {
     ...itemText,
