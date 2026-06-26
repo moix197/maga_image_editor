@@ -64,9 +64,9 @@ When the user backspaces all text and commits (Esc or blur), `onContentChange` i
 
 A `useEffect` on `isSelected` calls `handleEditCommit()` whenever `isSelected` transitions from `true` to `false` while `isEditing` is `true`. This covers the case where the user clicks another node — the previous node's edit is committed before the new node is selected.
 
-### Commit path: itemText.setTextValue
+### Commit path: fan-out, not raw itemText
 
-Content commits route through `BatchWorkspace.handleNodeContentChange` → `itemText.setTextValue(activeOverlayId, id, content)` → `setNodeOverride(overlayId, nodeId, { content })`. This is the same write path as the panel Textarea, ensuring canvas and panel stay in sync. `BatchWorkspace` stays thin — no business logic, just a thin bridge to `use-item-text.ts`.
+Content commits route through `BatchWorkspace.handleNodeContentChange` → `fanOut.handleSetItemTextValue(activeOverlayId, id, content)` → per-variant `setNodeOverride(overlayId, nodeId, { content })`. The fan-out hook (not raw `itemText.setTextValue`) is used deliberately so inline-edit commits reach **all selected variants**, matching the panel Textarea and the resize handler. `BatchWorkspace` stays thin — just a bridge to the fan-out hook.
 
 ---
 
@@ -90,4 +90,23 @@ This compensation is **removed**. `onResize` now passes only `(width: number)`. 
 
 ## Consequence for saved data
 
-`TextNode.x` and `.y` now represent the **top-left corner** percentage of the canvas, not the center. Projects saved before this change will have x/y values that were center coordinates — they will appear shifted after the upgrade (the node's top-left corner will be at what was previously the center point). New nodes default to x:25, y:25.
+`TextNode.x` and `.y` now represent the **top-left corner** percentage of the canvas, not the center. Projects saved before this change will have x/y values that were center coordinates — they will appear shifted after the upgrade (the node's top-left corner will be at what was previously the center point). New nodes default to x:25, y:25 — `DEFAULT_TEXT_NODE` (`packages/editor/src/defaults.ts`) was changed from 50,50 to 25,25 because a top-left anchor at 50,50 would park the corner at the canvas center.
+
+---
+
+# Fix: Resize handle must not trigger the move handler
+
+**Date:** 2026-06-26
+
+## Problem
+
+The right-edge resize handle uses pointer capture. Captured `pointermove` events fired on the handle still **bubble** up to the root div's `handlePointerMove`, which ran the move math and called `onMove`. The result was a position-drift bug: dragging the resize handle also nudged the node's x/y.
+
+## Decision
+
+Two complementary guards, both required:
+
+1. The handle's `handleResizePointerMove` / `handleResizePointerUp` call `e.stopPropagation()` so captured events do not bubble to the root handler.
+2. The root `handlePointerMove` bails early when a resize is active (`if (resizeStart.current) return`).
+
+Either alone is insufficient given pointer capture semantics; together they fully decouple resize from move. This mirrors the move-suppression already used for inline editing (`if (isEditing) return`).
