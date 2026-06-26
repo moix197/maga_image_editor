@@ -8,7 +8,7 @@ interface TextNodeLayerProps {
   onMove: (x: number, y: number) => void;
   onSelect: () => void;
   isSelected: boolean;
-  onResize?: (width: number) => void;
+  onResize?: (width: number, x: number) => void;
   onContentChange?: (content: string) => void;
 }
 
@@ -61,7 +61,7 @@ export function TextNodeLayer({
 }: TextNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const resizeStart = useRef<{ clientX: number; width: number } | null>(null);
+  const resizeStart = useRef<{ clientX: number; width: number; startX: number; parentW: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const editableRef = useRef<HTMLDivElement>(null);
 
@@ -142,9 +142,12 @@ export function TextNodeLayer({
 
   function handleResizePointerDown(e: ReactPointerEvent<HTMLSpanElement>) {
     e.stopPropagation();
+    const parentW = containerRef.current?.parentElement?.getBoundingClientRect().width ?? 1;
     resizeStart.current = {
       clientX: e.clientX,
       width: node.width ?? containerRef.current?.offsetWidth ?? 100,
+      startX: node.x,
+      parentW,
     };
     e.currentTarget.setPointerCapture(e.pointerId);
   }
@@ -153,7 +156,9 @@ export function TextNodeLayer({
     if (!resizeStart.current || e.buttons === 0) return;
     const dw = e.clientX - resizeStart.current.clientX;
     const newWidth = Math.max(20, resizeStart.current.width + dw);
-    onResize?.(newWidth);
+    const appliedDw = newWidth - resizeStart.current.width;
+    const newX = resizeStart.current.startX + (appliedDw / 2 / resizeStart.current.parentW) * 100;
+    onResize?.(newWidth, newX);
   }
 
   function handleResizePointerUp(e: ReactPointerEvent<HTMLSpanElement>) {

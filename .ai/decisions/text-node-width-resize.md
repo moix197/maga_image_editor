@@ -67,3 +67,7 @@ A `useEffect` on `isSelected` calls `handleEditCommit()` whenever `isSelected` t
 ### Commit path: itemText.setTextValue
 
 Content commits route through `BatchWorkspace.handleNodeContentChange` → `itemText.setTextValue(activeOverlayId, id, content)` → `setNodeOverride(overlayId, nodeId, { content })`. This is the same write path as the panel Textarea, ensuring canvas and panel stay in sync. `BatchWorkspace` stays thin — no business logic, just a thin bridge to `use-item-text.ts`.
+
+---
+
+Right-drag resize compensates x to anchor the left edge: newX = startX + (appliedDw / 2 / parentW) * 100. The panel (BatchRightPanel width field → setNodeOverride {width}) stays width-only / center-growth — that path is intentionally unchanged.

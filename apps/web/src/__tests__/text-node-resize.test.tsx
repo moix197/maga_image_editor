@@ -111,7 +111,7 @@ describe("TextNodeLayer resize handle", () => {
     fireEvent.pointerDown(handle, { clientX: 200, buttons: 1, pointerId: 1 });
     // Simulate pointer move to clientX=250 → dw=50 → newWidth=100+50=150
     fireEvent.pointerMove(handle, { clientX: 250, buttons: 1 });
-    expect(onResize).toHaveBeenCalledWith(150);
+    expect(onResize).toHaveBeenCalledWith(150, expect.any(Number));
   });
 
   it("clamps onResize width to minimum 20px", () => {
@@ -132,7 +132,45 @@ describe("TextNodeLayer resize handle", () => {
     // Drag far left: dw = -100, width = 30 - 100 = -70 → clamped to 20
     fireEvent.pointerDown(handle, { clientX: 200, buttons: 1, pointerId: 1 });
     fireEvent.pointerMove(handle, { clientX: 100, buttons: 1 });
-    expect(onResize).toHaveBeenCalledWith(20);
+    expect(onResize).toHaveBeenCalledWith(20, expect.any(Number));
+  });
+
+  it("compensates x to anchor the left edge when dragging right handle", () => {
+    const onResize = vi.fn();
+    // startX=50 (%), width starts at 200px
+    const node = makeNode({ x: 50, width: 200 });
+    const { container } = render(
+      <TextNodeLayer
+        node={node}
+        onMove={vi.fn()}
+        onSelect={vi.fn()}
+        isSelected={true}
+        onResize={onResize}
+      />,
+    );
+
+    // Mock parentElement.getBoundingClientRect to return a 1000px-wide canvas
+    const rootEl = container.firstElementChild as HTMLElement;
+    const parentEl = rootEl.parentElement as HTMLElement;
+    vi.spyOn(parentEl, "getBoundingClientRect").mockReturnValue({
+      width: 1000,
+      height: 500,
+      left: 0,
+      top: 0,
+      right: 1000,
+      bottom: 500,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    const handle = screen.getByLabelText(/resize handle/i);
+
+    // Drag right by 100px: startWidth=200, newWidth=300, appliedDw=100
+    // newX = 50 + (100/2/1000)*100 = 50 + 5 = 55
+    fireEvent.pointerDown(handle, { clientX: 0, buttons: 1, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 100, buttons: 1 });
+    expect(onResize).toHaveBeenCalledWith(300, 55);
   });
 
   it("does not call onResize when buttons=0 (no drag)", () => {
