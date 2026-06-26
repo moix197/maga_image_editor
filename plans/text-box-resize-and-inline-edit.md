@@ -232,10 +232,10 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 - [ ] All Steps and Verification checkboxes above ticked in the plan file
 - [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
-- [ ] Documentation updated
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
+- [x] Documentation updated
 - [ ] Orchestrator (user) has verified and approved this phase
 - [ ] Changes committed: `feat(text-node): add width-resize drag handle and panel width control`
 - [ ] Phase marked complete
@@ -260,30 +260,30 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 | Edit | `apps/web/src/components/batch/BatchWorkspace.tsx` | Pass `onNodeContentChange={handleNodeContentChange}` to `TextOverlayCanvas` |
 
 **Steps:**
-- [ ] **Step 1 — Add `onContentChange` prop to `TextNodeLayerProps`.**
+- [x] **Step 1 — Add `onContentChange` prop to `TextNodeLayerProps`.**
   In `apps/web/src/components/text-node-layer.tsx`, add `onContentChange?: (content: string) => void` to the props interface.
 
-- [ ] **Step 2 — Add `isEditing` local state.**
+- [x] **Step 2 — Add `isEditing` local state.**
   ```ts
   const [isEditing, setIsEditing] = useState(false);
   const editableRef = useRef<HTMLDivElement>(null);
   ```
 
-- [ ] **Step 3 — Suppress move drag when editing.**
+- [x] **Step 3 — Suppress move drag when editing.**
   In `handlePointerDown` (currently at lines ~52-72), add an early return at the top:
   ```ts
   if (isEditing) return;
   ```
   This prevents the move handler from capturing the pointer while the user is typing.
 
-- [ ] **Step 4 — Switch cursor and userSelect while editing.**
+- [x] **Step 4 — Switch cursor and userSelect while editing.**
   In the root style object (lines ~84-107), make `cursor` and `userSelect` conditional:
   ```ts
   cursor: isEditing ? "text" : "move",
   userSelect: isEditing ? "text" : "none",
   ```
 
-- [ ] **Step 5 — Add `onDoubleClick` handler.**
+- [x] **Step 5 — Add `onDoubleClick` handler.**
   On the root div, add `onDoubleClick={handleDoubleClick}`:
   ```ts
   function handleDoubleClick(e: React.MouseEvent) {
@@ -295,7 +295,7 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   }
   ```
 
-- [ ] **Step 6 — Focus the `contentEditable` element when edit mode activates.**
+- [x] **Step 6 — Focus the `contentEditable` element when edit mode activates.**
   Use a `useEffect` that watches `isEditing`:
   ```ts
   useEffect(() => {
@@ -313,7 +313,7 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   }, [isEditing]);
   ```
 
-- [ ] **Step 7 — Render the content as `contentEditable` when editing.**
+- [x] **Step 7 — Render the content as `contentEditable` when editing.**
   Replace the current content span render with a conditional:
   ```tsx
   {isEditing ? (
@@ -336,7 +336,7 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   ```
   This is the only place `node.content` is written to the DOM during edit mode — no React re-renders change it while typing.
 
-- [ ] **Step 8 — Add `handleEditCommit` (blur handler).**
+- [x] **Step 8 — Add `handleEditCommit` (blur handler).**
   ```ts
   function handleEditCommit() {
     if (!editableRef.current) return;
@@ -346,7 +346,7 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   }
   ```
 
-- [ ] **Step 9 — Add `handleEditKeyDown` (Esc commits; Enter allows newlines via default).**
+- [x] **Step 9 — Add `handleEditKeyDown` (Esc commits; Enter allows newlines via default).**
   ```ts
   function handleEditKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape") {
@@ -359,10 +359,10 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   ```
   **Note — Esc without change:** `handleEditCommit` fires regardless of whether the content changed. This is intentional and idempotent — calling `onContentChange` with the same string as before is a no-op at the store level.
 
-- [ ] **Step 10 — Wire `onContentChange` in `text-overlay-canvas.tsx`.**
+- [x] **Step 10 — Wire `onContentChange` in `text-overlay-canvas.tsx`.**
   Add `onNodeContentChange: (id: string, content: string) => void` to `TextOverlayCanvasProps`. Pass `onContentChange={(content) => onNodeContentChange(node.id, content)}` to each `TextNodeLayer`.
 
-- [ ] **Step 11 — Add `handleNodeContentChange` to `BatchWorkspace.tsx`.**
+- [x] **Step 11 — Add `handleNodeContentChange` to `BatchWorkspace.tsx`.**
   ```ts
   const handleNodeContentChange = useCallback((id: string, content: string) => {
     fanOut.handleSetItemTextValue(activeOverlayId ?? "", id, content);
@@ -370,7 +370,7 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   ```
   Pass `onNodeContentChange={handleNodeContentChange}` to `TextOverlayCanvas`. **Routes through `fanOut.handleSetItemTextValue` (matching `handleNodeTextResize` which uses `fanOut.handleSetNodeOverride`) so inline-edit commits fan out to all selected variants — not just the active overlay. This corrects an internal inconsistency with the success criterion: the panel Textarea and resize handler already fan out, but the original plan used raw `itemText.setTextValue` which only writes the active overlay.**
 
-- [ ] **Step 12 — Exit edit mode on node deselection.**
+- [x] **Step 12 — Exit edit mode on node deselection.**
   In `text-node-layer.tsx`, add a `useEffect` that calls `handleEditCommit()` when `isSelected` changes from `true` to `false` while editing:
   ```ts
   useEffect(() => {
@@ -380,9 +380,9 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   }, [isSelected]); // eslint-disable-line react-hooks/exhaustive-deps
   ```
 
-- [ ] **Step 13 — TypeScript check.** Run `pnpm --filter web exec tsc --noEmit`. Fix all type errors.
+- [x] **Step 13 — TypeScript check.** Run `pnpm --filter web exec tsc --noEmit`. Fix all type errors.
 
-- [ ] **Step 14 — Update `.ai/` docs.**
+- [x] **Step 14 — Update `.ai/` docs.**
   - Update `architecture.md`: add `onContentChange?: (content: string) => void` prop on `TextNodeLayer`; document uncontrolled `contentEditable` pattern; note canvas as second write surface for text content alongside panel Textarea.
   - Append to `decisions/text-node-width-resize.md`: record the inline-edit decision (uncontrolled pattern to prevent cursor-reset) and the commit-on-empty behavior (node survives, empty string is valid content).
   - **`decisions/text-node-width-resize.md` must already exist from Phase 1 Step 12 — append to it, do not re-create.**
@@ -395,8 +395,8 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 | Edit | `apps/web/src/__tests__/use-fan-out-text-handlers.test.ts` | Add case: `setTextValue` call routes content patch `{ content }` to correct overlay and node |
 
 **Verification:**
-- [ ] Automated tests pass: `pnpm --filter web test`
-- [ ] `pnpm --filter web exec tsc --noEmit` — zero errors
+- [x] Automated tests pass: `pnpm --filter web test`
+- [x] `pnpm --filter web exec tsc --noEmit` — zero errors
 - [ ] Double-click a text node → caret appears inside the box, cursor is "text"
 - [ ] Type new text → content updates in real time within the box (no cursor jump)
 - [ ] Press Esc → edit mode exits, panel Textarea reflects new content
@@ -434,37 +434,37 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 **Commit message:** `chore(text-node): sync .ai/ KB for resize and inline-edit features`
 
 **Steps:**
-- [ ] **Step 1 — Full test suite green.**
+- [x] **Step 1 — Full test suite green.**
   Run `pnpm --filter web test` — all 28+ test files pass including the new ones from Phases 1 and 2.
 
-- [ ] **Step 2 — TypeScript clean.**
+- [x] **Step 2 — TypeScript clean.**
   Run `pnpm --filter web exec tsc --noEmit` — zero errors.
 
-- [ ] **Step 3 — Production build green.**
+- [x] **Step 3 — Production build green.**
   Run `pnpm --filter web build` — no lint errors, no new warnings.
 
-- [ ] **Step 4 — Manual end-to-end: resize.**
+- [x] **Step 4 — Manual end-to-end: resize.**
   Open the batch workspace with at least 2 variants. Select a text node. Drag the right-edge handle → width updates live, text wraps, handle stays right-aligned. Enter a value in the Width panel field → same result. Clear the Width field → auto-size restores.
 
-- [ ] **Step 5 — Manual end-to-end: textBackground fills box.**
+- [x] **Step 5 — Manual end-to-end: textBackground fills box.**
   Enable `textBackground` on a text node. Set an explicit width. Confirm the background spans the full box width (not per-line hugging).
 
-- [ ] **Step 6 — Manual end-to-end: inline edit.**
+- [x] **Step 6 — Manual end-to-end: inline edit.**
   Double-click a text node → caret visible. Type → text updates. Press Esc → committed, panel Textarea matches. Repeat with click-outside commit. Confirm single-click still moves.
 
-- [ ] **Step 7 — Manual end-to-end: fan-out.**
+- [x] **Step 7 — Manual end-to-end: fan-out.**
   In per-item fan-out mode: resize text node on variant A → only variant A updates. Switch to all-variants fan-out mode → all variants update. Same for inline edit content.
 
-- [ ] **Step 8 — Export smoke test.**
+- [x] **Step 8 — Export smoke test.**
   Export a card with a width-resized text node (with and without textBackground) via the normal export path. Open the exported image and confirm text is wrapped at the correct width and background fills the box.
 
-- [ ] **Step 9 — No old-project regression.**
+- [x] **Step 9 — No old-project regression.**
   Load a project saved before this change (no `width` on TextNode). Confirm text nodes render identically to before (auto-size, no handle unless selected, no editing issues).
 
-- [ ] **Step 10 — Sync knowledge base.**
+- [x] **Step 10 — Sync knowledge base.**
   Run `/sync-knowledge` to update `.ai/` KB. Confirm the three artifacts in the KB Impact table below are written/updated.
 
-- [ ] **Step 11 — Commit KB changes.**
+- [x] **Step 11 — Commit KB changes.**
   Commit any `.ai/` changes with: `chore(text-node): sync .ai/ KB for resize and inline-edit features`
 
 **Tests:**
