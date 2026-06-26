@@ -152,12 +152,17 @@ The `textBackground` wrapper in `TextNodeLayer` was changed from an inline `<spa
 
 `TextNodeLayer` (`apps/web/src/components/text-node-layer.tsx`) accepts:
 - `onResize?: (width: number) => void` — called during right-edge drag with the new pixel width (min-clamped to 20).
+- `onContentChange?: (content: string) => void` — called when inline editing commits (Esc or blur); receives the new text content.
 
 The right-edge drag handle (a `<span aria-label="Resize handle">`) is rendered inside the node when `isSelected` is true, mirroring the SE-handle pattern of `OverlayNodeLayer`. It uses pointer capture (`setPointerCapture`/`releasePointerCapture`) and `e.stopPropagation()` to prevent the move handler from also firing.
 
-`TextOverlayCanvas` wires `onResize` → `onNodeTextResize(id, width)` (a separate prop from `onNodeResize` for overlay nodes).
+**Inline double-click editing:** Double-clicking a selected, visible text node enters an uncontrolled `contentEditable` mode. React sets `el.textContent = node.content` once via `useEffect` on edit-mode entry and never touches the DOM content again while editing — this prevents cursor-reset on re-renders. On commit (Esc or blur), `el.textContent` is read back and forwarded to `onContentChange`. Drag is suppressed during editing via an early-return guard in `handlePointerDown`. Edit mode exits automatically when `isSelected` becomes `false`. The canvas is a **second write surface** for text content alongside the panel Textarea; both paths commit through `itemText.setTextValue`. See `decisions/text-node-width-resize.md`.
 
-`BatchWorkspace` exposes `handleNodeTextResize(id, width)` which calls `fanOut.handleSetNodeOverride(activeOverlayId, id, { width })` — width-only patch, height is auto.
+`TextOverlayCanvas` wires `onResize` → `onNodeTextResize(id, width)` (a separate prop from `onNodeResize` for overlay nodes) and `onContentChange` → `onNodeContentChange(id, content)`.
+
+`BatchWorkspace` exposes:
+- `handleNodeTextResize(id, width)` — calls `fanOut.handleSetNodeOverride(activeOverlayId, id, { width })` — width-only patch, height is auto.
+- `handleNodeContentChange(id, content)` — calls `itemText.setTextValue(activeOverlayId, id, content)` — routes through the same `setNodeOverride` path as the panel Textarea.
 
 `width` is **not** in the `TextStyle` Pick (`packages/projects/src/schema.ts`). Width changes from the panel (`TextStylePanel`) are split by `BatchRightPanel.onChange`: `width` routes via `itemText.setNodeOverride`; the remaining style keys route via `itemText.setTextStyle`. See `decisions/text-node-width-resize.md`.
 

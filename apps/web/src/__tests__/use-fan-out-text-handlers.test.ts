@@ -110,4 +110,26 @@ describe("useFanOutTextHandlers", () => {
     const calledWith = setNodeOverride.mock.calls.map((c: string[]) => c[0]);
     expect(calledWith).not.toContain("c");
   });
+
+  it("setTextValue routes a content patch { content } to the correct overlay and node", () => {
+    const setNodeOverride = vi.fn();
+    const selectedVariantIds = new Set(["overlay-a", "overlay-b"]);
+
+    const { result } = renderHook(() =>
+      useFanOutTextHandlers({ selectedVariantIds, setNodeOverride, setNodeHidden: vi.fn() })
+    );
+
+    act(() => {
+      // handleSetItemTextValue wraps handleSetNodeOverride with { content: value }
+      result.current.handleSetItemTextValue("ignored-overlay", "text-node-42", "inline edit text");
+    });
+
+    // Fans out to both selected variants with the correct content patch
+    expect(setNodeOverride).toHaveBeenCalledTimes(2);
+    expect(setNodeOverride).toHaveBeenCalledWith("overlay-a", "text-node-42", { content: "inline edit text" });
+    expect(setNodeOverride).toHaveBeenCalledWith("overlay-b", "text-node-42", { content: "inline edit text" });
+    // The ignored overlayId arg never appears as a call target
+    const targets = setNodeOverride.mock.calls.map((c: string[]) => c[0]);
+    expect(targets).not.toContain("ignored-overlay");
+  });
 });

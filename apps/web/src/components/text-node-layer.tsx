@@ -1,7 +1,7 @@
 "use client";
 
 import type { TextNode, TextBackground } from "@maga/editor";
-import { useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useState, useEffect, type PointerEvent as ReactPointerEvent } from "react";
 
 interface TextNodeLayerProps {
   node: TextNode;
@@ -9,6 +9,7 @@ interface TextNodeLayerProps {
   onSelect: () => void;
   isSelected: boolean;
   onResize?: (width: number) => void;
+  onContentChange?: (content: string) => void;
 }
 
 /** Maps FONT_FAMILIES names to their CSS variable so next/font loads them. */
@@ -50,12 +51,65 @@ function buildBackgroundSpanStyle(bg: TextBackground): React.CSSProperties {
   };
 }
 
-export function TextNodeLayer({ node, onMove, onSelect, isSelected, onResize }: TextNodeLayerProps) {
+export function TextNodeLayer({
+  node,
+  onMove,
+  onSelect,
+  isSelected,
+  onResize,
+  onContentChange,
+}: TextNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const resizeStart = useRef<{ clientX: number; width: number } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const editableRef = useRef<HTMLDivElement>(null);
 
+  // Step 6: Focus the contentEditable element and set initial text when edit mode activates.
+  useEffect(() => {
+    if (isEditing && editableRef.current) {
+      const el = editableRef.current;
+      // Uncontrolled: set initial text once — never updated by React again while editing.
+      el.textContent = node.content;
+      el.focus();
+      // Place caret at end.
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing]);
+
+  // Step 12: Exit edit mode when the node is deselected.
+  useEffect(() => {
+    if (!isSelected && isEditing) {
+      handleEditCommit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSelected]);
+
+  // Step 8: Commit on blur — read textContent back and notify parent.
+  function handleEditCommit() {
+    if (!editableRef.current) return;
+    const newContent = editableRef.current.textContent ?? "";
+    setIsEditing(false);
+    onContentChange?.(newContent);
+  }
+
+  // Step 9: Esc commits; Enter allows newlines via default.
+  function handleEditKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      handleEditCommit();
+    }
+  }
+
+  // Step 3: Suppress move drag when editing.
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (isEditing) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     e.stopPropagation();
     const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
@@ -66,7 +120,7 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected, onResize }: 
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
-    if (e.buttons === 0) return;
+    if (isEditing || e.buttons === 0) return;
     const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
     const x = ((e.clientX - grabOffset.current.dx - rect.left) / rect.width) * 100;
     const y = ((e.clientY - grabOffset.current.dy - rect.top) / rect.height) * 100;
@@ -75,6 +129,15 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected, onResize }: 
 
   function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     e.currentTarget.releasePointerCapture(e.pointerId);
+  }
+
+  // Step 5: Double-click enters edit mode.
+  function handleDoubleClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    // Guard: only enter edit if selected and node is visible.
+    if (!isSelected) return;
+    if (node.opacity === 0) return;
+    setIsEditing(true);
   }
 
   function handleResizePointerDown(e: ReactPointerEvent<HTMLSpanElement>) {
@@ -109,6 +172,7 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected, onResize }: 
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onDoubleClick={handleDoubleClick}
       style={{
         position: "absolute",
         left: `${node.x}%`,
@@ -118,8 +182,9 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected, onResize }: 
         color: node.color,
         opacity: node.opacity,
         zIndex: node.zIndex + 10,
-        cursor: "move",
-        userSelect: "none",
+        // Step 4: Switch cursor and userSelect while editing.
+        cursor: isEditing ? "text" : "move",
+        userSelect: isEditing ? "text" : "none",
         whiteSpace: "pre-wrap",
         lineHeight: 1.2,
         fontFamily: resolveFontFamily(node.fontFamily),
@@ -135,10 +200,23 @@ export function TextNodeLayer({ node, onMove, onSelect, isSelected, onResize }: 
         ...(node.width !== undefined && { width: `${node.width}px` }),
       }}
     >
-      {bg ? (
-        <span style={buildBackgroundSpanStyle(bg)}>{node.content}</span>
+      {/* Step 7: Render contentEditable when editing, static content otherwise. */}
+      {isEditing ? (
+        <div
+          ref={editableRef}
+          contentEditable
+          suppressContentEditableWarning
+          onBlur={handleEditCommit}
+          onKeyDown={handleEditKeyDown}
+          style={{ outline: "none", minWidth: 20, whiteSpace: "pre-wrap" }}
+          // Uncontrolled: initial text set via useEffect; React never touches textContent again.
+        />
       ) : (
-        node.content
+        bg ? (
+          <span style={buildBackgroundSpanStyle(bg)}>{node.content}</span>
+        ) : (
+          node.content
+        )
       )}
       {isSelected && (
         <span

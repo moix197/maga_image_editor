@@ -11,6 +11,7 @@ interface TextOverlayCanvasProps {
   onNodeMove: (id: string, x: number, y: number) => void;
   onNodeResize: (id: string, width: number, height: number) => void;
   onNodeTextResize: (id: string, width: number) => void;
+  onNodeContentChange: (id: string, content: string) => void;
   onNodeSelect: (id: string) => void;
   selectedNodeId: NodeId | null;
   canvasCallbackRef: RefCallback<HTMLDivElement>;
@@ -22,6 +23,7 @@ export function TextOverlayCanvas({
   onNodeMove,
   onNodeResize,
   onNodeTextResize,
+  onNodeContentChange,
   onNodeSelect,
   selectedNodeId,
   canvasCallbackRef,
@@ -48,6 +50,7 @@ export function TextOverlayCanvas({
               node={node}
               onMove={(x, y) => onNodeMove(node.id, x, y)}
               onResize={(width) => onNodeTextResize(node.id, width)}
+              onContentChange={(content) => onNodeContentChange(node.id, content)}
               onSelect={() => onNodeSelect(node.id)}
               isSelected={node.id === selectedNodeId}
             />
