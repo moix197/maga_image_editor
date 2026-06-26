@@ -443,22 +443,22 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 - [x] **Step 3 — Production build green.**
   Run `pnpm --filter web build` — no lint errors, no new warnings.
 
-- [x] **Step 4 — Manual end-to-end: resize.**
+- [ ] **Step 4 — Manual end-to-end: resize.**
   Open the batch workspace with at least 2 variants. Select a text node. Drag the right-edge handle → width updates live, text wraps, handle stays right-aligned. Enter a value in the Width panel field → same result. Clear the Width field → auto-size restores.
 
-- [x] **Step 5 — Manual end-to-end: textBackground fills box.**
+- [ ] **Step 5 — Manual end-to-end: textBackground fills box.**
   Enable `textBackground` on a text node. Set an explicit width. Confirm the background spans the full box width (not per-line hugging).
 
-- [x] **Step 6 — Manual end-to-end: inline edit.**
+- [ ] **Step 6 — Manual end-to-end: inline edit.**
   Double-click a text node → caret visible. Type → text updates. Press Esc → committed, panel Textarea matches. Repeat with click-outside commit. Confirm single-click still moves.
 
-- [x] **Step 7 — Manual end-to-end: fan-out.**
+- [ ] **Step 7 — Manual end-to-end: fan-out.**
   In per-item fan-out mode: resize text node on variant A → only variant A updates. Switch to all-variants fan-out mode → all variants update. Same for inline edit content.
 
-- [x] **Step 8 — Export smoke test.**
+- [ ] **Step 8 — Export smoke test.**
   Export a card with a width-resized text node (with and without textBackground) via the normal export path. Open the exported image and confirm text is wrapped at the correct width and background fills the box.
 
-- [x] **Step 9 — No old-project regression.**
+- [ ] **Step 9 — No old-project regression.**
   Load a project saved before this change (no `width` on TextNode). Confirm text nodes render identically to before (auto-size, no handle unless selected, no editing issues).
 
 - [x] **Step 10 — Sync knowledge base.**
@@ -471,9 +471,9 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 *No new tests in this phase — all tests were written in Phases 1 and 2.*
 
 **Verification:**
-- [ ] `pnpm --filter web test` — all tests pass
-- [ ] `pnpm --filter web exec tsc --noEmit` — zero errors
-- [ ] `pnpm --filter web build` — green
+- [x] `pnpm --filter web test` — all tests pass
+- [x] `pnpm --filter web exec tsc --noEmit` — zero errors
+- [x] `pnpm --filter web build` — green
 - [ ] All manual steps above completed and signed off
 
 **Phase review:**
