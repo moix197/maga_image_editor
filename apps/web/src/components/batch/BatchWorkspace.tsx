@@ -306,8 +306,8 @@ function BatchWorkspaceInner() {
     setNodeHidden,
   });
 
-  const handleNodeTextResize = useCallback((id: string, width: number, x: number) => {
-    fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { width, x });
+  const handleNodeTextResize = useCallback((id: string, width: number) => {
+    fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { width });
   }, [fanOut, activeOverlayId]);
 
   const handleNodeContentChange = useCallback((id: string, content: string) => {

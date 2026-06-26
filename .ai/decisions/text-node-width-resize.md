@@ -70,4 +70,24 @@ Content commits route through `BatchWorkspace.handleNodeContentChange` → `item
 
 ---
 
-Right-drag resize compensates x to anchor the left edge: newX = startX + (appliedDw / 2 / parentW) * 100. The panel (BatchRightPanel width field → setNodeOverride {width}) stays width-only / center-growth — that path is intentionally unchanged.
+---
+
+# Refactor: Top-left anchor for TextNode (x-compensation removed)
+
+**Date:** 2026-06-26
+
+## What changed
+
+`TextNodeLayer` now uses **top-left anchoring**: `left: x%, top: y%` with `rotate(deg)` only (no `translate(-50%,-50%)`). Rotation still pivots around the element's visual center via `transformOrigin: 50% 50%`.
+
+The right-edge resize handler previously compensated x on every drag frame to keep the left edge visually fixed under center-anchoring:
+
+```
+newX = startX + (appliedDw / 2 / parentW) * 100
+```
+
+This compensation is **removed**. `onResize` now passes only `(width: number)`. The store handler (`handleNodeTextResize` in `BatchWorkspace`) patches `{ width }` only — no `x` update.
+
+## Consequence for saved data
+
+`TextNode.x` and `.y` now represent the **top-left corner** percentage of the canvas, not the center. Projects saved before this change will have x/y values that were center coordinates — they will appear shifted after the upgrade (the node's top-left corner will be at what was previously the center point). New nodes default to x:25, y:25.

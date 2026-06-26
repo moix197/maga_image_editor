@@ -1,9 +1,11 @@
 import type { TextNode, OverlayNode, BorderOverlay } from "./types";
 
+// x/y are top-left corner percentages (top-left anchor, not center).
+// 25,25 keeps a new node clearly visible near the upper-left quadrant of the canvas.
 export const DEFAULT_TEXT_NODE: Omit<TextNode, "id"> = {
   content: "Hello",
-  x: 50,
-  y: 50,
+  x: 25,
+  y: 25,
   rotation: 0,
   zIndex: 0,
   fontSize: 24,

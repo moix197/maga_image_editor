@@ -144,6 +144,12 @@ boundary is the point: the provider key never reaches the client, see
 [[deepai-toonify-provider]]. The result is ephemeral page state, not persisted —
 see [[ephemeral-cartoonize-result-state]].
 
+### TextNode anchoring
+
+`TextNode` x/y coordinates are **top-left corner percentages** of the canvas (matching `OverlayNode`). The root div in `TextNodeLayer` uses `left: x%, top: y%` with no centering translate. Rotation pivots around the element's visual center via `transformOrigin: 50% 50%`. Default position for new nodes is x:25, y:25 (upper-left quadrant, clearly visible).
+
+> Prior to this change (before the "top-left anchor" refactor), text nodes were center-anchored: `transform: translate(-50%,-50%) rotate(...)` and default x/y were 50,50. Any saved projects with old x/y values now have those values interpreted as the top-left corner.
+
 ### TextNode width field
 
 `TextNode` (`packages/editor/src/types.ts`) has an optional `width?: number` field (added in Phase 1 of text-box-resize). When absent the node auto-sizes to content (old behavior, no migration needed). When set, the root div in `TextNodeLayer` receives an inline `width: <n>px` style.
