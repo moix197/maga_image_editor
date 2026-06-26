@@ -120,7 +120,9 @@ export function TextNodeLayer({
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
-    if (isEditing || e.buttons === 0) return;
+    // Ignore moves while a resize drag is active — captured pointermove events
+    // bubble up from the resize handle to this root handler.
+    if (isEditing || resizeStart.current || e.buttons === 0) return;
     const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
     const x = ((e.clientX - grabOffset.current.dx - rect.left) / rect.width) * 100;
     const y = ((e.clientY - grabOffset.current.dy - rect.top) / rect.height) * 100;
@@ -153,12 +155,14 @@ export function TextNodeLayer({
 
   function handleResizePointerMove(e: ReactPointerEvent<HTMLSpanElement>) {
     if (!resizeStart.current || e.buttons === 0) return;
+    e.stopPropagation(); // keep the move handler from also firing during resize
     const dw = e.clientX - resizeStart.current.clientX;
     const newWidth = Math.max(20, resizeStart.current.width + dw);
     onResize?.(newWidth);
   }
 
   function handleResizePointerUp(e: ReactPointerEvent<HTMLSpanElement>) {
+    e.stopPropagation();
     resizeStart.current = null;
     e.currentTarget.releasePointerCapture(e.pointerId);
   }

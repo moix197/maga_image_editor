@@ -156,6 +156,29 @@ describe("TextNodeLayer resize handle", () => {
     expect(onResize).toHaveBeenCalledWith(300);
   });
 
+  it("does NOT call onMove while dragging the resize handle (no position drift)", () => {
+    const onMove = vi.fn();
+    const onResize = vi.fn();
+    const node = makeNode({ x: 50, width: 100 });
+    render(
+      <TextNodeLayer
+        node={node}
+        onMove={onMove}
+        onSelect={vi.fn()}
+        isSelected={true}
+        onResize={onResize}
+      />,
+    );
+
+    const handle = screen.getByLabelText(/resize handle/i);
+
+    // A resize drag must not bubble into the root move handler.
+    fireEvent.pointerDown(handle, { clientX: 200, buttons: 1, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 300, buttons: 1 });
+    expect(onResize).toHaveBeenCalledWith(200);
+    expect(onMove).not.toHaveBeenCalled();
+  });
+
   it("does not call onResize when buttons=0 (no drag)", () => {
     const onResize = vi.fn();
     const node = makeNode({ width: 100 });
