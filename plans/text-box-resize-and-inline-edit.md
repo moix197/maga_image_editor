@@ -49,10 +49,10 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 - [ ] All Steps and Verification checkboxes above ticked in the plan file
 - [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing — *No automated tests — justified because: pure worktree setup, no code changes.*
-- [ ] Documentation updated
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing — *No automated tests — justified because: pure worktree setup, no code changes.*
+- [x] Documentation updated
 - [ ] Orchestrator (user) has verified and approved this phase
 - [ ] Changes committed: *(no commit)*
 - [ ] Phase marked complete
@@ -78,21 +78,21 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 | Edit | `apps/web/src/components/batch/BatchRightPanel.tsx` | **After verifying whitelist (Step 3 below):** ensure the `onChange` prop passed to `TextStylePanel` routes `width` correctly — either via `setTextStyle` (if whitelist expanded) or a separate `setNodeOverride` call |
 
 **Steps:**
-- [ ] **Step 1 — Add `width?: number` to `TextNode`.**
+- [x] **Step 1 — Add `width?: number` to `TextNode`.**
   Open `packages/editor/src/types.ts`. After the `zIndex: number` line (currently line ~36), add `width?: number;`. No other changes to this file.
   **Design invariant:** `width` is optional — omitting it means auto-size. Old projects with no `width` field render identically to before (the fallback is implicit from the absence of the inline style). No migration needed.
 
-- [ ] **Step 2 — Update `text-node-layer.tsx` root style.**
+- [x] **Step 2 — Update `text-node-layer.tsx` root style.**
   Open `apps/web/src/components/text-node-layer.tsx`. In the root style object (lines ~84-107), add conditional width:
   ```ts
   ...(node.width !== undefined && { width: `${node.width}px` }),
   ```
   Keep `whiteSpace: "pre-wrap"` so text wraps within the set width.
 
-- [ ] **Step 3 — Fix `textBackground` to fill full box width (not per-line).**
+- [x] **Step 3 — Fix `textBackground` to fill full box width (not per-line).**
   In `text-node-layer.tsx`, the current render wraps content in `<span style={buildBackgroundSpanStyle(bg)}>`. Replace with a `<div>` (or `<span style={{ display: "block", width: "100%" }}>`) so that when `node.width` is set, the background fills the entire box. When no width is set, `width: 100%` still wraps to content width via the parent's auto-size behavior — verify this renders correctly.
 
-- [ ] **Step 4 — Add resize pointer handlers to `text-node-layer.tsx`.**
+- [x] **Step 4 — Add resize pointer handlers to `text-node-layer.tsx`.**
   - **Before implementing, read `overlay-node-layer.tsx` in full** — the SE-handle pointer capture pattern must be mirrored exactly. Do not invent a new pattern.
   Add three handler refs (mirroring `overlay-node-layer.tsx` lines ~110-127):
   ```ts
@@ -118,7 +118,7 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   ```
   Note: `containerRef` — add `const containerRef = useRef<HTMLDivElement>(null)` and attach to the root div.
 
-- [ ] **Step 5 — Add right-edge drag handle JSX to `text-node-layer.tsx`.**
+- [x] **Step 5 — Add right-edge drag handle JSX to `text-node-layer.tsx`.**
   Inside the root div, after the content span, render the handle when `isSelected`:
   ```tsx
   {isSelected && (
@@ -142,10 +142,10 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   )}
   ```
 
-- [ ] **Step 6 — Whitelist check (CRITICAL — do this before touching the panel).**
+- [x] **Step 6 — Whitelist check (CRITICAL — do this before touching the panel).**
   Open `packages/projects/src/schema.ts`. Inspect the `TextStyle` Pick (lines ~4-13). Current pick keys: `fontSize`, `color`, `opacity`, `fontFamily`, `fontWeight`, `fontStyle`, `rotation`, `shadow`, `textBackground`. `width` is NOT in this list. Therefore `itemText.setTextStyle(...)` will silently drop a `width` patch. **Resolution:** In `BatchRightPanel.tsx`, the `onChange` callback for `TextStylePanel` must split the patch — send `width` (if present) via `itemText.setNodeOverride(activeOverlay.id, selectedNodeId!, { width })` and the remaining style keys via `itemText.setTextStyle(...)`. **DO NOT add `width` to the `TextStyle` Pick — `TextStyle` is intentionally style-only. This decision is permanent.**
 
-- [ ] **Step 7 — Add Width FieldRow to `text-style-panel.tsx`.**
+- [x] **Step 7 — Add Width FieldRow to `text-style-panel.tsx`.**
   After the Font Size row (lines ~103-112), add:
   ```tsx
   <FieldRow label="Width">
@@ -164,7 +164,7 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   ```
   `onChange` here accepts `Partial<TextNode>` — confirm the prop type already uses `Partial<TextNode>` (it does: `onChange: (patch: Partial<TextNode>) => void`).
 
-- [ ] **Step 8 — Update `BatchRightPanel.tsx` onChange callback.**
+- [x] **Step 8 — Update `BatchRightPanel.tsx` onChange callback.**
   Locate the `TextStylePanel` render (lines ~157-166). Split the patch per Step 6:
   ```ts
   onChange={(patch) => {
@@ -182,10 +182,10 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   }}
   ```
 
-- [ ] **Step 9 — Wire `onResize` in `text-overlay-canvas.tsx`.**
+- [x] **Step 9 — Wire `onResize` in `text-overlay-canvas.tsx`.**
   Add `handleNodeTextResize` to `BatchWorkspace.tsx` (width-only `setNodeOverride` patch). Update `text-overlay-canvas.tsx` so `TextNodeLayer` receives `onResize={(width) => onNodeResize(node.id, width, 0)}`. In the canvas `onNodeResize` callback, route to `handleNodeTextResize` for text nodes: discriminate with `isTextNode(node)`.
 
-- [ ] **Step 10 — Add `handleNodeTextResize` to `BatchWorkspace.tsx`.**
+- [x] **Step 10 — Add `handleNodeTextResize` to `BatchWorkspace.tsx`.**
   After `handleNodeResize` (lines ~174-190), add:
   ```ts
   const handleNodeTextResize = useCallback((id: string, width: number | undefined) => {
@@ -201,9 +201,9 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
   **Logic lives in `use-item-text.ts` (via `fanOut.handleSetNodeOverride`). `BatchWorkspace` stays thin — no business logic here.**
   **Fan-out note:** `handleSetNodeOverride` already fans out to selected variants only when per-variant selection is active. Width resize during active per-variant selection correctly updates only the selected variants — no additional logic needed.
 
-- [ ] **Step 11 — TypeScript check.** Run `pnpm --filter web exec tsc --noEmit`. Fix all type errors before proceeding.
+- [x] **Step 11 — TypeScript check.** Run `pnpm --filter web exec tsc --noEmit`. Fix all type errors before proceeding.
 
-- [ ] **Step 12 — Update `.ai/` docs.**
+- [x] **Step 12 — Update `.ai/` docs.**
   - Update `architecture.md`: add row for `TextNode.width` (optional number, absent = auto-size); document `onResize?: (width: number | undefined) => void` prop on `TextNodeLayer`; document `textBackground` full-box behavior change.
   - Create `decisions/text-node-width-resize.md`: record the `TextStyle` whitelist resolution rationale (width excluded from Pick → routes via `setNodeOverride`), the width-only (not height) decision, the min-width clamp of 20px, and the no-schema-version-bump rationale.
   - **This file (`decisions/text-node-width-resize.md`) must NOT exist yet — it is created during implementation here, not during planning.**
@@ -216,8 +216,8 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 | Edit | `apps/web/src/__tests__/item-overlay-panel.test.tsx` | Add case: Width field renders in TextStylePanel; onChange with `width` routes to `setNodeOverride` not `setTextStyle` |
 
 **Verification:**
-- [ ] Automated tests pass: `pnpm --filter web test`
-- [ ] `pnpm --filter web exec tsc --noEmit` — zero errors
+- [x] Automated tests pass: `pnpm --filter web test`
+- [x] `pnpm --filter web exec tsc --noEmit` — zero errors
 - [ ] Drag right-edge handle on a text node → width updates live, text wraps, handle stays at right edge
 - [ ] Type a value in Width panel field → box resizes on blur/Enter
 - [ ] Clear Width field (empty) → box returns to auto-size (`width: undefined` clears the override, no stretched box)
