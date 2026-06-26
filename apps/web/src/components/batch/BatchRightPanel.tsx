@@ -13,7 +13,7 @@ import { LayerStackPanel } from "./LayerStackPanel";
 import { TextStylePanel } from "@/components/text-style-panel";
 import { OverlayControlsPanel } from "@/components/overlay-controls-panel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Collapsible } from "@/components/ui/collapsible";
 import { Eye, EyeOff } from "lucide-react";
@@ -321,11 +321,12 @@ function ItemTextPanel({ overlayAssetId, overlayLabel, textNodes, itemText }: It
                 {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
-            <Input
+            <Textarea
               id={inputId}
               value={value}
               placeholder={node.content}
               disabled={hidden}
+              rows={3}
               onChange={(e) => itemText.setTextValue(overlayAssetId, node.id, e.target.value)}
               className={hidden ? "opacity-50" : undefined}
             />
