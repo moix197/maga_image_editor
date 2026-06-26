@@ -33,11 +33,22 @@ function makeOverlayNode(id: string, zIndex: number, overlayType: "image" | "bor
   } as EditorNode;
 }
 
+function renderPanel(
+  props: Partial<React.ComponentProps<typeof LayerStackPanel>> & Pick<React.ComponentProps<typeof LayerStackPanel>, "nodes">
+) {
+  return render(
+    <LayerStackPanel
+      onReorderNode={vi.fn()}
+      selectedNodeId={null}
+      onSelectNode={vi.fn()}
+      {...props}
+    />
+  );
+}
+
 describe("LayerStackPanel", () => {
   it("returns null when nodes array is empty", () => {
-    const { container } = render(
-      <LayerStackPanel nodes={[]} onReorderNode={vi.fn()} />
-    );
+    const { container } = renderPanel({ nodes: [] });
     expect(container.firstChild).toBeNull();
   });
 
@@ -47,13 +58,8 @@ describe("LayerStackPanel", () => {
       makeOverlayNode("n2", 3),
       makeTextNode("n3", 2, "Middle"),
     ];
-    const { getAllByRole } = render(
-      <LayerStackPanel nodes={nodes} onReorderNode={vi.fn()} />
-    );
-    // Each row has an aria-label containing the node label
-    const rows = getAllByRole("generic").filter((el) =>
-      el.getAttribute("aria-label")?.includes("drag to reorder layer")
-    );
+    const { getAllByRole } = renderPanel({ nodes });
+    const rows = getAllByRole("button");
     expect(rows).toHaveLength(3);
     // First row should be the highest zIndex (n2 = zIndex 3)
     expect(rows[0]!.getAttribute("aria-label")).toContain("Image Overlay");
@@ -69,13 +75,9 @@ describe("LayerStackPanel", () => {
       makeTextNode("bottom", 1, "Low"),
     ];
     const onReorderNode = vi.fn();
-    const { getAllByRole } = render(
-      <LayerStackPanel nodes={nodes} onReorderNode={onReorderNode} />
-    );
+    const { getAllByRole } = renderPanel({ nodes, onReorderNode });
 
-    const rows = getAllByRole("generic").filter((el) =>
-      el.getAttribute("aria-label")?.includes("drag to reorder layer")
-    );
+    const rows = getAllByRole("button");
 
     fireEvent.dragStart(rows[0]!);
     fireEvent.dragOver(rows[1]!, { preventDefault: () => {} });
@@ -91,13 +93,9 @@ describe("LayerStackPanel", () => {
       makeTextNode("bottom", 1, "Low"),
     ];
     const onReorderNode = vi.fn();
-    const { getAllByRole } = render(
-      <LayerStackPanel nodes={nodes} onReorderNode={onReorderNode} />
-    );
+    const { getAllByRole } = renderPanel({ nodes, onReorderNode });
 
-    const rows = getAllByRole("generic").filter((el) =>
-      el.getAttribute("aria-label")?.includes("drag to reorder layer")
-    );
+    const rows = getAllByRole("button");
 
     fireEvent.dragStart(rows[1]!);
     fireEvent.dragOver(rows[0]!, { preventDefault: () => {} });
@@ -110,13 +108,9 @@ describe("LayerStackPanel", () => {
   it("does not call onReorderNode when dropping on same item", () => {
     const nodes = [makeOverlayNode("n1", 1), makeTextNode("n2", 2)];
     const onReorderNode = vi.fn();
-    const { getAllByRole } = render(
-      <LayerStackPanel nodes={nodes} onReorderNode={onReorderNode} />
-    );
+    const { getAllByRole } = renderPanel({ nodes, onReorderNode });
 
-    const rows = getAllByRole("generic").filter((el) =>
-      el.getAttribute("aria-label")?.includes("drag to reorder layer")
-    );
+    const rows = getAllByRole("button");
 
     fireEvent.dragStart(rows[0]!);
     fireEvent.dragOver(rows[0]!, { preventDefault: () => {} });
@@ -127,13 +121,9 @@ describe("LayerStackPanel", () => {
 
   it("clears the drop-target highlight after dragEnd", () => {
     const nodes = [makeOverlayNode("top", 3), makeTextNode("bottom", 1, "Low")];
-    const { getAllByRole } = render(
-      <LayerStackPanel nodes={nodes} onReorderNode={vi.fn()} />
-    );
+    const { getAllByRole } = renderPanel({ nodes });
 
-    const rows = getAllByRole("generic").filter((el) =>
-      el.getAttribute("aria-label")?.includes("drag to reorder layer")
-    );
+    const rows = getAllByRole("button");
 
     // Establish highlight on row 1 by dragging over it
     fireEvent.dragStart(rows[0]!);
@@ -147,13 +137,9 @@ describe("LayerStackPanel", () => {
 
   it("clears the drop-target highlight after drop", () => {
     const nodes = [makeOverlayNode("top", 3), makeTextNode("bottom", 1, "Low")];
-    const { getAllByRole } = render(
-      <LayerStackPanel nodes={nodes} onReorderNode={vi.fn()} />
-    );
+    const { getAllByRole } = renderPanel({ nodes });
 
-    const rows = getAllByRole("generic").filter((el) =>
-      el.getAttribute("aria-label")?.includes("drag to reorder layer")
-    );
+    const rows = getAllByRole("button");
 
     fireEvent.dragStart(rows[0]!);
     fireEvent.dragOver(rows[1]!, { preventDefault: () => {} });
@@ -161,5 +147,27 @@ describe("LayerStackPanel", () => {
 
     fireEvent.drop(rows[1]!, { preventDefault: () => {} });
     expect(rows[1]!.className).not.toContain("ring-primary");
+  });
+
+  it("calls onSelectNode with the node id when a row is clicked", () => {
+    const nodes = [makeOverlayNode("top", 3), makeTextNode("bottom", 1, "Low")];
+    const onSelectNode = vi.fn();
+    const { getAllByRole } = renderPanel({ nodes, onSelectNode });
+
+    const rows = getAllByRole("button");
+    fireEvent.click(rows[1]!);
+
+    expect(onSelectNode).toHaveBeenCalledWith("bottom" as NodeId);
+    expect(onSelectNode).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks the selected row with aria-pressed and a highlight ring", () => {
+    const nodes = [makeOverlayNode("top", 3), makeTextNode("bottom", 1, "Low")];
+    const { getAllByRole } = renderPanel({ nodes, selectedNodeId: "bottom" as NodeId });
+
+    const rows = getAllByRole("button");
+    expect(rows[0]!.getAttribute("aria-pressed")).toBe("false");
+    expect(rows[1]!.getAttribute("aria-pressed")).toBe("true");
+    expect(rows[1]!.className).toContain("ring-primary");
   });
 });

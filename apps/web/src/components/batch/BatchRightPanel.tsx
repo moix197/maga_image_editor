@@ -132,6 +132,8 @@ export function BatchRightPanel({
                   <LayerStackPanel
                     nodes={editorState.state.nodes}
                     onReorderNode={(id, dir) => editorState.reorderNode(id, dir)}
+                    selectedNodeId={selectedNodeId}
+                    onSelectNode={onSetSelectedNodeId}
                   />
                 </div>
               </Collapsible>

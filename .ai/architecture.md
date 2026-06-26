@@ -82,7 +82,9 @@ stay mounted and visible across the Assets / Template sections, the canvas never
 section-swaps away. The right column is a contextual `BatchRightPanel`
 (`apps/web/src/components/batch/BatchRightPanel.tsx`) — a pure shell that switches
 its body on `activeSection` (Assets: asset list + upload zone; Template: overlay/
-template + per-variant text controls). **Results is the exception:** it replaces
+template + per-variant text controls + a `LayerStackPanel` whose rows select a
+node — click/keyboard → `setSelectedNodeId`, the same setter the canvas uses).
+**Results is the exception:** it replaces
 the center canvas with the full-width `BatchResultsGallery` and collapses the right
 panel. Below the `md` breakpoint the right panel stacks under the canvas.
 

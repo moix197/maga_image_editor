@@ -8,6 +8,8 @@ import { isTextNode } from "@maga/editor";
 interface LayerStackPanelProps {
   nodes: EditorNode[];
   onReorderNode: (id: NodeId, direction: "up" | "down") => void;
+  selectedNodeId: NodeId | null;
+  onSelectNode: (id: NodeId) => void;
 }
 
 function nodeLabel(node: EditorNode): string {
@@ -18,7 +20,7 @@ function nodeLabel(node: EditorNode): string {
   return node.overlayType === "border" ? "Border" : "Image Overlay";
 }
 
-export function LayerStackPanel({ nodes, onReorderNode }: LayerStackPanelProps) {
+export function LayerStackPanel({ nodes, onReorderNode, selectedNodeId, onSelectNode }: LayerStackPanelProps) {
   const [dragSrcIdx, setDragSrcIdx] = useState<number | null>(null);
   const [dropTargetIdx, setDropTargetIdx] = useState<number | null>(null);
 
@@ -74,7 +76,17 @@ export function LayerStackPanel({ nodes, onReorderNode }: LayerStackPanelProps) 
           <div
             key={node.id}
             draggable
-            aria-label={`${nodeLabel(node)}, drag to reorder layer`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={node.id === selectedNodeId}
+            aria-label={`${nodeLabel(node)}, click to select, drag to reorder layer`}
+            onClick={() => onSelectNode(node.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelectNode(node.id);
+              }
+            }}
             onDragStart={() => handleDragStart(idx)}
             onDragOver={(e) => handleDragOver(e, idx)}
             onDragLeave={handleDragLeave}
@@ -85,7 +97,9 @@ export function LayerStackPanel({ nodes, onReorderNode }: LayerStackPanelProps) 
               "cursor-grab active:cursor-grabbing select-none",
               dropTargetIdx === idx && dragSrcIdx !== idx
                 ? "bg-primary/10 ring-2 ring-primary"
-                : "hover:bg-muted",
+                : node.id === selectedNodeId
+                  ? "bg-primary/10 ring-1 ring-primary"
+                  : "hover:bg-muted",
             ].join(" ")}
           >
             <GripVertical className="size-4 shrink-0 text-muted-foreground" aria-hidden />
