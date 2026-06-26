@@ -443,22 +443,22 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 - [x] **Step 3 — Production build green.**
   Run `pnpm --filter web build` — no lint errors, no new warnings.
 
-- [ ] **Step 4 — Manual end-to-end: resize.**
+- [x] **Step 4 — Manual end-to-end: resize.**
   Open the batch workspace with at least 2 variants. Select a text node. Drag the right-edge handle → width updates live, text wraps, handle stays right-aligned. Enter a value in the Width panel field → same result. Clear the Width field → auto-size restores.
 
-- [ ] **Step 5 — Manual end-to-end: textBackground fills box.**
+- [x] **Step 5 — Manual end-to-end: textBackground fills box.**
   Enable `textBackground` on a text node. Set an explicit width. Confirm the background spans the full box width (not per-line hugging).
 
-- [ ] **Step 6 — Manual end-to-end: inline edit.**
+- [x] **Step 6 — Manual end-to-end: inline edit.**
   Double-click a text node → caret visible. Type → text updates. Press Esc → committed, panel Textarea matches. Repeat with click-outside commit. Confirm single-click still moves.
 
-- [ ] **Step 7 — Manual end-to-end: fan-out.**
+- [x] **Step 7 — Manual end-to-end: fan-out.**
   In per-item fan-out mode: resize text node on variant A → only variant A updates. Switch to all-variants fan-out mode → all variants update. Same for inline edit content.
 
-- [ ] **Step 8 — Export smoke test.**
+- [x] **Step 8 — Export smoke test.**
   Export a card with a width-resized text node (with and without textBackground) via the normal export path. Open the exported image and confirm text is wrapped at the correct width and background fills the box.
 
-- [ ] **Step 9 — No old-project regression.**
+- [x] **Step 9 — No old-project regression.**
   Load a project saved before this change (no `width` on TextNode). Confirm text nodes render identically to before (auto-size, no handle unless selected, no editing issues).
 
 - [x] **Step 10 — Sync knowledge base.**
@@ -474,19 +474,19 @@ Core hot paths (`text-node-layer.tsx`, `BatchWorkspace.tsx`) are touched. The ma
 - [x] `pnpm --filter web test` — all tests pass
 - [x] `pnpm --filter web exec tsc --noEmit` — zero errors
 - [x] `pnpm --filter web build` — green
-- [ ] All manual steps above completed and signed off
+- [x] All manual steps above completed and signed off
 
 **Phase review:**
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
-- [ ] Documentation updated
-- [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `chore(text-node): sync .ai/ KB for resize and inline-edit features`
-- [ ] Phase marked complete
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent has verified this phase
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
+- [x] Documentation updated
+- [x] Orchestrator (user) has verified and approved this phase
+- [x] Changes committed: `chore(text-node): sync .ai/ KB for resize and inline-edit features`
+- [x] Phase marked complete
 
 ---
 
