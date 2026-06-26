@@ -25,7 +25,7 @@ Consequence: `itemText.setTextStyle(...)` would silently drop a `{ width }` patc
 
 ### No schema version bump
 
-`width?: number` is optional. Old projects with no `width` field on a `TextNode` load identically — the absent field means auto-size, which was the previous behavior. No migration step is needed; the existing `NodeOverride` type already supports `width` (it is `Partial<Omit<TextNode & OverlayNode, "id">>`, and `TextNode.width` now exists there).
+`width?: number` is optional. Old projects with no `width` field on a `TextNode` load identically — the absent field means auto-size, which was the previous behavior. No migration step is needed; the existing `NodeOverride` type already supports `width` (it is `Partial<Omit<TextNode & OverlayNode, "id">> & { hidden?: boolean }`, and `TextNode.width` now exists there).
 
 ### textBackground full-box fill
 
