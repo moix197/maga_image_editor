@@ -172,5 +172,15 @@ The right-edge drag handle (a `<span aria-label="Resize handle">`) is rendered i
 
 `width` is **not** in the `TextStyle` Pick (`packages/projects/src/schema.ts`). Width changes from the panel (`TextStylePanel`) are split by `BatchRightPanel.onChange`: `width` routes via `itemText.setNodeOverride`; the remaining style keys route via `itemText.setTextStyle`. See `decisions/text-node-width-resize.md`.
 
+### TextNode height/align fields
+
+`TextNode` (`packages/editor/src/types.ts`) gains three optional layout fields. All are absent on legacy nodes (no schema bump); absent = pre-feature behavior. They split across the same two routing paths as `width`:
+
+- `height?: number` — optional fixed box height. Applied to the root div in `TextNodeLayer` as `height: <n>px` with `overflow: visible` (text exceeding the box spills below — never clipped, no scrollbar). Set by a bottom-edge drag handle (`Math.max(0, ...)`, **no min-height floor** — diverges from width's `Math.max(20, ...)`) and a panel Height input (blank → `undefined`). **Routes as GEOMETRY** like `width`: not in the `TextStyle` Pick; `BatchRightPanel.onChange` forwards it via `itemText.setNodeOverride`. `BatchWorkspace.handleNodeTextHeightResize(id, height)` → `fanOut.handleSetNodeOverride(overlayId, id, { height })`.
+- `textAlign?: "left" | "center" | "right"` — CSS `textAlign` on the root div, applied only when defined. **Routes as STYLE**: it IS in the `TextStyle` Pick and fans out via `setTextStyle` / `handleSetItemTextStyle`. Panel: 3-button Left/Center/Right toggle; clicking the active button toggles back to `undefined`.
+- `verticalAlign?: "top" | "middle" | "bottom"` — the root div becomes `display: flex; flexDirection: column` with `justifyContent` mapped (`top`→`flex-start`, `middle`→`center`, `bottom`→`flex-end`) **only when `height !== undefined`**; otherwise normal block flow is preserved so auto-size nodes are unaffected. **Routes as STYLE** (in the `TextStyle` Pick). Panel: 3-button Top/Middle/Bottom toggle, disabled while `height` is `undefined`.
+
+See `decisions/text-node-height-align.md`.
+
 > Update via the `sync-knowledge` skill when an architectural boundary, package,
 > or flow is introduced or changed.
