@@ -152,14 +152,14 @@ Root `handlePointerMove` → bail when `heightResizeStart.current` is set
 
 ### Steps
 
-- [ ] Add `height?: number` to `TextNode` in `packages/editor/src/types.ts`
-- [ ] Apply `height` to root div inline style in `text-node-layer.tsx`
-- [ ] Add bottom-edge drag handle with `handleHeightResizePointerDown/Move/Up`; call `e.stopPropagation()` on all three; add early-bail `if (heightResizeStart.current) return` in root `handlePointerMove`
-- [ ] Add `onHeightResize?: (height: number) => void` prop; compute `Math.max(0, startHeight + (e.clientY - startY))` (no 20px floor)
-- [ ] Add Height number input to `text-style-panel.tsx` (blank input → `undefined`, not 0 or NaN; same pattern as Width)
-- [ ] Add `handleNodeTextHeightResize` in `BatchWorkspace.tsx` → `fanOut.handleSetNodeOverride(overlayId, id, { height })`; wire prop to canvas layer
-- [ ] Confirm `height` is NOT added to `TextStyle` Pick in `packages/projects/src/schema.ts`
-- [ ] Write/extend tests (see Tests section below)
+- [x] Add `height?: number` to `TextNode` in `packages/editor/src/types.ts`
+- [x] Apply `height` to root div inline style in `text-node-layer.tsx`
+- [x] Add bottom-edge drag handle with `handleHeightResizePointerDown/Move/Up`; call `e.stopPropagation()` on all three; add early-bail `if (heightResizeStart.current) return` in root `handlePointerMove`
+- [x] Add `onHeightResize?: (height: number) => void` prop; compute `Math.max(0, startHeight + (e.clientY - startY))` (no 20px floor)
+- [x] Add Height number input to `text-style-panel.tsx` (blank input → `undefined`, not 0 or NaN; same pattern as Width)
+- [x] Add `handleNodeTextHeightResize` in `BatchWorkspace.tsx` → `fanOut.handleSetNodeOverride(overlayId, id, { height })`; wire prop to canvas layer
+- [x] Confirm `height` is NOT added to `TextStyle` Pick in `packages/projects/src/schema.ts`
+- [x] Write/extend tests (see Tests section below)
 
 ### Tests
 
@@ -181,22 +181,22 @@ New describe block: `"TextNodeLayer height resize handle"`
 
 ### Verification
 
-- [ ] `pnpm --filter web test` exits 0
-- [ ] `pnpm --filter web exec tsc --noEmit` exits 0
-- [ ] `pnpm --filter web build` exits 0
+- [x] `pnpm --filter web test` exits 0
+- [x] `pnpm --filter web exec tsc --noEmit` exits 0
+- [x] `pnpm --filter web build` exits 0
 - [ ] Manual: drag bottom edge of a text node; Height field in panel reflects value; text exceeding height spills below (not clipped); height persists when switching variants
 - [ ] Manual: confirm `height` is absent from `TextStyle` Pick (no style-routing regression)
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
+- [x] All Steps and Verification checkboxes above ticked
 - [ ] Reviewer handoff prompt emitted in fenced code block
 - [ ] Orchestrator cleared context and pasted handoff into fresh session
-- [ ] Code-reviewer agent verified this phase
-- [ ] Tests written and passing
+- [x] Code-reviewer agent verified this phase
+- [x] Tests written and passing
 - [ ] Documentation updated
 - [ ] Orchestrator approved
-- [ ] Committed: `feat(text-node): add height field with bottom-edge drag handle and panel input`
+- [x] Committed: `feat(text-node): add height field with bottom-edge drag handle and panel input`
 - [ ] Phase marked complete
 
 ---
