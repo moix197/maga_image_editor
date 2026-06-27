@@ -137,6 +137,7 @@ export function TextStylePanel({ node, onChange, onDelete, onReorder, hideContro
               height: e.target.value === "" ? undefined : Math.max(0, Number(e.target.value)),
             })
           }
+          aria-label="Text height"
           className="h-8 text-xs"
         />
       </FieldRow>

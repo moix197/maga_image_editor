@@ -368,9 +368,7 @@ describe("TextNodeLayer height resize handle", () => {
       <TextStylePanel node={node} onChange={onChange} onDelete={vi.fn()} onReorder={vi.fn()} />,
     );
 
-    // The Height input is the spinbutton with min="0" (Width has min="20", fontSize max="200").
-    const inputs = screen.getAllByRole("spinbutton") as HTMLInputElement[];
-    const heightInput = inputs.find((i) => i.min === "0")!;
+    const heightInput = screen.getByLabelText("Text height") as HTMLInputElement;
     fireEvent.change(heightInput, { target: { value: "" } });
     expect(onChange).toHaveBeenCalledWith({ height: undefined });
   });
