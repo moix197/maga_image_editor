@@ -3,7 +3,7 @@
 **Created:** 2026-06-26
 **Branch:** feat/text-node-height-align
 **Shape:** Sequential  
-**Status:** Draft
+**Status:** Complete (automated) — manual smoke-tests pending
 
 ## Risk: medium
 
@@ -415,11 +415,11 @@ Vertical align test cases:
   ```
 - [ ] Manual regression: open a saved project with existing text nodes (no `height`/`textAlign`/`verticalAlign`); confirm they render identically to pre-feature
 - [ ] Manual happy path for each slice (see phase acid tests above)
-- [ ] Update `.ai/architecture.md` — add `TextNode height/align fields` section:
+- [x] Update `.ai/architecture.md` — add `TextNode height/align fields` section:
   - `height?: number`: optional fixed height; overflow visible; no min clamp.
   - `textAlign?: "left"|"center"|"right"`: routed via `TextStyle` Pick.
   - `verticalAlign?: "top"|"middle"|"bottom"`: routed via `TextStyle` Pick; flex layout only when `height` is set.
-- [ ] Create `.ai/decisions/text-node-height-align.md` capturing:
+- [x] Create `.ai/decisions/text-node-height-align.md` capturing:
   - Overflow-visible decision and rationale.
   - No min-height clamp (divergence from width's 20px floor — intentional).
   - `textAlign`/`verticalAlign` in `TextStyle` Pick (unlike `width`/`height`).
@@ -433,12 +433,12 @@ No automated tests — justified because: all logic covered in per-phase test su
 
 ### Verification
 
-- [ ] Every preceding phase's Steps/Verification/Phase review checkboxes are ticked in this file
-- [ ] All three gates exit 0
-- [ ] `.ai/architecture.md` updated
-- [ ] `.ai/decisions/text-node-height-align.md` created
+- [x] Every preceding phase's Steps/Verification/Phase review checkboxes are ticked in this file
+- [x] All three gates exit 0
+- [x] `.ai/architecture.md` updated
+- [x] `.ai/decisions/text-node-height-align.md` created
 - [ ] No visual regressions on existing nodes (manual)
-- [ ] No CLAUDE.md invariants violated (pnpm, thin entry points, `.ai/` KB synced)
+- [x] No CLAUDE.md invariants violated (pnpm, thin entry points, `.ai/` KB synced)
 
 **Phase review:**
 
