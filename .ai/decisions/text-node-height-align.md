@@ -8,10 +8,10 @@
 `TextNode` gains three optional layout fields: `height?: number`,
 `textAlign?: "left" | "center" | "right"`, and
 `verticalAlign?: "top" | "middle" | "bottom"`. Height is a fixed box height set
-by a bottom-edge drag handle + panel input; `textAlign`/`verticalAlign` are
-panel toggles. No schema version bump — all three are optional, absent = legacy
-behavior. `NodeOverride` already accepts them
-(`Partial<Omit<TextNode & OverlayNode, "id">>`).
+by the canvas resize handle (a single bottom-right corner handle — see below) or
+the panel input; `textAlign`/`verticalAlign` are panel toggles. No schema version
+bump — all three are optional, absent = legacy behavior. `NodeOverride` already
+accepts them (`Partial<Omit<TextNode & OverlayNode, "id">>`).
 
 ## Rationale
 
@@ -25,8 +25,8 @@ readable rather than silently hidden.
 
 ### No min-height clamp — intentional divergence from width's 20px floor
 
-The bottom-edge handle clamps with `Math.max(0, ...)` only — no min-height
-floor. This deliberately diverges from the width handle's `Math.max(20, ...)`.
+The corner handle clamps height with `Math.max(0, ...)` only — no min-height
+floor. This deliberately diverges from the width clamp's `Math.max(20, ...)`.
 Width has a floor because a zero-width box becomes invisible and unselectable;
 height does not, because `overflow: visible` keeps the (overflowed) text painted
 and the node selectable even at a 0px box. Allowing 0 height is harmless and
@@ -52,6 +52,19 @@ and width-fit behavior; gating flex on a defined height keeps every node without
 a height rendering exactly as before. The panel's vertical-align toggle is
 disabled while `height` is `undefined` to reflect that the field has no effect
 there.
+
+### Single corner resize handle — match the image/overlay box
+
+Width and height were first shipped as two separate handles (a square on the
+right edge, a square on the bottom edge). This diverged from `OverlayNodeLayer`,
+whose box has one `se-resize` square at the bottom-right corner that resizes both
+axes. The bottom strip was also invisible and overlapped the text, so it was hard
+to discover and grab. Consolidated to a **single bottom-right corner handle**
+matching the image box: one drag computes `dw`/`dh` and fires both `onResize` and
+`onHeightResize`; the two `setNodeOverride` patches merge functionally. Tradeoff:
+a horizontal-only corner drag now also locks the current height (the corner owns
+both axes). The width/height clamps (`Math.max(20, …)` / `Math.max(0, …)`) are
+unchanged. Clearing height back to auto is still available via the panel input.
 
 ### Phase ordering — verticalAlign depends on the height/flex root
 
