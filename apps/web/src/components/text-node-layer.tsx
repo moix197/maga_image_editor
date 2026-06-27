@@ -300,11 +300,14 @@ export function TextNodeLayer({
           onPointerUp={handleHeightResizePointerUp}
           style={{
             position: "absolute",
-            bottom: 0,
-            left: 0,
-            width: "100%",
-            height: 8,
-            cursor: "s-resize",
+            bottom: -6,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 12,
+            height: 12,
+            background: "#3b82f6",
+            borderRadius: 2,
+            cursor: "ns-resize",
             zIndex: 10,
           }}
         />
