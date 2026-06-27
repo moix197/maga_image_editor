@@ -27,6 +27,13 @@ function resolveFontFamily(name: string): string {
   return FONT_FAMILY_VAR[name] ?? name;
 }
 
+/** Maps `verticalAlign` to the flex-column `justifyContent` value. */
+const JUSTIFY_MAP: Record<"top" | "middle" | "bottom", string> = {
+  top: "flex-start",
+  middle: "center",
+  bottom: "flex-end",
+};
+
 function buildTextShadow(node: TextNode): string {
   if (!node.shadow) return "none";
   const { color, blur, offsetX, offsetY } = node.shadow;
@@ -195,6 +202,17 @@ export function TextNodeLayer({
 
   const bg = node.textBackground;
 
+  // Flex column is only activated when a fixed height is set, so normal block
+  // flow (and auto-size wrapping) is preserved for height-less nodes.
+  const flexStyles: React.CSSProperties =
+    node.height !== undefined
+      ? {
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: JUSTIFY_MAP[node.verticalAlign ?? "top"],
+        }
+      : {};
+
   return (
     <div
       ref={containerRef}
@@ -233,6 +251,7 @@ export function TextNodeLayer({
         ...(node.width !== undefined && { width: `${node.width}px` }),
         ...(node.height !== undefined && { height: `${node.height}px`, overflow: "visible" }),
         ...(node.textAlign !== undefined && { textAlign: node.textAlign }),
+        ...flexStyles,
       }}
     >
       {/* Step 7: Render contentEditable when editing, static content otherwise. */}

@@ -38,6 +38,8 @@ export interface TextNode {
   height?: number;
   /** Horizontal text alignment. When absent, falls back to the browser default (left). */
   textAlign?: "left" | "center" | "right";
+  /** Vertical alignment within a fixed-height box. Only meaningful when `height` is set; absent = no explicit alignment. */
+  verticalAlign?: "top" | "middle" | "bottom";
   fontSize: number;
   color: string;
   opacity: number;

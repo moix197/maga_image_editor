@@ -19,6 +19,7 @@ export type TextStyle = Pick<
   | "shadow"
   | "textBackground"
   | "textAlign"
+  | "verticalAlign"
 >;
 
 /**
@@ -159,6 +160,7 @@ function textStyleOf(node: TextNode): TextStyle {
     shadow: node.shadow,
     textBackground: node.textBackground,
     textAlign: node.textAlign,
+    verticalAlign: node.verticalAlign,
   };
 }
 

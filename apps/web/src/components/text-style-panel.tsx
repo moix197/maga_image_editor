@@ -6,7 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { AlignLeft, AlignCenter, AlignRight } from "lucide-react";
+import {
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignVerticalJustifyStart,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -33,6 +40,12 @@ const TEXT_ALIGN_OPTIONS = [
   { value: "left", Icon: AlignLeft },
   { value: "center", Icon: AlignCenter },
   { value: "right", Icon: AlignRight },
+] as const;
+
+const VERTICAL_ALIGN_OPTIONS = [
+  { value: "top", Icon: AlignVerticalJustifyStart },
+  { value: "middle", Icon: AlignVerticalJustifyCenter },
+  { value: "bottom", Icon: AlignVerticalJustifyEnd },
 ] as const;
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -162,6 +175,28 @@ export function TextStylePanel({ node, onChange, onDelete, onReorder, hideContro
               aria-pressed={node.textAlign === value}
               onClick={() =>
                 onChange({ textAlign: node.textAlign === value ? undefined : value })
+              }
+            >
+              <Icon className="h-4 w-4" />
+            </Button>
+          ))}
+        </div>
+      </FieldRow>
+
+      <FieldRow label="Vertical Align">
+        <div className="flex gap-1">
+          {VERTICAL_ALIGN_OPTIONS.map(({ value, Icon }) => (
+            <Button
+              key={value}
+              type="button"
+              variant={node.verticalAlign === value ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8"
+              disabled={node.height === undefined}
+              aria-label={`Vertical align ${value}`}
+              aria-pressed={node.verticalAlign === value}
+              onClick={() =>
+                onChange({ verticalAlign: node.verticalAlign === value ? undefined : value })
               }
             >
               <Icon className="h-4 w-4" />
