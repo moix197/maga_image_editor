@@ -18,6 +18,7 @@ export type TextStyle = Pick<
   | "rotation"
   | "shadow"
   | "textBackground"
+  | "textAlign"
 >;
 
 /**
@@ -157,6 +158,7 @@ function textStyleOf(node: TextNode): TextStyle {
     rotation: node.rotation,
     shadow: node.shadow,
     textBackground: node.textBackground,
+    textAlign: node.textAlign,
   };
 }
 

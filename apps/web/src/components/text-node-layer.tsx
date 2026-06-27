@@ -232,6 +232,7 @@ export function TextNodeLayer({
         backdropFilter: bg && bg.blur > 0 ? `blur(${bg.blur}px)` : undefined,
         ...(node.width !== undefined && { width: `${node.width}px` }),
         ...(node.height !== undefined && { height: `${node.height}px`, overflow: "visible" }),
+        ...(node.textAlign !== undefined && { textAlign: node.textAlign }),
       }}
     >
       {/* Step 7: Render contentEditable when editing, static content otherwise. */}

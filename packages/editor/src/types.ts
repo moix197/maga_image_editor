@@ -36,6 +36,8 @@ export interface TextNode {
   width?: number;
   /** Explicit box height in px. When absent, the box auto-sizes to content; overflow stays visible. */
   height?: number;
+  /** Horizontal text alignment. When absent, falls back to the browser default (left). */
+  textAlign?: "left" | "center" | "right";
   fontSize: number;
   color: string;
   opacity: number;

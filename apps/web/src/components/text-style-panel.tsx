@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -27,6 +28,12 @@ interface TextStylePanelProps {
 
 const DEFAULT_SHADOW: TextShadow = { color: "#000000", blur: 4, offsetX: 2, offsetY: 2 };
 const DEFAULT_TEXT_BACKGROUND: TextBackground = { color: "#000000", opacity: 0.5, blur: 0, paddingX: 8, paddingY: 4 };
+
+const TEXT_ALIGN_OPTIONS = [
+  { value: "left", Icon: AlignLeft },
+  { value: "center", Icon: AlignCenter },
+  { value: "right", Icon: AlignRight },
+] as const;
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -140,6 +147,27 @@ export function TextStylePanel({ node, onChange, onDelete, onReorder, hideContro
           aria-label="Text height"
           className="h-8 text-xs"
         />
+      </FieldRow>
+
+      <FieldRow label="Text Align">
+        <div className="flex gap-1">
+          {TEXT_ALIGN_OPTIONS.map(({ value, Icon }) => (
+            <Button
+              key={value}
+              type="button"
+              variant={node.textAlign === value ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8"
+              aria-label={`Align ${value}`}
+              aria-pressed={node.textAlign === value}
+              onClick={() =>
+                onChange({ textAlign: node.textAlign === value ? undefined : value })
+              }
+            >
+              <Icon className="h-4 w-4" />
+            </Button>
+          ))}
+        </div>
       </FieldRow>
 
       <FieldRow label="Color">

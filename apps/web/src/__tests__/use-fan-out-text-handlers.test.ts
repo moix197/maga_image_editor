@@ -39,6 +39,24 @@ describe("useFanOutTextHandlers", () => {
     expect(setNodeOverride).toHaveBeenCalledWith("y", "node2", { color: "#ff0000" });
   });
 
+  it("handleSetItemTextStyle fans a { textAlign } patch to every selected variant", () => {
+    const setNodeOverride = vi.fn();
+    const selectedVariantIds = new Set(["a", "b", "c"]);
+
+    const { result } = renderHook(() =>
+      useFanOutTextHandlers({ selectedVariantIds, setNodeOverride, setNodeHidden: vi.fn() })
+    );
+
+    act(() => {
+      result.current.handleSetItemTextStyle("ignored", "node1", { textAlign: "center" });
+    });
+
+    expect(setNodeOverride).toHaveBeenCalledTimes(3);
+    expect(setNodeOverride).toHaveBeenCalledWith("a", "node1", { textAlign: "center" });
+    expect(setNodeOverride).toHaveBeenCalledWith("b", "node1", { textAlign: "center" });
+    expect(setNodeOverride).toHaveBeenCalledWith("c", "node1", { textAlign: "center" });
+  });
+
   it("active variant is always included because selectedVariantIds always contains it", () => {
     const setNodeOverride = vi.fn();
     // active id "a" is always in the set (enforced by BatchWorkspace)
