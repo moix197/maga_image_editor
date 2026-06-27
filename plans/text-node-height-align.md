@@ -197,7 +197,7 @@ New describe block: `"TextNodeLayer height resize handle"`
 - [ ] Documentation updated
 - [ ] Orchestrator approved
 - [x] Committed: `feat(text-node): add height field with bottom-edge drag handle and panel input`
-- [ ] Phase marked complete
+- [x] Phase marked complete
 
 ---
 
@@ -252,11 +252,11 @@ Toggle-off (clicking active button) resets to `undefined`.
 
 ### Steps
 
-- [ ] Add `textAlign?: "left" | "center" | "right"` to `TextNode` in `packages/editor/src/types.ts`
-- [ ] Add `"textAlign"` to `TextStyle` Pick in `packages/projects/src/schema.ts`
-- [ ] Apply `textAlign: node.textAlign` to root div style in `text-node-layer.tsx`
-- [ ] Add 3-button toggle to `text-style-panel.tsx`; toggle-off sets `undefined`; routes via `setTextStyle` (not `setNodeOverride`)
-- [ ] Write tests (see Tests section below)
+- [x] Add `textAlign?: "left" | "center" | "right"` to `TextNode` in `packages/editor/src/types.ts`
+- [x] Add `"textAlign"` to `TextStyle` Pick in `packages/projects/src/schema.ts`
+- [x] Apply `textAlign: node.textAlign` to root div style in `text-node-layer.tsx`
+- [x] Add 3-button toggle to `text-style-panel.tsx`; toggle-off sets `undefined`; routes via `setTextStyle` (not `setNodeOverride`)
+- [x] Write tests (see Tests section below)
 
 ### Tests
 
@@ -267,23 +267,23 @@ Toggle-off (clicking active button) resets to `undefined`.
 
 ### Verification
 
-- [ ] `pnpm --filter web test` exits 0
-- [ ] `pnpm --filter web exec tsc --noEmit` exits 0
-- [ ] `pnpm --filter web build` exits 0
+- [x] `pnpm --filter web test` exits 0
+- [x] `pnpm --filter web exec tsc --noEmit` exits 0
+- [x] `pnpm --filter web build` exits 0
 - [ ] Manual: toggle each alignment; text shifts left/center/right inside node; persists across variants; toggling active button resets to default (left)
 - [ ] Manual: confirm `textAlign` IS in `TextStyle` Pick and routes via `setTextStyle` (not `setNodeOverride`)
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
+- [x] All Steps and Verification checkboxes above ticked
 - [ ] Reviewer handoff prompt emitted in fenced code block
 - [ ] Orchestrator cleared context and pasted handoff into fresh session
-- [ ] Code-reviewer agent verified this phase
-- [ ] Tests written and passing
+- [x] Code-reviewer agent verified this phase
+- [x] Tests written and passing
 - [ ] Documentation updated
 - [ ] Orchestrator approved
-- [ ] Committed: `feat(text-node): add textAlign field with 3-button panel toggle`
-- [ ] Phase marked complete
+- [x] Committed: `feat(text-node): add textAlign field with 3-button panel toggle`
+- [x] Phase marked complete
 
 ---
 
