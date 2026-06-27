@@ -234,35 +234,7 @@ describe("TextNodeLayer resize handle", () => {
   });
 });
 
-describe("TextNodeLayer height resize handle", () => {
-  it("renders the height resize handle when isSelected=true", () => {
-    const node = makeNode();
-    render(
-      <TextNodeLayer
-        node={node}
-        onMove={vi.fn()}
-        onSelect={vi.fn()}
-        isSelected={true}
-        onHeightResize={vi.fn()}
-      />,
-    );
-    expect(screen.getByLabelText(/resize height handle/i)).toBeDefined();
-  });
-
-  it("does NOT render the height resize handle when isSelected=false", () => {
-    const node = makeNode();
-    render(
-      <TextNodeLayer
-        node={node}
-        onMove={vi.fn()}
-        onSelect={vi.fn()}
-        isSelected={false}
-        onHeightResize={vi.fn()}
-      />,
-    );
-    expect(screen.queryByLabelText(/resize height handle/i)).toBeNull();
-  });
-
+describe("TextNodeLayer corner resize handle (height + combined)", () => {
   it("applies node.height as inline style when set", () => {
     const node = makeNode({ height: 150 });
     const { container } = render(
@@ -278,7 +250,7 @@ describe("TextNodeLayer height resize handle", () => {
     expect(root.style.height).toBe("150px");
   });
 
-  it("calls onHeightResize with computed height on pointer drag", () => {
+  it("calls onHeightResize with computed height on vertical drag of the corner handle", () => {
     const onHeightResize = vi.fn();
     const node = makeNode({ height: 100 });
     render(
@@ -291,12 +263,36 @@ describe("TextNodeLayer height resize handle", () => {
       />,
     );
 
-    const handle = screen.getByLabelText(/resize height handle/i);
+    const handle = screen.getByLabelText(/resize handle/i);
 
     // Pointer down at clientY=200, move to clientY=250 → dh=50 → newHeight=100+50=150
     fireEvent.pointerDown(handle, { clientY: 200, buttons: 1, pointerId: 1 });
     fireEvent.pointerMove(handle, { clientY: 250, buttons: 1 });
     expect(onHeightResize).toHaveBeenCalledWith(150);
+  });
+
+  it("drives both width and height from a single diagonal corner drag", () => {
+    const onResize = vi.fn();
+    const onHeightResize = vi.fn();
+    const node = makeNode({ width: 100, height: 100 });
+    render(
+      <TextNodeLayer
+        node={node}
+        onMove={vi.fn()}
+        onSelect={vi.fn()}
+        isSelected={true}
+        onResize={onResize}
+        onHeightResize={onHeightResize}
+      />,
+    );
+
+    const handle = screen.getByLabelText(/resize handle/i);
+
+    // Diagonal drag: dx=50 → width 150, dy=60 → height 160
+    fireEvent.pointerDown(handle, { clientX: 200, clientY: 200, buttons: 1, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 250, clientY: 260, buttons: 1 });
+    expect(onResize).toHaveBeenCalledWith(150);
+    expect(onHeightResize).toHaveBeenCalledWith(160);
   });
 
   it("clamps onHeightResize to minimum 0 (no negative height)", () => {
@@ -312,7 +308,7 @@ describe("TextNodeLayer height resize handle", () => {
       />,
     );
 
-    const handle = screen.getByLabelText(/resize height handle/i);
+    const handle = screen.getByLabelText(/resize handle/i);
 
     // Drag far up: dh = -100, height = 30 - 100 = -70 → clamped to 0
     fireEvent.pointerDown(handle, { clientY: 200, buttons: 1, pointerId: 1 });
@@ -320,7 +316,7 @@ describe("TextNodeLayer height resize handle", () => {
     expect(onHeightResize).toHaveBeenCalledWith(0);
   });
 
-  it("does NOT call onMove while dragging the height resize handle", () => {
+  it("does NOT call onMove while dragging the corner handle", () => {
     const onMove = vi.fn();
     const onHeightResize = vi.fn();
     const node = makeNode({ y: 50, height: 100 });
@@ -334,7 +330,7 @@ describe("TextNodeLayer height resize handle", () => {
       />,
     );
 
-    const handle = screen.getByLabelText(/resize height handle/i);
+    const handle = screen.getByLabelText(/resize handle/i);
 
     fireEvent.pointerDown(handle, { clientY: 200, buttons: 1, pointerId: 1 });
     fireEvent.pointerMove(handle, { clientY: 300, buttons: 1 });
@@ -355,7 +351,7 @@ describe("TextNodeLayer height resize handle", () => {
       />,
     );
 
-    const handle = screen.getByLabelText(/resize height handle/i);
+    const handle = screen.getByLabelText(/resize handle/i);
 
     fireEvent.pointerMove(handle, { clientY: 250, buttons: 0 });
     expect(onHeightResize).not.toHaveBeenCalled();

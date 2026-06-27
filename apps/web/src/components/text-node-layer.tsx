@@ -70,8 +70,7 @@ export function TextNodeLayer({
 }: TextNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const resizeStart = useRef<{ clientX: number; width: number; parentW: number } | null>(null);
-  const heightResizeStart = useRef<{ clientY: number; height: number } | null>(null);
+  const resizeStart = useRef<{ clientX: number; clientY: number; width: number; height: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const editableRef = useRef<HTMLDivElement>(null);
 
@@ -132,7 +131,7 @@ export function TextNodeLayer({
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     // Ignore moves while a resize drag is active — captured pointermove events
     // bubble up from the resize handle to this root handler.
-    if (isEditing || resizeStart.current || heightResizeStart.current || e.buttons === 0) return;
+    if (isEditing || resizeStart.current || e.buttons === 0) return;
     const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
     const x = ((e.clientX - grabOffset.current.dx - rect.left) / rect.width) * 100;
     const y = ((e.clientY - grabOffset.current.dy - rect.top) / rect.height) * 100;
@@ -152,13 +151,16 @@ export function TextNodeLayer({
     setIsEditing(true);
   }
 
+  // Single bottom-right corner handle drives both axes at once (mirrors the
+  // image/overlay box). Width clamps at 20px (a zero-width box is invisible);
+  // height clamps at 0 (overflow stays visible, so a 0-height box keeps text).
   function handleResizePointerDown(e: ReactPointerEvent<HTMLSpanElement>) {
     e.stopPropagation();
-    const parentW = containerRef.current?.parentElement?.getBoundingClientRect().width ?? 1;
     resizeStart.current = {
       clientX: e.clientX,
+      clientY: e.clientY,
       width: node.width ?? containerRef.current?.offsetWidth ?? 100,
-      parentW,
+      height: node.height ?? containerRef.current?.offsetHeight ?? 100,
     };
     e.currentTarget.setPointerCapture(e.pointerId);
   }
@@ -167,36 +169,14 @@ export function TextNodeLayer({
     if (!resizeStart.current || e.buttons === 0) return;
     e.stopPropagation(); // keep the move handler from also firing during resize
     const dw = e.clientX - resizeStart.current.clientX;
-    const newWidth = Math.max(20, resizeStart.current.width + dw);
-    onResize?.(newWidth);
+    const dh = e.clientY - resizeStart.current.clientY;
+    onResize?.(Math.max(20, resizeStart.current.width + dw));
+    onHeightResize?.(Math.max(0, resizeStart.current.height + dh));
   }
 
   function handleResizePointerUp(e: ReactPointerEvent<HTMLSpanElement>) {
     e.stopPropagation();
     resizeStart.current = null;
-    e.currentTarget.releasePointerCapture(e.pointerId);
-  }
-
-  function handleHeightResizePointerDown(e: ReactPointerEvent<HTMLSpanElement>) {
-    e.stopPropagation();
-    heightResizeStart.current = {
-      clientY: e.clientY,
-      height: node.height ?? containerRef.current?.offsetHeight ?? 100,
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-
-  function handleHeightResizePointerMove(e: ReactPointerEvent<HTMLSpanElement>) {
-    if (!heightResizeStart.current || e.buttons === 0) return;
-    e.stopPropagation(); // keep the move handler from also firing during resize
-    const dh = e.clientY - heightResizeStart.current.clientY;
-    const newHeight = Math.max(0, heightResizeStart.current.height + dh);
-    onHeightResize?.(newHeight);
-  }
-
-  function handleHeightResizePointerUp(e: ReactPointerEvent<HTMLSpanElement>) {
-    e.stopPropagation();
-    heightResizeStart.current = null;
     e.currentTarget.releasePointerCapture(e.pointerId);
   }
 
@@ -281,33 +261,12 @@ export function TextNodeLayer({
           style={{
             position: "absolute",
             right: -6,
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: 12,
-            height: 12,
-            background: "#3b82f6",
-            borderRadius: 2,
-            cursor: "ew-resize",
-            zIndex: 10,
-          }}
-        />
-      )}
-      {isSelected && (
-        <span
-          aria-label="Resize height handle"
-          onPointerDown={handleHeightResizePointerDown}
-          onPointerMove={handleHeightResizePointerMove}
-          onPointerUp={handleHeightResizePointerUp}
-          style={{
-            position: "absolute",
             bottom: -6,
-            left: "50%",
-            transform: "translateX(-50%)",
             width: 12,
             height: 12,
-            background: "#3b82f6",
+            background: "#2563EB",
             borderRadius: 2,
-            cursor: "ns-resize",
+            cursor: "se-resize",
             zIndex: 10,
           }}
         />
