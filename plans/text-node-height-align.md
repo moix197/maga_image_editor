@@ -352,11 +352,11 @@ style={{ ...existingStyles, ...flexStyles }}
 
 ### Steps
 
-- [ ] Add `verticalAlign?: "top" | "middle" | "bottom"` to `TextNode` in `packages/editor/src/types.ts`
-- [ ] Add `"verticalAlign"` to `TextStyle` Pick in `packages/projects/src/schema.ts`
-- [ ] Add `JUSTIFY_MAP` constant and conditional `flexStyles` object in `text-node-layer.tsx`; merge into root div style only when `node.height !== undefined`
-- [ ] Add disabled Top/Middle/Bottom toggle to `text-style-panel.tsx`; disabled when `node.height` is `undefined`; routes via `setTextStyle`
-- [ ] Write/extend tests (see Tests section below)
+- [x] Add `verticalAlign?: "top" | "middle" | "bottom"` to `TextNode` in `packages/editor/src/types.ts`
+- [x] Add `"verticalAlign"` to `TextStyle` Pick in `packages/projects/src/schema.ts`
+- [x] Add `JUSTIFY_MAP` constant and conditional `flexStyles` object in `text-node-layer.tsx`; merge into root div style only when `node.height !== undefined`
+- [x] Add disabled Top/Middle/Bottom toggle to `text-style-panel.tsx`; disabled when `node.height` is `undefined`; routes via `setTextStyle`
+- [x] Write/extend tests (see Tests section below)
 
 ### Tests
 
@@ -375,9 +375,9 @@ Vertical align test cases:
 
 ### Verification
 
-- [ ] `pnpm --filter web test` exits 0 (including `text-node-inline-edit.test.tsx` — must stay green with no changes)
-- [ ] `pnpm --filter web exec tsc --noEmit` exits 0
-- [ ] `pnpm --filter web build` exits 0
+- [x] `pnpm --filter web test` exits 0 (including `text-node-inline-edit.test.tsx` — must stay green with no changes)
+- [x] `pnpm --filter web exec tsc --noEmit` exits 0
+- [x] `pnpm --filter web build` exits 0
 - [ ] Manual: set height on a node; toggle Top/Middle/Bottom; content moves within box; `textBackground` highlight wraps each line correctly inside flex column
 - [ ] Manual: with no height set, buttons show as disabled; clicking them has no visible effect
 - [ ] Manual: inline edit still functions inside flex column (double-click enters edit, Esc/blur commits)
@@ -385,15 +385,15 @@ Vertical align test cases:
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
+- [x] All Steps and Verification checkboxes above ticked
 - [ ] Reviewer handoff prompt emitted in fenced code block
 - [ ] Orchestrator cleared context and pasted handoff into fresh session
-- [ ] Code-reviewer agent verified this phase
-- [ ] Tests written and passing (including `text-node-inline-edit.test.tsx` still green)
+- [x] Code-reviewer agent verified this phase
+- [x] Tests written and passing (including `text-node-inline-edit.test.tsx` still green)
 - [ ] Documentation updated
 - [ ] Orchestrator approved
-- [ ] Committed: `feat(text-node): add verticalAlign field with flex-column layout when height is set`
-- [ ] Phase marked complete
+- [x] Committed: `feat(text-node): add verticalAlign field with flex-column layout when height is set`
+- [x] Phase marked complete
 
 ---
 
