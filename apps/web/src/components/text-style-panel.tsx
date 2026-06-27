@@ -126,6 +126,21 @@ export function TextStylePanel({ node, onChange, onDelete, onReorder, hideContro
         />
       </FieldRow>
 
+      <FieldRow label="Height">
+        <Input
+          type="number"
+          min={0}
+          value={node.height ?? ""}
+          placeholder="Auto height"
+          onChange={(e) =>
+            onChange({
+              height: e.target.value === "" ? undefined : Math.max(0, Number(e.target.value)),
+            })
+          }
+          className="h-8 text-xs"
+        />
+      </FieldRow>
+
       <FieldRow label="Color">
         <input
           type="color"

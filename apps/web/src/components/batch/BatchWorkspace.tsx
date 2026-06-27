@@ -310,6 +310,10 @@ function BatchWorkspaceInner() {
     fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { width });
   }, [fanOut, activeOverlayId]);
 
+  const handleNodeTextHeightResize = useCallback((id: string, height: number) => {
+    fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { height });
+  }, [fanOut, activeOverlayId]);
+
   const handleNodeContentChange = useCallback((id: string, content: string) => {
     fanOut.handleSetItemTextValue(activeOverlayId ?? "", id, content);
   }, [fanOut, activeOverlayId]);
@@ -435,6 +439,7 @@ function BatchWorkspaceInner() {
                   onNodeMove={handleNodeMove}
                   onNodeResize={handleNodeResize}
                   onNodeTextResize={handleNodeTextResize}
+                  onNodeTextHeightResize={handleNodeTextHeightResize}
                   onNodeContentChange={handleNodeContentChange}
                   onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
                   canvasCallbackRef={liveCanvasCallbackRef}

@@ -34,6 +34,8 @@ export interface TextNode {
   zIndex: number;
   /** Explicit box width in px. When absent, the box auto-sizes to content. */
   width?: number;
+  /** Explicit box height in px. When absent, the box auto-sizes to content; overflow stays visible. */
+  height?: number;
   fontSize: number;
   color: string;
   opacity: number;
