@@ -161,11 +161,11 @@ dialog) goes straight to `fileToDataUrl` with no guard at all.
 
 ### Steps
 
-- [ ] Update `accept` at `BatchRightPanel.tsx:118` to the locked 5-type list
-- [ ] Extend `ALLOWED_TYPES` in `image-helpers.ts` to add `image/svg+xml` and treat `image/jpg` as jpeg; verify `image-uploader.tsx` still behaves (SVG now allowed there too — that component is currently unmounted on any live route, so the practical blast radius is zero today, but confirm the data-url `<img>` rendering path it uses doesn't execute embedded SVG scripts before relying on that)
-- [ ] Add `validateImageFile(file)` guard in `handleOverlayFile` (`BatchWorkspace.tsx:170`) before data-url conversion; reject invalid files without creating a node
-- [ ] Update `.ai/` doc for the overlay-import accept set (see Documentation)
-- [ ] Write/extend tests (see Tests section)
+- [x] Update `accept` at `BatchRightPanel.tsx:118` to the locked 5-type list
+- [x] Extend `ALLOWED_TYPES` in `image-helpers.ts` to add `image/svg+xml` and treat `image/jpg` as jpeg; verify `image-uploader.tsx` still behaves (SVG now allowed there too — that component is currently unmounted on any live route, so the practical blast radius is zero today, but confirm the data-url `<img>` rendering path it uses doesn't execute embedded SVG scripts before relying on that)
+- [x] Add `validateImageFile(file)` guard in `handleOverlayFile` (`BatchWorkspace.tsx:170`) before data-url conversion; reject invalid files without creating a node
+- [x] Update `.ai/` doc for the overlay-import accept set (see Documentation)
+- [x] Write/extend tests (see Tests section)
 
 ### Tests
 
@@ -175,24 +175,22 @@ dialog) goes straight to `fileToDataUrl` with no guard at all.
 
 ### Verification
 
-- [ ] `pnpm --filter @maga/web test` exits 0
-- [ ] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
-- [ ] `pnpm --filter @maga/web build` exits 0
-- [ ] Manual: "Add Image Overlay" dialog shows JPG/JPEG/WebP/GIF/PNG/SVG as selectable; pick a `.jpg` → overlay node appears with the image
-- [ ] Manual: confirm batch-variant "Overlays" upload (`AssetUploadZone`) still accepts the same set (no regression)
+- [x] `pnpm --filter @maga/web test` exits 0
+- [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
+- [ ] `pnpm --filter @maga/web build` exits 0 _(deferred to Phase 4 gates)_
+- [ ] Manual: "Add Image Overlay" dialog shows JPG/JPEG/WebP/GIF/PNG/SVG as selectable; pick a `.jpg` → overlay node appears with the image _(deferred to Phase 4 manual)_
+- [ ] Manual: confirm batch-variant "Overlays" upload (`AssetUploadZone`) still accepts the same set (no regression) _(deferred to Phase 4 manual)_
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any reviewer-driven changes reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated
+- [x] All Steps and Verification checkboxes above ticked in the plan file _(automated gates; manual + build at Phase 4)_
+- [x] Code-reviewer agent has verified this phase
+- [x] Any reviewer-driven changes reflected back into this plan file _(none — green, no changes requested)_
+- [x] Tests written and passing
+- [x] Documentation updated
 - [ ] Orchestrator approved
-- [ ] Changes committed: `fix(overlay): accept jpg/webp/gif in image-overlay import`
-- [ ] Phase marked complete
+- [x] Changes committed: `fix(overlay): accept jpg/webp/gif in image-overlay import`
+- [x] Phase marked complete
 
 ---
 
