@@ -14,5 +14,6 @@ common path the one that needs extra effort.
 
 **Constraints it creates:** The default belongs in
 `packages/editor/src/defaults.ts`. The aspect-lock *logic* (how a locked resize
-is constrained) is a single component's concern and is intentionally **not** a
-pattern — only the default is recorded here.
+is constrained) is intentionally **not** documented here — only the default is
+recorded. See [[aspect-ratio-intrinsic-lock]] for how a locked resize
+constrains to the image's intrinsic ratio across both resize paths.

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
-import { OverlayNodeLayer } from "@/components/overlay-node-layer";
+import { OverlayNodeLayer, recordIntrinsicRatio } from "@/components/overlay-node-layer";
 import type { OverlayNode, BorderOverlay, NodeId } from "@maga/editor";
 
 const baseImageNode: OverlayNode = {
@@ -113,5 +113,47 @@ describe("OverlayNodeLayer — drag interaction", () => {
     div.setPointerCapture = vi.fn();
     fireEvent.pointerDown(div, { clientX: 100, clientY: 100, buttons: 1 });
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("OverlayNodeLayer — corner-drag resize with aspect lock", () => {
+  function dragResizeHandle(getByLabelText: (label: string) => HTMLElement, dx: number, dy: number) {
+    const handle = getByLabelText("Resize handle");
+    handle.setPointerCapture = vi.fn();
+    handle.releasePointerCapture = vi.fn();
+    fireEvent.pointerDown(handle, { clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(handle, { clientX: dx, clientY: dy, buttons: 1 });
+  }
+
+  it("locked: derives height from width via the image's intrinsic ratio, ignoring drag dy", () => {
+    const node: OverlayNode = { ...baseImageNode, id: "overlay-locked" as NodeId, aspectRatioLocked: true };
+    recordIntrinsicRatio(node.id, 300, 100); // intrinsic 3:1 — differs from the 150x100 box ratio
+    const onResize = vi.fn();
+    const { getByLabelText } = render(
+      <OverlayNodeLayer node={node} onMove={noop} onResize={onResize} onSelect={noop} isSelected={true} />
+    );
+    dragResizeHandle(getByLabelText, 30, 999); // dw=+30 -> width 180; dy is ignored
+    expect(onResize).toHaveBeenCalledWith(180, 60); // height = 180 / 3
+  });
+
+  it("unlocked: free resize keeps independent width/height from drag deltas", () => {
+    const node: OverlayNode = { ...baseImageNode, id: "overlay-unlocked" as NodeId, aspectRatioLocked: false };
+    recordIntrinsicRatio(node.id, 300, 100);
+    const onResize = vi.fn();
+    const { getByLabelText } = render(
+      <OverlayNodeLayer node={node} onMove={noop} onResize={onResize} onSelect={noop} isSelected={true} />
+    );
+    dragResizeHandle(getByLabelText, 30, 10); // dw=+30 -> 180, dh=+10 -> 110
+    expect(onResize).toHaveBeenCalledWith(180, 110);
+  });
+
+  it("locked but intrinsic ratio not captured yet: falls back to free resize", () => {
+    const node: OverlayNode = { ...baseImageNode, id: "overlay-no-ratio" as NodeId, aspectRatioLocked: true };
+    const onResize = vi.fn();
+    const { getByLabelText } = render(
+      <OverlayNodeLayer node={node} onMove={noop} onResize={onResize} onSelect={noop} isSelected={true} />
+    );
+    dragResizeHandle(getByLabelText, 30, 10);
+    expect(onResize).toHaveBeenCalledWith(180, 110);
   });
 });

@@ -23,6 +23,7 @@ import { BatchRightPanel } from "./BatchRightPanel";
 import { SCHEMA_VERSION, type BatchProject, type GeneratedOutput, type ProjectAsset } from "@maga/projects";
 import { isTextNode, isOverlayNode } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
+import { getIntrinsicRatio, constrainResizeToRatio } from "@/components/overlay-node-layer";
 import { resolveSection } from "./workspace-sections";
 
 const DISABLED_GENERATE_HINT =
@@ -190,10 +191,16 @@ function BatchWorkspaceInner() {
   function handleNodeResize(id: string, width: number, height: number) {
     const node = editorState.state.nodes.find((n) => n.id === id);
     if (!node) return;
+    // Image-overlay resizes (the only caller of onNodeResize — see
+    // text-overlay-canvas.tsx) respect the lock by constraining to the image's
+    // intrinsic ratio before writing the override, mirroring the corner-drag
+    // handler in overlay-node-layer.tsx.
+    const ratio = isOverlayNode(node) && node.aspectRatioLocked ? getIntrinsicRatio(id) : undefined;
+    const size = constrainResizeToRatio(width, height, ratio);
     // Both text and image-overlay resizes fan out a per-variant size override
     // (selected variants only, active always included) — never the shared
     // template.
-    fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { width, height });
+    fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, size);
   }
 
   function handleToggleVariableSlot(nodeId: NodeId) {

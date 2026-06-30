@@ -2,6 +2,7 @@
 
 import { isBorderOverlay } from "@maga/editor";
 import type { OverlayNode, BorderOverlay, DropShadow } from "@maga/editor";
+import { getIntrinsicRatio } from "@/components/overlay-node-layer";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -48,16 +49,21 @@ type OverlayPatch = Partial<Omit<OverlayNode, "id">>;
 
 const DEFAULT_DROP_SHADOW: DropShadow = { x: 5, y: 5, blur: 10, color: "#000000", opacity: 0.5 };
 
-/** When the lock is on, scales the unedited dimension to preserve the current W:H ratio. */
+/**
+ * When the lock is on, scales the unedited dimension to preserve the image's
+ * intrinsic (natural) W:H ratio — not the box's current, possibly-drifted ratio.
+ * Falls back to an unconstrained patch when the intrinsic ratio hasn't been
+ * captured yet (image not loaded), see overlay-node-layer.tsx's `recordIntrinsicRatio`.
+ */
 export function applyAspectRatioLock(patch: OverlayPatch, currentNode: OverlayNode): OverlayPatch {
   if (!currentNode.aspectRatioLocked) return patch;
-  const { width: w, height: h } = currentNode;
-  if (w <= 0 || h <= 0) return patch;
+  const ratio = getIntrinsicRatio(currentNode.id);
+  if (ratio === undefined) return patch;
   if (patch.width !== undefined && patch.height === undefined) {
-    return { ...patch, height: Math.round((patch.width * h) / w) };
+    return { ...patch, height: Math.round(patch.width / ratio) };
   }
   if (patch.height !== undefined && patch.width === undefined) {
-    return { ...patch, width: Math.round((patch.height * w) / h) };
+    return { ...patch, width: Math.round(patch.height * ratio) };
   }
   return patch;
 }
