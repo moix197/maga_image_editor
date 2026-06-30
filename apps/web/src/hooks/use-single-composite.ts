@@ -2,19 +2,11 @@
 
 import { useState, useCallback } from "react";
 import { coverCropDataUrl } from "@/lib/cover-crop";
-import { compositeFromElement } from "@/lib/export-helpers";
+import { compositeFromElement, EXPORT_PIXEL_RATIO } from "@/lib/export-helpers";
 import { patchOverlays } from "@/lib/overlay-patch";
 import { waitTwoFrames } from "@/lib/capture-helpers";
 import type { EditorState, NodeId } from "@maga/editor";
 import type { ProjectAsset, VariableSlot } from "@maga/projects";
-
-/**
- * Must match the pixelRatio `compositeFromElement` hardcodes internally
- * (`export-helpers.ts`) — overlays are cropped at this scale so the export
- * post-pass (which draws at `node.width * pixelRatio`) gets a full-resolution
- * bitmap instead of upscaling a 1× crop.
- */
-const EXPORT_PIXEL_RATIO = 2;
 
 interface UseSingleCompositeOptions {
   /**

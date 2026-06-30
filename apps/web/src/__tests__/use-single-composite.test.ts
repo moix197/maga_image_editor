@@ -14,6 +14,7 @@ vi.mock("@/lib/cover-crop", () => ({
 vi.mock("@/lib/export-helpers", () => ({
   compositeFromElement: mockCompositeFromElement,
   exportCanvasElement: vi.fn(),
+  EXPORT_PIXEL_RATIO: 2,
 }));
 
 vi.mock("@/lib/capture-helpers", () => ({

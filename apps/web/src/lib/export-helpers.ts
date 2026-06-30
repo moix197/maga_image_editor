@@ -2,6 +2,9 @@ import * as htmlToImage from "html-to-image";
 import type { OverlayNode } from "@maga/editor";
 import { applyImageOverlayPostPass } from "./canvas-post-pass";
 
+/** Device-pixel scale all exports (and their overlay crops) rasterize at. */
+export const EXPORT_PIXEL_RATIO = 2;
+
 /** Reads image-overlay node geometry/effects serialized on `data-post-pass` elements. */
 function collectImageOverlayNodes(el: HTMLElement): OverlayNode[] {
   const els = el.querySelectorAll<HTMLElement>('[data-post-pass="true"]');
@@ -43,7 +46,7 @@ export async function compositeFromElement(
   const restore = suppressPostPassNodes(el);
   let baseDataUrl: string;
   try {
-    baseDataUrl = await htmlToImage.toPng(el, { pixelRatio: 2 });
+    baseDataUrl = await htmlToImage.toPng(el, { pixelRatio: EXPORT_PIXEL_RATIO });
   } finally {
     restore();
   }
@@ -52,7 +55,7 @@ export async function compositeFromElement(
     overlayNodes,
     el.offsetWidth,
     el.offsetHeight,
-    2,
+    EXPORT_PIXEL_RATIO,
   );
 }
 
@@ -65,7 +68,7 @@ export async function exportCanvasElement(
   const restore = suppressPostPassNodes(el);
   let baseDataUrl: string;
   try {
-    baseDataUrl = await htmlToImage.toPng(el, { pixelRatio: 2 });
+    baseDataUrl = await htmlToImage.toPng(el, { pixelRatio: EXPORT_PIXEL_RATIO });
   } finally {
     restore();
   }
@@ -74,7 +77,7 @@ export async function exportCanvasElement(
     imageOverlayNodes,
     el.offsetWidth,
     el.offsetHeight,
-    2,
+    EXPORT_PIXEL_RATIO,
   );
   const a = document.createElement("a");
   a.href = dataUrl;

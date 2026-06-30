@@ -7,20 +7,12 @@
 
 import { useRef, useState, useCallback } from "react";
 import { coverCropDataUrl } from "@/lib/cover-crop";
-import { compositeFromElement } from "@/lib/export-helpers";
+import { compositeFromElement, EXPORT_PIXEL_RATIO } from "@/lib/export-helpers";
 import { patchOverlays } from "@/lib/overlay-patch";
 import { waitTwoFrames } from "@/lib/capture-helpers";
 import { isTextNode, isOverlayNode } from "@maga/editor";
 import type { EditorState, NodeId, OverlayNode, TextNode } from "@maga/editor";
 import type { GeneratedOutput, ItemNodeOverrides, NodeOverride, ProjectAsset, TextStyle, VariableSlot } from "@maga/projects";
-
-/**
- * Must match the pixelRatio `compositeFromElement` hardcodes internally
- * (`export-helpers.ts`) — overlays are cropped at this scale so the export
- * post-pass (which draws at `node.width * pixelRatio`) gets a full-resolution
- * bitmap instead of upscaling a 1× crop.
- */
-const EXPORT_PIXEL_RATIO = 2;
 
 /**
  * A text node's id paired with its template (original) content AND the full set
