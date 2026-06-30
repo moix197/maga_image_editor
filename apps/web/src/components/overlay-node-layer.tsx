@@ -36,8 +36,10 @@ export function recordIntrinsicRatio(nodeId: string, naturalWidth: number, natur
 /**
  * Width-drives-height: when `ratio` is known, derives height from width; otherwise
  * (lock off, or ratio not captured yet) returns the dimensions unconstrained. Floors
- * both dimensions at 20px. Shared by this component's drag handler and
- * BatchWorkspace's handleNodeResize fan-out write.
+ * the driving dimension (width) at 20px; the derived height is left unfloored so the
+ * exact intrinsic ratio is preserved even for extreme ratios at small widths. When
+ * unlocked, both dimensions are floored at 20px independently. Shared by this
+ * component's drag handler and BatchWorkspace's handleNodeResize fan-out write.
  */
 export function constrainResizeToRatio(
   width: number,
@@ -46,7 +48,7 @@ export function constrainResizeToRatio(
 ): { width: number; height: number } {
   const w = Math.max(20, width);
   if (ratio === undefined) return { width: w, height: Math.max(20, height) };
-  return { width: w, height: Math.max(20, w / ratio) };
+  return { width: w, height: w / ratio };
 }
 
 function buildDropShadowFilter(node: OverlayNode): string | undefined {

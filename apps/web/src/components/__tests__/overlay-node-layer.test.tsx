@@ -147,6 +147,17 @@ describe("OverlayNodeLayer — corner-drag resize with aspect lock", () => {
     expect(onResize).toHaveBeenCalledWith(180, 110);
   });
 
+  it("locked: preserves exact intrinsic ratio at small widths instead of flooring derived height to 20", () => {
+    const node: OverlayNode = { ...baseImageNode, id: "overlay-extreme-ratio" as NodeId, aspectRatioLocked: true };
+    recordIntrinsicRatio(node.id, 1000, 100); // intrinsic 10:1
+    const onResize = vi.fn();
+    const { getByLabelText } = render(
+      <OverlayNodeLayer node={node} onMove={noop} onResize={onResize} onSelect={noop} isSelected={true} />
+    );
+    dragResizeHandle(getByLabelText, -50, 0); // dw=-50 -> width 100 -> height = 100 / 10 = 10
+    expect(onResize).toHaveBeenCalledWith(100, 10);
+  });
+
   it("locked but intrinsic ratio not captured yet: falls back to free resize", () => {
     const node: OverlayNode = { ...baseImageNode, id: "overlay-no-ratio" as NodeId, aspectRatioLocked: true };
     const onResize = vi.fn();
