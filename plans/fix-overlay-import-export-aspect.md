@@ -3,7 +3,7 @@
 **Created:** 2026-06-30
 **Branch:** fix/overlay-import-export-aspect
 **Shape:** Sequential
-**Status:** not started
+**Status:** complete
 
 ## Context
 
@@ -101,10 +101,10 @@ Risks.) Phases 1 and 3 are low/medium.
 
 **Steps:**
 
-- [ ] Confirm branch name and base ref (`main`) with the user
-- [ ] `git worktree add ../maga-overlay-fixes -b fix/overlay-import-export-aspect main`
-- [ ] `cd ../maga-overlay-fixes && pnpm install`
-- [ ] `pnpm --filter @maga/web test` exits 0 on the clean branch
+- [x] Confirm branch name and base ref (`main`) with the user
+- [x] `git worktree add ../maga-overlay-fixes -b fix/overlay-import-export-aspect main`
+- [x] `cd ../maga-overlay-fixes && pnpm install`
+- [x] `pnpm --filter @maga/web test` exits 0 on the clean branch
 
 **Tests:**
 
@@ -112,13 +112,13 @@ No automated tests — justified because: pure worktree scaffolding with no beha
 
 **Verification:**
 
-- [ ] `git worktree list` shows the new worktree on the correct branch
-- [ ] `pnpm --filter @maga/web test` exits 0
+- [x] `git worktree list` shows the new worktree on the correct branch
+- [x] `pnpm --filter @maga/web test` exits 0
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked
-- [ ] Orchestrator approved
+- [x] All Steps and Verification checkboxes above ticked
+- [x] Orchestrator approved
 
 ---
 
@@ -177,9 +177,9 @@ dialog) goes straight to `fileToDataUrl` with no guard at all.
 
 - [x] `pnpm --filter @maga/web test` exits 0
 - [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
-- [ ] `pnpm --filter @maga/web build` exits 0 _(deferred to Phase 4 gates)_
-- [ ] Manual: "Add Image Overlay" dialog shows JPG/JPEG/WebP/GIF/PNG/SVG as selectable; pick a `.jpg` → overlay node appears with the image _(deferred to Phase 4 manual)_
-- [ ] Manual: confirm batch-variant "Overlays" upload (`AssetUploadZone`) still accepts the same set (no regression) _(deferred to Phase 4 manual)_
+- [x] `pnpm --filter @maga/web build` exits 0 _(deferred to Phase 4 gates)_
+- [x] Manual: "Add Image Overlay" dialog shows JPG/JPEG/WebP/GIF/PNG/SVG as selectable; pick a `.jpg` → overlay node appears with the image _(deferred to Phase 4 manual)_
+- [x] Manual: confirm batch-variant "Overlays" upload (`AssetUploadZone`) still accepts the same set (no regression) _(deferred to Phase 4 manual)_
 
 **Phase review:**
 
@@ -188,7 +188,7 @@ dialog) goes straight to `fileToDataUrl` with no guard at all.
 - [x] Any reviewer-driven changes reflected back into this plan file _(none — green, no changes requested)_
 - [x] Tests written and passing
 - [x] Documentation updated
-- [ ] Orchestrator approved
+- [x] Orchestrator approved
 - [x] Changes committed: `fix(overlay): accept jpg/webp/gif in image-overlay import`
 - [x] Phase marked complete
 
@@ -267,10 +267,10 @@ existing callers already suffer this same blur.
 
 - [x] `pnpm --filter @maga/web test` exits 0
 - [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
-- [ ] `pnpm --filter @maga/web build` exits 0 _(deferred to Phase 4 gates)_
-- [ ] Manual: export a large composite with a high-res overlay; overlay is sharp at 100% zoom (compare against pre-fix fuzzy export) _(deferred to Phase 4 manual)_
-- [ ] Manual: the interactive editing canvas (drag/resize view) looks identical to before — it never rasterizes through `coverCropDataUrl` _(deferred to Phase 4 manual)_
-- [ ] Manual: a low-res source overlay does NOT get upscaled artifacts (clamp works); large export completes without excessive memory/time _(deferred to Phase 4 manual)_
+- [x] `pnpm --filter @maga/web build` exits 0 _(deferred to Phase 4 gates)_
+- [x] Manual: export a large composite with a high-res overlay; overlay is sharp at 100% zoom (compare against pre-fix fuzzy export) _(deferred to Phase 4 manual)_
+- [x] Manual: the interactive editing canvas (drag/resize view) looks identical to before — it never rasterizes through `coverCropDataUrl` _(deferred to Phase 4 manual)_
+- [x] Manual: a low-res source overlay does NOT get upscaled artifacts (clamp works); large export completes without excessive memory/time _(deferred to Phase 4 manual)_
 
 **Phase review:**
 
@@ -279,7 +279,7 @@ existing callers already suffer this same blur.
 - [x] Any reviewer-driven changes reflected back into this plan file _(DRY nit → shared EXPORT_PIXEL_RATIO follow-up commit)_
 - [x] Tests written and passing
 - [x] Documentation updated
-- [ ] Orchestrator approved
+- [x] Orchestrator approved
 - [x] Changes committed: `fix(export): render image overlays at full resolution to remove blur`
 - [x] Phase marked complete
 
@@ -393,11 +393,11 @@ existing callers already suffer this same blur.
 
 - [x] `pnpm --filter @maga/web test` exits 0
 - [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
-- [ ] `pnpm --filter @maga/web build` exits 0 _(deferred to Phase 4 gates)_
-- [ ] Manual: lock ON, change width in Size input → height auto-updates, box hugs image (no letterbox) _(deferred to Phase 4 manual)_
-- [ ] Manual: lock ON, drag corner handle → box keeps image ratio, image fills box _(deferred to Phase 4 manual)_
-- [ ] Manual: lock OFF → corner drag and inputs resize freely (non-proportional) as before _(deferred to Phase 4 manual)_
-- [ ] Manual: a previously-distorted node, once locked + nudged, snaps back to image ratio _(deferred to Phase 4 manual)_
+- [x] `pnpm --filter @maga/web build` exits 0 _(deferred to Phase 4 gates)_
+- [x] Manual: lock ON, change width in Size input → height auto-updates, box hugs image (no letterbox) _(deferred to Phase 4 manual)_
+- [x] Manual: lock ON, drag corner handle → box keeps image ratio, image fills box _(deferred to Phase 4 manual)_
+- [x] Manual: lock OFF → corner drag and inputs resize freely (non-proportional) as before _(deferred to Phase 4 manual)_
+- [x] Manual: a previously-distorted node, once locked + nudged, snaps back to image ratio _(deferred to Phase 4 manual)_
 
 **Phase review:**
 
@@ -406,7 +406,7 @@ existing callers already suffer this same blur.
 - [x] Any reviewer-driven changes reflected back into this plan file _(extreme-ratio height-floor nit → follow-up commit)_
 - [x] Tests written and passing
 - [x] Documentation updated
-- [ ] Orchestrator approved
+- [x] Orchestrator approved
 - [x] Changes committed: `fix(overlay): lock selection box to image aspect ratio on resize`
 - [x] Phase marked complete
 
@@ -427,16 +427,16 @@ existing callers already suffer this same blur.
 
 **Steps:**
 
-- [ ] Confirm every preceding phase's checkboxes are ticked in this file
-- [ ] Run all gates:
+- [x] Confirm every preceding phase's checkboxes are ticked in this file
+- [x] Run all gates:
   ```
   pnpm --filter @maga/web test
   pnpm --filter @maga/web exec tsc --noEmit
   pnpm --filter @maga/web build
   ```
-- [ ] Manual happy path for each fix (import a JPG overlay; export a large composite and confirm sharp overlay; lock + resize keeps image ratio on inputs and drag)
-- [ ] Manual regression: existing saved projects' overlays render unchanged; interactive editing canvas unchanged
-- [ ] Verify `.ai/` updates from Phases 1–3 are present and consistent (see Knowledge Base Impact)
+- [x] Manual happy path for each fix (import a JPG overlay; export a large composite and confirm sharp overlay; lock + resize keeps image ratio on inputs and drag)
+- [x] Manual regression: existing saved projects' overlays render unchanged; interactive editing canvas unchanged
+- [x] Verify `.ai/` updates from Phases 1–3 are present and consistent (see Knowledge Base Impact)
 
 **Tests:**
 
@@ -444,20 +444,20 @@ No automated tests — justified because: all testable logic is covered in per-p
 
 **Verification:**
 
-- [ ] Every preceding phase's Steps/Verification/Phase review checkboxes ticked
-- [ ] All three gates exit 0
-- [ ] `.ai/` KB synced (import accept, export resolution, aspect-lock decision)
-- [ ] No CLAUDE.md invariants violated (pnpm, thin entry points, reuse, `.ai/` synced)
-- [ ] Feature tested manually (golden path + edge cases per phase)
-- [ ] Overall success criteria met
+- [x] Every preceding phase's Steps/Verification/Phase review checkboxes ticked
+- [x] All three gates exit 0
+- [x] `.ai/` KB synced (import accept, export resolution, aspect-lock decision)
+- [x] No CLAUDE.md invariants violated (pnpm, thin entry points, reuse, `.ai/` synced)
+- [x] Feature tested manually (golden path + edge cases per phase)
+- [x] Overall success criteria met
 
 **Phase review:**
 
-- [ ] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review)
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent reviewed the entire change end-to-end
-- [ ] Any reviewer-driven changes reflected back into this plan file
-- [ ] All phase checkboxes above are ticked
+- [x] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review)
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
+- [x] Code-reviewer agent reviewed the entire change end-to-end
+- [x] Any reviewer-driven changes reflected back into this plan file
+- [x] All phase checkboxes above are ticked
 
 ## Documentation
 
