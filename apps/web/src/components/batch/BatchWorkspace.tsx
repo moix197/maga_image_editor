@@ -121,6 +121,7 @@ function BatchWorkspaceInner() {
 
   const editorState = useEditorState(template ?? undefined);
   const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
+  const [overlayError, setOverlayError] = useState<string | null>(null);
   const overlayInputRef = useRef<HTMLInputElement | null>(null);
   const zipInputRef = useRef<HTMLInputElement | null>(null);
   const [variableSlotNodeId, setVariableSlotNodeId] = useState<NodeId | null>(null);
@@ -168,7 +169,12 @@ function BatchWorkspaceInner() {
   }
 
   async function handleOverlayFile(file: File) {
-    if (!validateImageFile(file).valid) return;
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setOverlayError(validation.error ?? "Invalid image file.");
+      return;
+    }
+    setOverlayError(null);
     editorState.addOverlayNode({ src: await fileToDataUrl(file), x: 10, y: 10 });
   }
 
@@ -344,7 +350,7 @@ function BatchWorkspaceInner() {
     activeOverlay?.blobKey ?? null,
   );
 
-  const hasBanner = restored || quotaWarning || importError || compositeError || batchRender.error || exportError;
+  const hasBanner = restored || quotaWarning || importError || compositeError || batchRender.error || exportError || overlayError;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -410,6 +416,11 @@ function BatchWorkspaceInner() {
           {exportError && (
             <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {exportError}
+            </div>
+          )}
+          {overlayError && (
+            <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {overlayError}
             </div>
           )}
         </div>
