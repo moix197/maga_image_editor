@@ -124,4 +124,40 @@ describe("coverCropDataUrl", () => {
     const result = await coverCropDataUrl("data:image/png;base64,X", 50, 50);
     expect(result).toMatch(/^data:/);
   });
+
+  it("default scale (omitted) reproduces current 1× output", async () => {
+    imgNaturalWidth = 400;
+    imgNaturalHeight = 300;
+    await coverCropDataUrl("data:image/png;base64,X", 200, 150);
+    expect(capturedCanvas!.width).toBe(200);
+    expect(capturedCanvas!.height).toBe(150);
+  });
+
+  it("scales the crop canvas by the given scale (slot * scale) when within source bounds", async () => {
+    imgNaturalWidth = 4000;
+    imgNaturalHeight = 3000;
+    await coverCropDataUrl("data:image/png;base64,X", 200, 150, 2);
+    expect(capturedCanvas!.width).toBe(400);
+    expect(capturedCanvas!.height).toBe(300);
+  });
+
+  it("clamps output to the source's native size when slot * scale exceeds it, preserving slot aspect ratio", async () => {
+    // Slot 200x150 * scale 4 = 800x600 requested, but source is only 400x300.
+    // Width is the binding constraint: clamp = 400/800 = 0.5 → 400x300 (== source).
+    imgNaturalWidth = 400;
+    imgNaturalHeight = 300;
+    await coverCropDataUrl("data:image/png;base64,X", 200, 150, 4);
+    expect(capturedCanvas!.width).toBe(400);
+    expect(capturedCanvas!.height).toBe(300);
+  });
+
+  it("clamps asymmetrically without distorting slot aspect ratio when only one axis is the binding constraint", async () => {
+    // Slot 100x100 * scale 4 = 400x400 requested. Source is 400x100 (wide).
+    // Height is the binding constraint: clamp = 100/400 = 0.25 → 100x100.
+    imgNaturalWidth = 400;
+    imgNaturalHeight = 100;
+    await coverCropDataUrl("data:image/png;base64,X", 100, 100, 4);
+    expect(capturedCanvas!.width).toBe(100);
+    expect(capturedCanvas!.height).toBe(100);
+  });
 });

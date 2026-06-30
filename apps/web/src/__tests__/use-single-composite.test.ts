@@ -109,7 +109,7 @@ describe("useSingleComposite", () => {
     });
 
     // coverCrop called with correct slot dims
-    expect(mockCoverCrop).toHaveBeenCalledWith("data:original", 300, 200);
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:original", 300, 200, 2);
 
     // compositeFromElement received the node with croppedSrc
     const firstCall = mockCompositeFromElement.mock.calls[0] as unknown as [HTMLElement, Array<{ id: string; src: string }>];
@@ -299,7 +299,7 @@ describe("useSingleComposite — overlayAssetId override", () => {
     });
 
     // Should use first overlay's blobKey, not the fallback
-    expect(mockCoverCrop).toHaveBeenCalledWith("data:first-blob", slot.width, slot.height);
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:first-blob", slot.width, slot.height, 2);
   });
 
   it("selects the correct overlay when overlayAssetId matches a non-first overlay", async () => {
@@ -317,7 +317,7 @@ describe("useSingleComposite — overlayAssetId override", () => {
       );
     });
 
-    expect(mockCoverCrop).toHaveBeenCalledWith("data:second-blob", slot.width, slot.height);
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:second-blob", slot.width, slot.height, 2);
   });
 
   it("falls back to overlaySrc when overlays option is empty", async () => {
@@ -334,7 +334,7 @@ describe("useSingleComposite — overlayAssetId override", () => {
       );
     });
 
-    expect(mockCoverCrop).toHaveBeenCalledWith("data:explicit-src", slot.width, slot.height);
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:explicit-src", slot.width, slot.height, 2);
   });
 
   it("existing call sites (no overlays option, no overlayAssetId) still compile and use overlaySrc", async () => {
@@ -348,6 +348,6 @@ describe("useSingleComposite — overlayAssetId override", () => {
       await result.current.generate(el, template, slot, "data:legacy-src", () => null as NodeId | null, () => {});
     });
 
-    expect(mockCoverCrop).toHaveBeenCalledWith("data:legacy-src", slot.width, slot.height);
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:legacy-src", slot.width, slot.height, 2);
   });
 });

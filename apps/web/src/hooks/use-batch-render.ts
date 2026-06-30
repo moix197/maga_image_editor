@@ -15,6 +15,14 @@ import type { EditorState, NodeId, OverlayNode, TextNode } from "@maga/editor";
 import type { GeneratedOutput, ItemNodeOverrides, NodeOverride, ProjectAsset, TextStyle, VariableSlot } from "@maga/projects";
 
 /**
+ * Must match the pixelRatio `compositeFromElement` hardcodes internally
+ * (`export-helpers.ts`) — overlays are cropped at this scale so the export
+ * post-pass (which draws at `node.width * pixelRatio`) gets a full-resolution
+ * bitmap instead of upscaling a 1× crop.
+ */
+const EXPORT_PIXEL_RATIO = 2;
+
+/**
  * A text node's id paired with its template (original) content AND the full set
  * of overridable fields (style + geometry). The snapshot is the restore target:
  * after applying a per-item partial the loop writes ALL of these fields back so
@@ -280,7 +288,7 @@ export function useBatchRender(
           // (2) Let React re-paint the canvas before capture.
           await waitTwoFrames();
 
-          const croppedSrc = await coverCropDataUrl(overlay.blobKey, slot.width, slot.height);
+          const croppedSrc = await coverCropDataUrl(overlay.blobKey, slot.width, slot.height, EXPORT_PIXEL_RATIO);
           // Image overlays are composited from this explicit node array (a
           // post-pass), NOT from the live DOM — so the per-variant geometry
           // override must be applied to these nodes too, not only to live state.

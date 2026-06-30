@@ -8,6 +8,14 @@ import { waitTwoFrames } from "@/lib/capture-helpers";
 import type { EditorState, NodeId } from "@maga/editor";
 import type { ProjectAsset, VariableSlot } from "@maga/projects";
 
+/**
+ * Must match the pixelRatio `compositeFromElement` hardcodes internally
+ * (`export-helpers.ts`) — overlays are cropped at this scale so the export
+ * post-pass (which draws at `node.width * pixelRatio`) gets a full-resolution
+ * bitmap instead of upscaling a 1× crop.
+ */
+const EXPORT_PIXEL_RATIO = 2;
+
 interface UseSingleCompositeOptions {
   /**
    * Overlay assets available in the project. When provided, `generate` can
@@ -80,7 +88,7 @@ export function useSingleComposite(options: UseSingleCompositeOptions = {}): Use
     const prevId = onDeselectForCapture();
     try {
       await waitTwoFrames();
-      const croppedSrc = await coverCropDataUrl(resolvedSrc, slot.width, slot.height);
+      const croppedSrc = await coverCropDataUrl(resolvedSrc, slot.width, slot.height, EXPORT_PIXEL_RATIO);
       const patchedOverlays = patchOverlays(template, slot.overlayNodeId, croppedSrc);
       const dataUrl = await compositeFromElement(canvasEl, patchedOverlays);
       setCompositeDataUrl(dataUrl);
