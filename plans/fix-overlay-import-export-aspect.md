@@ -283,6 +283,17 @@ existing callers already suffer this same blur.
 - [x] Changes committed: `fix(export): render image overlays at full resolution to remove blur`
 - [x] Phase marked complete
 
+> **Post-QA follow-up (residual blur):** Initial fix bumped crop scale but still
+> cropped at the **stale `slot` dimensions**, not the overlay's actual draw size.
+> Root cause: post-pass draws at `node.width * pixelRatio` (override-applied /
+> live node size), but the crop used the slot snapshot — so an enlarged overlay
+> upscaled. Follow-up commits:
+> - `ee886c5` — batch path crops at effective (override-applied) draw dims.
+> - `3c77046` — single path crops at the live `template` node dims (not stale slot).
+> - `+ image-type filter parity` — `findOverlayNode` matches `patchOverlays`.
+> Residual ceiling (not a bug): a genuinely low-res **source** asset can't exceed
+> its own native pixels — only a higher-res file fixes that.
+
 ---
 
 ### Phase 3 — Blue selection box matches image aspect ratio when locked
