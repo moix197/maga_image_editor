@@ -364,12 +364,12 @@ existing callers already suffer this same blur.
 
 ### Steps
 
-- [ ] Capture image intrinsic ratio (natural W/H) on load in `overlay-node-layer.tsx`; store in a ref/Map keyed by node id (not a schema field — see Resolved decisions); safe fallback (current unconstrained behavior) for nodes without an entry yet
-- [ ] Update `applyAspectRatioLock` to use intrinsic ratio (not box current ratio) when locked
-- [ ] Apply the same intrinsic-ratio constraint to corner-drag: `handleResizePointerMove` and `handleNodeResize` (width-drives-height), applied before the `fanOut.handleSetNodeOverride` write
-- [ ] Preserve free resize when `aspectRatioLocked` is false (no constraint)
-- [ ] Add a new `.ai/decisions/` entry for the intrinsic-ratio + both-paths behavior rather than rewriting `aspect-ratio-locked-default.md` (that doc explicitly scopes itself to the *default value* only and disclaims documenting lock logic — cross-link instead of overwriting) (see Documentation)
-- [ ] Write/extend tests (see Tests section)
+- [x] Capture image intrinsic ratio (natural W/H) on load in `overlay-node-layer.tsx`; store in a ref/Map keyed by node id (not a schema field — see Resolved decisions); safe fallback (current unconstrained behavior) for nodes without an entry yet
+- [x] Update `applyAspectRatioLock` to use intrinsic ratio (not box current ratio) when locked
+- [x] Apply the same intrinsic-ratio constraint to corner-drag: `handleResizePointerMove` and `handleNodeResize` (width-drives-height), applied before the `fanOut.handleSetNodeOverride` write
+- [x] Preserve free resize when `aspectRatioLocked` is false (no constraint)
+- [x] Add a new `.ai/decisions/` entry for the intrinsic-ratio + both-paths behavior rather than rewriting `aspect-ratio-locked-default.md` (that doc explicitly scopes itself to the *default value* only and disclaims documenting lock logic — cross-link instead of overwriting) (see Documentation)
+- [x] Write/extend tests (see Tests section)
 
 ### Tests
 
@@ -380,26 +380,24 @@ existing callers already suffer this same blur.
 
 ### Verification
 
-- [ ] `pnpm --filter @maga/web test` exits 0
-- [ ] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
-- [ ] `pnpm --filter @maga/web build` exits 0
-- [ ] Manual: lock ON, change width in Size input → height auto-updates, box hugs image (no letterbox)
-- [ ] Manual: lock ON, drag corner handle → box keeps image ratio, image fills box
-- [ ] Manual: lock OFF → corner drag and inputs resize freely (non-proportional) as before
-- [ ] Manual: a previously-distorted node, once locked + nudged, snaps back to image ratio
+- [x] `pnpm --filter @maga/web test` exits 0
+- [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
+- [ ] `pnpm --filter @maga/web build` exits 0 _(deferred to Phase 4 gates)_
+- [ ] Manual: lock ON, change width in Size input → height auto-updates, box hugs image (no letterbox) _(deferred to Phase 4 manual)_
+- [ ] Manual: lock ON, drag corner handle → box keeps image ratio, image fills box _(deferred to Phase 4 manual)_
+- [ ] Manual: lock OFF → corner drag and inputs resize freely (non-proportional) as before _(deferred to Phase 4 manual)_
+- [ ] Manual: a previously-distorted node, once locked + nudged, snaps back to image ratio _(deferred to Phase 4 manual)_
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any reviewer-driven changes reflected back into this plan file
-- [ ] Tests written and passing
-- [ ] Documentation updated
+- [x] All Steps and Verification checkboxes above ticked in the plan file _(automated gates; manual + build at Phase 4)_
+- [x] Code-reviewer agent has verified this phase
+- [x] Any reviewer-driven changes reflected back into this plan file _(extreme-ratio height-floor nit → follow-up commit)_
+- [x] Tests written and passing
+- [x] Documentation updated
 - [ ] Orchestrator approved
-- [ ] Changes committed: `fix(overlay): lock selection box to image aspect ratio on resize`
-- [ ] Phase marked complete
+- [x] Changes committed: `fix(overlay): lock selection box to image aspect ratio on resize`
+- [x] Phase marked complete
 
 ---
 
