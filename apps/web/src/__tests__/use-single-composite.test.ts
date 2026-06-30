@@ -296,6 +296,30 @@ describe("useSingleComposite", () => {
     expect(mockCoverCrop).toHaveBeenCalledWith("data:src", 200, 150, 2);
   });
 
+  it("falls back to the slot's width/height when the matching id belongs to a non-image overlay node", async () => {
+    // A border overlay sharing the slot's id must not be picked by
+    // findOverlayNode — patchOverlays only ever draws image-type overlays.
+    const { result } = renderHook(() => useSingleComposite());
+    const el = document.createElement("div");
+    const slot = makeSlot("node-1", 200, 150);
+    const template: EditorState = {
+      nodes: [
+        {
+          id: "node-1" as EditorState["nodes"][0]["id"],
+          src: "",
+          x: 10, y: 10, width: 400, height: 300,
+          opacity: 1, zIndex: 0, overlayType: "border",
+        },
+      ],
+    };
+
+    await act(async () => {
+      await result.current.generate(el, template, slot, "data:src", () => null as NodeId | null, () => {});
+    });
+
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:src", 200, 150, 2);
+  });
+
   it("calls onRestoreSelection in finally with prevId returned by onDeselectForCapture (even on error)", async () => {
     mockCompositeFromElement.mockRejectedValue(new Error("Capture failed"));
 

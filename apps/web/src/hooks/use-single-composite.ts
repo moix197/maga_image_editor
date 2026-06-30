@@ -110,7 +110,9 @@ export function useSingleComposite(options: UseSingleCompositeOptions = {}): Use
  * can be sized to its current (not stale) width/height.
  */
 function findOverlayNode(template: EditorState, nodeId: NodeId): OverlayNode | undefined {
-  return template.nodes.find((n): n is OverlayNode => isOverlayNode(n) && n.id === nodeId);
+  return template.nodes.find(
+    (n): n is OverlayNode => isOverlayNode(n) && n.overlayType === "image" && n.id === nodeId,
+  );
 }
 
 /**
