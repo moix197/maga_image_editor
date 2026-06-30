@@ -1,9 +1,11 @@
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
 const MAX_SIZE_BYTES = 20 * 1024 * 1024;
 
 export function validateImageFile(file: File): { valid: boolean; error?: string } {
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return { valid: false, error: `Unsupported file type "${file.type}". Use JPEG, PNG, WebP, or GIF.` };
+  // Some OSes report JPG as the non-standard "image/jpg" instead of "image/jpeg".
+  const type = file.type === "image/jpg" ? "image/jpeg" : file.type;
+  if (!ALLOWED_TYPES.includes(type)) {
+    return { valid: false, error: `Unsupported file type "${file.type}". Use JPEG, PNG, WebP, GIF, or SVG.` };
   }
   if (file.size > MAX_SIZE_BYTES) {
     return { valid: false, error: `File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 20 MB.` };

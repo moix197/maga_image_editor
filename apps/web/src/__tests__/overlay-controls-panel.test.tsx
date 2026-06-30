@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { OverlayControlsPanel, applyAspectRatioLock } from "@/components/overlay-controls-panel";
+import { recordIntrinsicRatio } from "@/components/overlay-node-layer";
 import type { OverlayNode, NodeId } from "@maga/editor";
 
 const mockNode: OverlayNode = {
@@ -46,11 +47,29 @@ describe("OverlayControlsPanel (image overlay)", () => {
     expect(onChange).toHaveBeenCalledWith({ aspectRatioLocked: false });
   });
 
-  it("changing W with lock ON fires onChange with proportionally adjusted H", () => {
-    // ratio 200:100 = 2:1, so W=400 => H=200
+  it("changing W with lock ON fires onChange with H derived from the image's intrinsic ratio", () => {
+    // Intrinsic ratio 200:100 = 2:1 (matches the box here), so W=400 => H=200.
+    recordIntrinsicRatio(mockNode.id, 200, 100);
     render(<OverlayControlsPanel node={mockNode} onChange={onChange} onDelete={noop} onReorder={noop} />);
     fireEvent.change(screen.getByLabelText("Width"), { target: { value: "400" } });
     expect(onChange).toHaveBeenCalledWith({ width: 400, height: 200 });
+  });
+
+  it("changing W with lock ON uses the image's intrinsic ratio, not the box's drifted ratio", () => {
+    // Box is 300x100 (3:1) but the loaded image is intrinsically 2:1 — the
+    // result must follow the intrinsic ratio, not the box's current ratio.
+    const driftedNode: OverlayNode = { ...mockNode, id: "ov-drifted" as NodeId, width: 300, height: 100 };
+    recordIntrinsicRatio(driftedNode.id, 200, 100);
+    render(<OverlayControlsPanel node={driftedNode} onChange={onChange} onDelete={noop} onReorder={noop} />);
+    fireEvent.change(screen.getByLabelText("Width"), { target: { value: "400" } });
+    expect(onChange).toHaveBeenCalledWith({ width: 400, height: 200 });
+  });
+
+  it("changing W with lock ON but no intrinsic ratio captured yet leaves H unchanged", () => {
+    const freshNode: OverlayNode = { ...mockNode, id: "ov-fresh" as NodeId };
+    render(<OverlayControlsPanel node={freshNode} onChange={onChange} onDelete={noop} onReorder={noop} />);
+    fireEvent.change(screen.getByLabelText("Width"), { target: { value: "400" } });
+    expect(onChange).toHaveBeenCalledWith({ width: 400 });
   });
 
   it("changing W with lock OFF leaves H unchanged", () => {
@@ -133,13 +152,20 @@ describe("applyAspectRatioLock", () => {
     aspectRatioLocked: true,
   };
 
-  it("lock ON scales H from current W:H ratio", () => {
-    expect(applyAspectRatioLock({ width: 400 }, base)).toEqual({ width: 400, height: 200 });
+  it("lock ON scales H from the image's intrinsic ratio, not the box's current ratio", () => {
+    // Box is 200:100 (2:1); intrinsic ratio is 4:1 — result must follow the intrinsic ratio.
+    recordIntrinsicRatio(base.id, 400, 100);
+    expect(applyAspectRatioLock({ width: 400 }, base)).toEqual({ width: 400, height: 100 });
   });
 
   it("lock OFF leaves H untouched", () => {
     expect(applyAspectRatioLock({ width: 400 }, { ...base, aspectRatioLocked: false })).toEqual({
       width: 400,
     });
+  });
+
+  it("falls back to an unconstrained patch when the intrinsic ratio is unknown", () => {
+    const noRatioNode: OverlayNode = { ...base, id: "no-ratio" as NodeId };
+    expect(applyAspectRatioLock({ width: 400 }, noRatioNode)).toEqual({ width: 400 });
   });
 });

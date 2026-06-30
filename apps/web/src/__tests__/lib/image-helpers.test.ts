@@ -30,8 +30,28 @@ describe("validateImageFile", () => {
     expect(validateImageFile(makeFile("a.gif", "image/gif", 100)).valid).toBe(true);
   });
 
+  it("accepts svg", () => {
+    expect(validateImageFile(makeFile("a.svg", "image/svg+xml", 100)).valid).toBe(true);
+  });
+
+  it("accepts non-standard jpg mime as jpeg alias", () => {
+    expect(validateImageFile(makeFile("a.jpg", "image/jpg", 100)).valid).toBe(true);
+  });
+
   it("rejects unsupported type", () => {
     const result = validateImageFile(makeFile("a.txt", "text/plain", 100));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/unsupported/i);
+  });
+
+  it("rejects pdf", () => {
+    const result = validateImageFile(makeFile("a.pdf", "application/pdf", 100));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/unsupported/i);
+  });
+
+  it("rejects unknown mime type", () => {
+    const result = validateImageFile(makeFile("a.bin", "application/octet-stream", 100));
     expect(result.valid).toBe(false);
     expect(result.error).toMatch(/unsupported/i);
   });

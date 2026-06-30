@@ -11,7 +11,7 @@ import { useBatchRender } from "@/hooks/use-batch-render";
 import { useZipExport } from "@/hooks/use-zip-export";
 import { useProjectPersistence } from "@/hooks/use-project-persistence";
 import { useFanOutTextHandlers } from "@/hooks/use-fan-out-text-handlers";
-import { fileToDataUrl } from "@/lib/image-helpers";
+import { fileToDataUrl, validateImageFile } from "@/lib/image-helpers";
 import { canGenerateBatch } from "@/lib/batch-gating";
 import { reconcileVariantSelection } from "@/lib/variant-selection";
 import { BatchResultsGallery } from "./BatchResultsGallery";
@@ -23,6 +23,7 @@ import { BatchRightPanel } from "./BatchRightPanel";
 import { SCHEMA_VERSION, type BatchProject, type GeneratedOutput, type ProjectAsset } from "@maga/projects";
 import { isTextNode, isOverlayNode } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
+import { getIntrinsicRatio, constrainResizeToRatio } from "@/components/overlay-node-layer";
 import { resolveSection } from "./workspace-sections";
 
 const DISABLED_GENERATE_HINT =
@@ -121,6 +122,7 @@ function BatchWorkspaceInner() {
 
   const editorState = useEditorState(template ?? undefined);
   const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
+  const [overlayError, setOverlayError] = useState<string | null>(null);
   const overlayInputRef = useRef<HTMLInputElement | null>(null);
   const zipInputRef = useRef<HTMLInputElement | null>(null);
   const [variableSlotNodeId, setVariableSlotNodeId] = useState<NodeId | null>(null);
@@ -168,6 +170,12 @@ function BatchWorkspaceInner() {
   }
 
   async function handleOverlayFile(file: File) {
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setOverlayError(validation.error ?? "Invalid image file.");
+      return;
+    }
+    setOverlayError(null);
     editorState.addOverlayNode({ src: await fileToDataUrl(file), x: 10, y: 10 });
   }
 
@@ -183,10 +191,16 @@ function BatchWorkspaceInner() {
   function handleNodeResize(id: string, width: number, height: number) {
     const node = editorState.state.nodes.find((n) => n.id === id);
     if (!node) return;
+    // Image-overlay resizes (the only caller of onNodeResize — see
+    // text-overlay-canvas.tsx) respect the lock by constraining to the image's
+    // intrinsic ratio before writing the override, mirroring the corner-drag
+    // handler in overlay-node-layer.tsx.
+    const ratio = isOverlayNode(node) && node.aspectRatioLocked ? getIntrinsicRatio(id) : undefined;
+    const size = constrainResizeToRatio(width, height, ratio);
     // Both text and image-overlay resizes fan out a per-variant size override
     // (selected variants only, active always included) — never the shared
     // template.
-    fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, { width, height });
+    fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, size);
   }
 
   function handleToggleVariableSlot(nodeId: NodeId) {
@@ -343,7 +357,7 @@ function BatchWorkspaceInner() {
     activeOverlay?.blobKey ?? null,
   );
 
-  const hasBanner = restored || quotaWarning || importError || compositeError || batchRender.error || exportError;
+  const hasBanner = restored || quotaWarning || importError || compositeError || batchRender.error || exportError || overlayError;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -409,6 +423,11 @@ function BatchWorkspaceInner() {
           {exportError && (
             <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {exportError}
+            </div>
+          )}
+          {overlayError && (
+            <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {overlayError}
             </div>
           )}
         </div>

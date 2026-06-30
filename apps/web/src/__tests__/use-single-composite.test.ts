@@ -14,6 +14,7 @@ vi.mock("@/lib/cover-crop", () => ({
 vi.mock("@/lib/export-helpers", () => ({
   compositeFromElement: mockCompositeFromElement,
   exportCanvasElement: vi.fn(),
+  EXPORT_PIXEL_RATIO: 2,
 }));
 
 vi.mock("@/lib/capture-helpers", () => ({
@@ -101,15 +102,17 @@ describe("useSingleComposite", () => {
   it("variable slot src is replaced with croppedSrc before compositeFromElement is called", async () => {
     const { result } = renderHook(() => useSingleComposite());
     const el = document.createElement("div");
-    const slot = makeSlot("node-abc", 300, 200);
+    // Slot dims match the template node's dims here (200x150) — the dims
+    // staleness scenario is covered separately below.
+    const slot = makeSlot("node-abc", 200, 150);
     const template = makeTemplate("node-abc");
 
     await act(async () => {
       await result.current.generate(el, template, slot, "data:original", () => null as NodeId | null, () => {});
     });
 
-    // coverCrop called with correct slot dims
-    expect(mockCoverCrop).toHaveBeenCalledWith("data:original", 300, 200);
+    // coverCrop called with the template node's current dims
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:original", 200, 150, 2);
 
     // compositeFromElement received the node with croppedSrc
     const firstCall = mockCompositeFromElement.mock.calls[0] as unknown as [HTMLElement, Array<{ id: string; src: string }>];
@@ -255,6 +258,68 @@ describe("useSingleComposite", () => {
     expect(slotNode?.src).toBe(CROPPED);
   });
 
+  it("crops using the template node's CURRENT width/height, not the stale slot snapshot", async () => {
+    // Slot was captured at 200x150 when toggled; user later resized the
+    // overlay node in the editor to 400x300. The crop must track the live
+    // template node, otherwise the cropped bitmap gets upscaled on export.
+    const { result } = renderHook(() => useSingleComposite());
+    const el = document.createElement("div");
+    const slot = makeSlot("node-resized", 200, 150);
+    const template: EditorState = {
+      nodes: [
+        {
+          id: "node-resized" as EditorState["nodes"][0]["id"],
+          src: "data:original",
+          x: 10, y: 10, width: 400, height: 300,
+          opacity: 1, zIndex: 0, overlayType: "image",
+        },
+      ],
+    };
+
+    await act(async () => {
+      await result.current.generate(el, template, slot, "data:src", () => null as NodeId | null, () => {});
+    });
+
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:src", 400, 300, 2);
+  });
+
+  it("falls back to the slot's width/height when the overlay node isn't found in the template", async () => {
+    const { result } = renderHook(() => useSingleComposite());
+    const el = document.createElement("div");
+    const slot = makeSlot("missing-node", 200, 150);
+    const template = makeTemplate("some-other-node");
+
+    await act(async () => {
+      await result.current.generate(el, template, slot, "data:src", () => null as NodeId | null, () => {});
+    });
+
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:src", 200, 150, 2);
+  });
+
+  it("falls back to the slot's width/height when the matching id belongs to a non-image overlay node", async () => {
+    // A border overlay sharing the slot's id must not be picked by
+    // findOverlayNode — patchOverlays only ever draws image-type overlays.
+    const { result } = renderHook(() => useSingleComposite());
+    const el = document.createElement("div");
+    const slot = makeSlot("node-1", 200, 150);
+    const template: EditorState = {
+      nodes: [
+        {
+          id: "node-1" as EditorState["nodes"][0]["id"],
+          src: "",
+          x: 10, y: 10, width: 400, height: 300,
+          opacity: 1, zIndex: 0, overlayType: "border",
+        },
+      ],
+    };
+
+    await act(async () => {
+      await result.current.generate(el, template, slot, "data:src", () => null as NodeId | null, () => {});
+    });
+
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:src", 200, 150, 2);
+  });
+
   it("calls onRestoreSelection in finally with prevId returned by onDeselectForCapture (even on error)", async () => {
     mockCompositeFromElement.mockRejectedValue(new Error("Capture failed"));
 
@@ -299,7 +364,7 @@ describe("useSingleComposite — overlayAssetId override", () => {
     });
 
     // Should use first overlay's blobKey, not the fallback
-    expect(mockCoverCrop).toHaveBeenCalledWith("data:first-blob", slot.width, slot.height);
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:first-blob", slot.width, slot.height, 2);
   });
 
   it("selects the correct overlay when overlayAssetId matches a non-first overlay", async () => {
@@ -317,7 +382,7 @@ describe("useSingleComposite — overlayAssetId override", () => {
       );
     });
 
-    expect(mockCoverCrop).toHaveBeenCalledWith("data:second-blob", slot.width, slot.height);
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:second-blob", slot.width, slot.height, 2);
   });
 
   it("falls back to overlaySrc when overlays option is empty", async () => {
@@ -334,7 +399,7 @@ describe("useSingleComposite — overlayAssetId override", () => {
       );
     });
 
-    expect(mockCoverCrop).toHaveBeenCalledWith("data:explicit-src", slot.width, slot.height);
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:explicit-src", slot.width, slot.height, 2);
   });
 
   it("existing call sites (no overlays option, no overlayAssetId) still compile and use overlaySrc", async () => {
@@ -348,6 +413,6 @@ describe("useSingleComposite — overlayAssetId override", () => {
       await result.current.generate(el, template, slot, "data:legacy-src", () => null as NodeId | null, () => {});
     });
 
-    expect(mockCoverCrop).toHaveBeenCalledWith("data:legacy-src", slot.width, slot.height);
+    expect(mockCoverCrop).toHaveBeenCalledWith("data:legacy-src", slot.width, slot.height, 2);
   });
 });

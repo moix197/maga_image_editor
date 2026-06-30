@@ -2,10 +2,11 @@
 
 import { useState, useCallback } from "react";
 import { coverCropDataUrl } from "@/lib/cover-crop";
-import { compositeFromElement } from "@/lib/export-helpers";
+import { compositeFromElement, EXPORT_PIXEL_RATIO } from "@/lib/export-helpers";
 import { patchOverlays } from "@/lib/overlay-patch";
 import { waitTwoFrames } from "@/lib/capture-helpers";
-import type { EditorState, NodeId } from "@maga/editor";
+import { isOverlayNode } from "@maga/editor";
+import type { EditorState, NodeId, OverlayNode } from "@maga/editor";
 import type { ProjectAsset, VariableSlot } from "@maga/projects";
 
 interface UseSingleCompositeOptions {
@@ -80,7 +81,16 @@ export function useSingleComposite(options: UseSingleCompositeOptions = {}): Use
     const prevId = onDeselectForCapture();
     try {
       await waitTwoFrames();
-      const croppedSrc = await coverCropDataUrl(resolvedSrc, slot.width, slot.height);
+      // `patchOverlays` below draws the slot node straight from `template` at
+      // that node's CURRENT width/height — which can differ from `slot.width/
+      // height` (a snapshot taken when the slot was toggled) if the user
+      // resized the overlay node afterwards. Crop at the live node's draw
+      // size so the bitmap is never upscaled/blurry; fall back to the slot
+      // snapshot only if the node can't be found.
+      const liveOverlayNode = findOverlayNode(template, slot.overlayNodeId);
+      const slotWidth = liveOverlayNode?.width ?? slot.width;
+      const slotHeight = liveOverlayNode?.height ?? slot.height;
+      const croppedSrc = await coverCropDataUrl(resolvedSrc, slotWidth, slotHeight, EXPORT_PIXEL_RATIO);
       const patchedOverlays = patchOverlays(template, slot.overlayNodeId, croppedSrc);
       const dataUrl = await compositeFromElement(canvasEl, patchedOverlays);
       setCompositeDataUrl(dataUrl);
@@ -93,6 +103,16 @@ export function useSingleComposite(options: UseSingleCompositeOptions = {}): Use
   }, [overlays]);
 
   return { compositeDataUrl, isRendering, error, generate };
+}
+
+/**
+ * Finds the live overlay node `patchOverlays` will draw, so the export crop
+ * can be sized to its current (not stale) width/height.
+ */
+function findOverlayNode(template: EditorState, nodeId: NodeId): OverlayNode | undefined {
+  return template.nodes.find(
+    (n): n is OverlayNode => isOverlayNode(n) && n.overlayType === "image" && n.id === nodeId,
+  );
 }
 
 /**

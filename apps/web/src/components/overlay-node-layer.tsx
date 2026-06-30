@@ -12,6 +12,45 @@ interface OverlayNodeLayerProps {
   isSelected: boolean;
 }
 
+/**
+ * Each image overlay's intrinsic (natural) W:H ratio, captured once per node id when
+ * its <img> loads (see `recordIntrinsicRatio` below). Module-scoped rather than
+ * component or React state so both resize paths — this component's corner-drag handle
+ * and the Size-input lock in overlay-controls-panel.tsx (plus BatchWorkspace's
+ * handleNodeResize) — can read a node's ratio without threading it through every
+ * intermediate component. Not persisted: cheap to re-derive each session from the
+ * already-loaded image. See .ai/decisions/aspect-ratio-intrinsic-lock.md.
+ */
+const intrinsicRatios = new Map<string, number>();
+
+export function getIntrinsicRatio(nodeId: string): number | undefined {
+  return intrinsicRatios.get(nodeId);
+}
+
+export function recordIntrinsicRatio(nodeId: string, naturalWidth: number, naturalHeight: number): void {
+  if (naturalWidth > 0 && naturalHeight > 0) {
+    intrinsicRatios.set(nodeId, naturalWidth / naturalHeight);
+  }
+}
+
+/**
+ * Width-drives-height: when `ratio` is known, derives height from width; otherwise
+ * (lock off, or ratio not captured yet) returns the dimensions unconstrained. Floors
+ * the driving dimension (width) at 20px; the derived height is left unfloored so the
+ * exact intrinsic ratio is preserved even for extreme ratios at small widths. When
+ * unlocked, both dimensions are floored at 20px independently. Shared by this
+ * component's drag handler and BatchWorkspace's handleNodeResize fan-out write.
+ */
+export function constrainResizeToRatio(
+  width: number,
+  height: number,
+  ratio: number | undefined,
+): { width: number; height: number } {
+  const w = Math.max(20, width);
+  if (ratio === undefined) return { width: w, height: Math.max(20, height) };
+  return { width: w, height: w / ratio };
+}
+
 function buildDropShadowFilter(node: OverlayNode): string | undefined {
   const s = node.dropShadow;
   if (!s) return undefined;
@@ -118,7 +157,13 @@ export function OverlayNodeLayer({
     if (!resizing.current || e.buttons === 0) return;
     const dw = e.clientX - resizeStart.current.clientX;
     const dh = e.clientY - resizeStart.current.clientY;
-    onResize(Math.max(20, resizeStart.current.width + dw), Math.max(20, resizeStart.current.height + dh));
+    const ratio = node.aspectRatioLocked ? getIntrinsicRatio(node.id) : undefined;
+    const { width, height } = constrainResizeToRatio(
+      resizeStart.current.width + dw,
+      resizeStart.current.height + dh,
+      ratio,
+    );
+    onResize(width, height);
   }
 
   function handleResizePointerUp(e: ReactPointerEvent<HTMLSpanElement>) {
@@ -149,6 +194,9 @@ export function OverlayNodeLayer({
           src={node.src}
           alt="Image overlay"
           style={buildOverlayImageStyle(node)}
+          onLoad={(e) =>
+            recordIntrinsicRatio(node.id, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
+          }
         />
       )}
       {isSelected && (

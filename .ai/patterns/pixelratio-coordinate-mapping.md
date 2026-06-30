@@ -21,3 +21,15 @@ spot. The mapping is uniform precisely so no value is left in the wrong
 coordinate space. The base PNG enters the same canvas already scaled
 (`drawImage(base, 0, 0, canvas.width, canvas.height)`), so overlays must match
 it.
+
+**Upstream of the post-pass, the source bitmap must match too.** The post-pass
+draws each overlay image at `node.width * pr` / `node.height * pr` — but
+`drawImage` always stretches whatever bitmap it's given to that destination
+size, regardless of the bitmap's own resolution. If the overlay's `src` was
+rasterized at 1× (`coverCropDataUrl(src, slotW, slotH)`) while the post-pass
+draws at `pr = 2`, that 1× bitmap gets upscaled 2× — soft output, even though
+every coordinate in the post-pass itself is correctly pixelRatio-mapped.
+`coverCropDataUrl`'s `scale` parameter exists to close this gap: callers pass
+the same `pixelRatio` the post-pass will use, so the cropped bitmap already
+has enough pixels and the post-pass draw is a same-size blit or a downscale,
+never an upscale. See [[export-overlay-resolution]].

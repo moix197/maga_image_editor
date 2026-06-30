@@ -115,7 +115,7 @@ export function BatchRightPanel({
               <input
                 ref={overlayInputRef}
                 type="file"
-                accept="image/png,image/svg+xml"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
                 className="hidden"
                 aria-label="Upload image overlay"
                 onChange={async (e) => {
