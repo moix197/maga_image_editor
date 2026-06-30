@@ -11,7 +11,7 @@ import { useBatchRender } from "@/hooks/use-batch-render";
 import { useZipExport } from "@/hooks/use-zip-export";
 import { useProjectPersistence } from "@/hooks/use-project-persistence";
 import { useFanOutTextHandlers } from "@/hooks/use-fan-out-text-handlers";
-import { fileToDataUrl } from "@/lib/image-helpers";
+import { fileToDataUrl, validateImageFile } from "@/lib/image-helpers";
 import { canGenerateBatch } from "@/lib/batch-gating";
 import { reconcileVariantSelection } from "@/lib/variant-selection";
 import { BatchResultsGallery } from "./BatchResultsGallery";
@@ -168,6 +168,7 @@ function BatchWorkspaceInner() {
   }
 
   async function handleOverlayFile(file: File) {
+    if (!validateImageFile(file).valid) return;
     editorState.addOverlayNode({ src: await fileToDataUrl(file), x: 10, y: 10 });
   }
 
