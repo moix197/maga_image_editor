@@ -38,10 +38,14 @@ node's effective width/height by reading the same per-variant override
 applies to the composited node array, falling back to `slot.width/height`
 when no override touches that node. `coverCropDataUrl` is now called with
 these effective dims as `slotW`/`slotH`, so the crop always tracks what the
-post-pass will actually draw. `use-single-composite.ts` needed no equivalent
-change: it has no `itemNodeOverrides` input, and `patchOverlays` there draws
-the slot node straight from the un-overridden `template`, so `slot.width/
-height` (captured from that same node) already equals the actual draw size.
+post-pass will actually draw. `use-single-composite.ts` got the equivalent fix
+from a different angle: it has no `itemNodeOverrides`, but the user can resize
+the overlay node *after* the slot was toggled, so the stale `slot.width/height`
+snapshot can still diverge from the node's live size. It now reads the live
+node via `findOverlayNode(template, slot.overlayNodeId)` and crops at
+`liveOverlayNode.width/height`, falling back to `slot.width/height` only when
+the node can't be found. (`findOverlayNode`'s image-type filter was aligned
+with `patchOverlays` so both resolve the same node.)
 
 **Residual limitation (not a bug):** a genuinely low-resolution source asset
 is still clamped to its own native pixel dimensions by `clampedCropSize` — a

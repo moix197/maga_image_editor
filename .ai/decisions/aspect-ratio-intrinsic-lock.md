@@ -33,10 +33,13 @@ hasn't fired) behaves as unconstrained — both `applyAspectRatioLock` and
 falling back to the box's current ratio.
 
 **Shared helper:** `constrainResizeToRatio(width, height, ratio)`, exported
-from `overlay-node-layer.tsx`, floors both dimensions at 20px and applies the
-width-drives-height rule. Used by both the corner-drag handler and
-`BatchWorkspace.handleNodeResize`, so the floor + ratio logic isn't duplicated
-across the two write paths.
+from `overlay-node-layer.tsx`, applies the width-drives-height rule. When
+locked it floors **only the driving width** at 20px and leaves the derived
+height (`width / ratio`) unfloored, so the exact intrinsic ratio survives even
+extreme ratios at small widths (a min-height clamp would distort it). When
+unlocked (`ratio === undefined`) both dimensions floor at 20px independently.
+Used by both the corner-drag handler and `BatchWorkspace.handleNodeResize`, so
+the floor + ratio logic isn't duplicated across the two write paths.
 
 **Rejected:** Storing the ratio as a new `OverlayNode` field (rejected —
 migration-chain cost for a cheaply re-derivable value). Prop-drilling the
