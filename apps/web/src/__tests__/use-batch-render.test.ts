@@ -913,6 +913,44 @@ describe("useBatchRender", () => {
     expect(overlay2Calls[0]![1]).toMatchObject({ x: 10, y: 20, width: 80, height: 60, opacity: 1 });
   });
 
+  it("crops the SLOT image at the OVERRIDDEN size, not the stale slot dims, when a per-item override enlarges it", async () => {
+    // slot is node-1 at width:200 height:150 (stale, captured at toggle time).
+    // This item's override enlarges node-1 to 400x300 — the crop must target
+    // the enlarged size so the post-pass never has to upscale the bitmap.
+    const template = overlayTemplate();
+    const overlays = [makeOverlay("a")];
+    const itemNodeOverrides = { a: { "node-1": { width: 400, height: 300 } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    expect(mockCoverCrop).toHaveBeenCalledWith(overlays[0]!.blobKey, 400, 300, 2);
+  });
+
+  it("crops the SLOT image at the stale slot dims when no override touches the slot node", async () => {
+    const template = overlayTemplate();
+    const overlays = [makeOverlay("a")];
+    // Override exists for this item but targets a different (non-slot) node.
+    const itemNodeOverrides = { a: { [OVERLAY_ID]: { width: 999, height: 999 } } };
+    const updateOverlayNode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBatchRender(overlays, template, slot as VariableSlot, itemNodeOverrides, undefined, updateOverlayNode),
+    );
+
+    await act(async () => {
+      await result.current.run(vi.fn(), vi.fn(), canvasEl, vi.fn<() => NodeId | null>().mockReturnValue(null), vi.fn());
+    });
+
+    expect(mockCoverCrop).toHaveBeenCalledWith(overlays[0]!.blobKey, slot.width, slot.height, 2);
+  });
+
   it("composited overlay-node array carries the per-item geometry override (post-pass output is correct)", async () => {
     // Image overlays are drawn by a post-pass from the explicit node array passed
     // to compositeFromElement — NOT from the live DOM. The override must land on

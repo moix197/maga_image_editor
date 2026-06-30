@@ -146,6 +146,24 @@ function overlayTransformPatch(override: NodeOverride): Partial<OverlayTransform
 }
 
 /**
+ * Resolves the slot overlay's EFFECTIVE final draw width/height for this item:
+ * a per-variant override's width/height (when present on the slot's own
+ * overlay node) reflects what the post-pass will actually draw, so it takes
+ * precedence over the stale `slot.width/height` captured when the slot was
+ * toggled. Falls back to the slot dims when no override touches this node —
+ * reuses `overlayTransformPatch` rather than re-deriving the override math.
+ */
+function getEffectiveOverlayDimensions(
+  slot: VariableSlot,
+  overlayOverrides: Record<string, NodeOverride> | undefined,
+): { width: number; height: number } {
+  const override = overlayOverrides?.[slot.overlayNodeId as string];
+  if (!override) return { width: slot.width, height: slot.height };
+  const patch = overlayTransformPatch(override);
+  return { width: patch.width ?? slot.width, height: patch.height ?? slot.height };
+}
+
+/**
  * Applies the per-item overlay transform overrides to the explicit overlay-node
  * array that the image post-pass composites. Image overlays are NOT read from the
  * live DOM at capture (the DOM elements are suppressed); their geometry/transforms
@@ -280,7 +298,16 @@ export function useBatchRender(
           // (2) Let React re-paint the canvas before capture.
           await waitTwoFrames();
 
-          const croppedSrc = await coverCropDataUrl(overlay.blobKey, slot.width, slot.height, EXPORT_PIXEL_RATIO);
+          // Crop to the EFFECTIVE draw size (override-applied, when this item
+          // overrides the slot node's width/height) — not the stale slot dims —
+          // so the post-pass never has to upscale a too-small cropped bitmap.
+          const effectiveSize = getEffectiveOverlayDimensions(slot, overlayOverrides);
+          const croppedSrc = await coverCropDataUrl(
+            overlay.blobKey,
+            effectiveSize.width,
+            effectiveSize.height,
+            EXPORT_PIXEL_RATIO,
+          );
           // Image overlays are composited from this explicit node array (a
           // post-pass), NOT from the live DOM — so the per-variant geometry
           // override must be applied to these nodes too, not only to live state.

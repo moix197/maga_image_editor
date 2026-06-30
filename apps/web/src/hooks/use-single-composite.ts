@@ -80,6 +80,12 @@ export function useSingleComposite(options: UseSingleCompositeOptions = {}): Use
     const prevId = onDeselectForCapture();
     try {
       await waitTwoFrames();
+      // No staleness here: `patchOverlays` below draws the slot node straight
+      // from `template` (the live, un-overridden base state) with no per-variant
+      // geometry override applied — single-composite has no itemNodeOverrides
+      // input. So `slot.width/height` (captured from this same template node
+      // when the slot was toggled) always equals the actual draw size, since
+      // nothing in this flow mutates the template node's width/height directly.
       const croppedSrc = await coverCropDataUrl(resolvedSrc, slot.width, slot.height, EXPORT_PIXEL_RATIO);
       const patchedOverlays = patchOverlays(template, slot.overlayNodeId, croppedSrc);
       const dataUrl = await compositeFromElement(canvasEl, patchedOverlays);

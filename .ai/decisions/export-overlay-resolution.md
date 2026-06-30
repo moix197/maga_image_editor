@@ -22,6 +22,33 @@ prevents a low-res overlay from being fabricated extra detail it doesn't have;
 flooring the clamp at the legacy `scale=1` size prevents the clamp from ever
 making quality *worse* than before for a small source.
 
+**Follow-up fix — crop target must be the overlay's ACTUAL final draw size:**
+Bumping the scale to `pixelRatio` wasn't sufficient on its own: the crop's
+*target dimensions* (`slotW`/`slotH`) were still the stale `VariableSlot.width/
+height` captured once, at the moment the slot was toggled
+(`BatchWorkspace.tsx`, `handleToggleVariableSlot`). If a per-variant override
+later enlarges that overlay node's `width`/`height` (`itemNodeOverrides`), the
+post-pass (`canvas-post-pass.ts`) draws at the OVERRIDDEN `node.width/height *
+pixelRatio` — bigger than the bitmap cropped at the stale slot size — so the
+browser upscales the crop to fill the draw rect, reintroducing blur (and, if
+the override changes the aspect ratio, stretch). Fix: in
+`use-batch-render.ts`, `getEffectiveOverlayDimensions` resolves the slot
+node's effective width/height by reading the same per-variant override
+(`overlayTransformPatch`, reused — not duplicated) that `applyOverlayOverrides`
+applies to the composited node array, falling back to `slot.width/height`
+when no override touches that node. `coverCropDataUrl` is now called with
+these effective dims as `slotW`/`slotH`, so the crop always tracks what the
+post-pass will actually draw. `use-single-composite.ts` needed no equivalent
+change: it has no `itemNodeOverrides` input, and `patchOverlays` there draws
+the slot node straight from the un-overridden `template`, so `slot.width/
+height` (captured from that same node) already equals the actual draw size.
+
+**Residual limitation (not a bug):** a genuinely low-resolution source asset
+is still clamped to its own native pixel dimensions by `clampedCropSize` — a
+source image cannot be upscaled past the detail it actually contains. This
+ceiling is inherent to the source asset, not a defect in the crop-target fix
+above.
+
 **Rejected:** A user-facing export-resolution setting. The 2× export ceiling
 itself is unchanged — this is purely a bug fix to how overlays reach that
 existing ceiling, not a new resolution control. Adding a setting would expand
