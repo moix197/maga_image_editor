@@ -162,7 +162,7 @@ function BatchWorkspaceInner() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setVariableSlotForNode(pendingId);
     }
-  }, [editorState.state.nodes]);
+  }, [editorState.state.nodes, setVariableSlotForNode]);
 
   async function handleImportZipFiles(files: File[]) {
     const file = files[0];
