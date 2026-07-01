@@ -14,6 +14,7 @@ import { useFanOutTextHandlers } from "@/hooks/use-fan-out-text-handlers";
 import { fileToDataUrl, validateImageFile } from "@/lib/image-helpers";
 import { canGenerateBatch } from "@/lib/batch-gating";
 import { reconcileVariantSelection } from "@/lib/variant-selection";
+import { resolveOverlayFromAssets } from "@/lib/overlay-from-assets";
 import { BatchResultsGallery } from "./BatchResultsGallery";
 import { VariantStrip } from "./VariantStrip";
 import { TextOverlayCanvas } from "@/components/text-overlay-canvas";
@@ -127,6 +128,13 @@ function BatchWorkspaceInner() {
   const zipInputRef = useRef<HTMLInputElement | null>(null);
   const [variableSlotNodeId, setVariableSlotNodeId] = useState<NodeId | null>(null);
   const originalSlotSrcRef = useRef<string | null>(null);
+  // Id of a just-created overlay node awaiting variable-slot designation (set
+  // by handleAddOverlayFromAssets below). addOverlayNode returns the id
+  // synchronously, but the node itself only lands in editorState.state.nodes
+  // once the triggering setState commits — reading state.nodes back in the
+  // same call is racy (see Dependencies & Risks). The effect further down
+  // designates the slot once the node actually appears.
+  const pendingVariableSlotNodeIdRef = useRef<NodeId | null>(null);
 
   useEffect(() => {
     setEditorTemplate(editorState.state);
@@ -142,6 +150,19 @@ function BatchWorkspaceInner() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVariableSlotNodeId(pendingRestore.variableSlot?.overlayNodeId ?? null);
   }, [pendingRestore, consumeRestore, replaceEditorState]);
+
+  // Completes the deferred variable-slot designation for a node just created
+  // by the overlay picker's 2+ path (see handleAddOverlayFromAssets): fires
+  // once editorState.state.nodes actually includes the pending node id.
+  useEffect(() => {
+    const pendingId = pendingVariableSlotNodeIdRef.current;
+    if (!pendingId) return;
+    if (editorState.state.nodes.some((n) => n.id === pendingId)) {
+      pendingVariableSlotNodeIdRef.current = null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVariableSlotForNode(pendingId);
+    }
+  }, [editorState.state.nodes]);
 
   async function handleImportZipFiles(files: File[]) {
     const file = files[0];
@@ -177,6 +198,23 @@ function BatchWorkspaceInner() {
     }
     setOverlayError(null);
     editorState.addOverlayNode({ src: await fileToDataUrl(file), x: 10, y: 10 });
+  }
+
+  // Picker "Add": 1 asset → a static overlay node; 2+ assets → one node
+  // auto-designated the variable slot cycling the picked assets. Never
+  // touches activeOverlayId, so the reconcile effect (below) — which only
+  // resets selectedVariantIds when activeOverlayId or overlays changes —
+  // can't clobber the selection set here. The slot designation itself is
+  // deferred to the effect above (see pendingVariableSlotNodeIdRef) since the
+  // new node isn't in editorState.state.nodes until that setState commits.
+  function handleAddOverlayFromAssets(ids: string[]) {
+    const decision = resolveOverlayFromAssets(ids, overlays);
+    if (!decision) return;
+    const nodeId = editorState.addOverlayNode({ src: decision.nodeSrc, x: 10, y: 10 });
+    if (decision.makeVariableSlot) {
+      pendingVariableSlotNodeIdRef.current = nodeId;
+      setSelectedVariantIds(new Set(decision.variantIds));
+    }
   }
 
   function handleNodeMove(id: string, x: number, y: number) {
@@ -519,6 +557,7 @@ function BatchWorkspaceInner() {
               editorState={editorState}
               overlayInputRef={overlayInputRef}
               onOverlayFile={handleOverlayFile}
+              onAddOverlayFromAssets={handleAddOverlayFromAssets}
               variableSlotNodeId={variableSlotNodeId}
               selectedNodeId={selectedNodeId}
               selectedNode={selectedNode}

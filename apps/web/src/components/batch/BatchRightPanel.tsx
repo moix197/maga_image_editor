@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useState, type RefObject } from "react";
 import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
 import { isBorderOverlay } from "@maga/editor";
 import type { ProjectAsset } from "@maga/projects";
@@ -10,6 +10,7 @@ import type { useItemText } from "@/hooks/use-item-text";
 import { AssetUploadZone } from "./AssetUploadZone";
 import { AssetList } from "./AssetList";
 import { LayerStackPanel } from "./LayerStackPanel";
+import { OverlayPickerDialog } from "./OverlayPickerDialog";
 import { TextStylePanel } from "@/components/text-style-panel";
 import { OverlayControlsPanel } from "@/components/overlay-controls-panel";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ interface BatchRightPanelProps {
   editorState: ReturnType<typeof useEditorState>;
   overlayInputRef: RefObject<HTMLInputElement | null>;
   onOverlayFile: (file: File) => void;
+  onAddOverlayFromAssets: (ids: string[]) => void;
   variableSlotNodeId: NodeId | null;
   selectedNodeId: NodeId | null;
   selectedNode: TextNode | OverlayNode | null;
@@ -58,6 +60,7 @@ export function BatchRightPanel({
   editorState,
   overlayInputRef,
   onOverlayFile,
+  onAddOverlayFromAssets,
   variableSlotNodeId,
   selectedNodeId,
   selectedNode,
@@ -71,6 +74,8 @@ export function BatchRightPanel({
   overlayNodes,
   itemText,
 }: BatchRightPanelProps) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   if (activeSection === "assets") {
     return (
       <div className="flex flex-col gap-6 p-4">
@@ -111,18 +116,37 @@ export function BatchRightPanel({
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => editorState.addTextNode()}>Add Text</Button>
               <Button variant="outline" size="sm" onClick={() => editorState.addBorderNode()}>Add Border</Button>
-              <Button variant="outline" size="sm" onClick={() => overlayInputRef.current?.click()}>Add Image Overlay</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (overlays.length > 0) {
+                    setPickerOpen(true);
+                  } else {
+                    overlayInputRef.current?.click();
+                  }
+                }}
+              >
+                Add Image Overlay
+              </Button>
               <input
                 ref={overlayInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
                 className="hidden"
                 aria-label="Upload image overlay"
-                onChange={async (e) => {
+                onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) await onOverlayFile(file);
+                  if (file) onOverlayFile(file);
                   e.target.value = "";
                 }}
+              />
+              <OverlayPickerDialog
+                open={pickerOpen}
+                onOpenChange={setPickerOpen}
+                assets={overlays}
+                onConfirm={onAddOverlayFromAssets}
+                onUploadNew={() => overlayInputRef.current?.click()}
               />
             </div>
 

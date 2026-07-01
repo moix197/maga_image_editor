@@ -94,9 +94,27 @@ controlled (`open`/`onOpenChange`) multi-select thumbnail-grid dialog over
 `ProjectAsset[]`, reusing the `VariantStrip`/`AssetList` thumbnail-grid markup. It
 holds only local selection state (reset on open/close) and exposes two callbacks —
 `onConfirm(ids)` (Add, disabled when empty) and `onUploadNew()` (falls through to
-the existing upload path) — no data fetching or node creation inside it. Not yet
-wired into `BatchRightPanel`'s "Add Image Overlay" button (integration is a
-follow-up phase).
+the existing upload path) — no data fetching or node creation inside it.
+
+**Add Image Overlay** (`BatchRightPanel.tsx`) branches on `overlays.length`: `0`
+→ clicks the hidden file input directly (unchanged); `>0` → opens
+`OverlayPickerDialog` over the existing `overlays`. Its `onConfirm` reaches
+`BatchWorkspace.handleAddOverlayFromAssets(ids)`, which calls the pure
+`resolveOverlayFromAssets(ids, overlays)` (`apps/web/src/lib/overlay-from-assets.ts`)
+to decide: **1 id** → `addOverlayNode({ src: asset.blobKey, ... })`, a plain
+static node; **2+ ids** → the same one `addOverlayNode` call plus the new node
+auto-designated the (single) variable slot and `selectedVariantIds` set to the
+picked ids, so the new slot cycles exactly those assets. The slot designation
+reuses `setVariableSlotForNode` (no duplicated mutual-exclusion logic) but
+can't call it synchronously — `addOverlayNode` returns the new id before the
+triggering `setState` commits, so the node isn't in `editorState.state.nodes`
+yet. `handleAddOverlayFromAssets` instead stashes the id in
+`pendingVariableSlotNodeIdRef`, and an effect keyed on `editorState.state.nodes`
+calls `setVariableSlotForNode` once the node actually appears. The active
+overlay (`activeOverlayId`) is never touched by this path, so the
+`selectedVariantIds` reconcile effect (which resets selection only when
+`activeOverlayId` or `overlays` changes) can't clobber the picker's selection.
+See [[overlay-picker-reuse-assets]].
 
 The center canvas renders a **live preview** of the active variant, derived
 copy-on-read from the template + that overlay's per-item overrides via
