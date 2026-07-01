@@ -203,19 +203,13 @@ function BatchWorkspaceInner() {
     fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, size);
   }
 
-  function handleToggleVariableSlot(nodeId: NodeId) {
+  // Designates `nodeId` as the (single) variable slot: clears any prior slot
+  // via the same mutual-exclusion path (restoring its stashed `src`), then
+  // stashes this node's `src` and swaps in a placeholder. Shared by the
+  // checkbox toggle and (in later phases) the overlay picker's 2+ selection.
+  function setVariableSlotForNode(nodeId: NodeId) {
     const node = editorState.state.nodes.find((n) => n.id === nodeId);
     if (!node || !isOverlayNode(node)) return;
-
-    if (variableSlotNodeId === nodeId) {
-      if (originalSlotSrcRef.current !== null) {
-        editorState.updateOverlayNode(nodeId, { src: originalSlotSrcRef.current });
-      }
-      originalSlotSrcRef.current = null;
-      setVariableSlotNodeId(null);
-      setVariableSlot(null);
-      return;
-    }
 
     if (variableSlotNodeId !== null) {
       const prevNode = editorState.state.nodes.find((n) => n.id === variableSlotNodeId);
@@ -234,6 +228,23 @@ function BatchWorkspaceInner() {
     }
     setVariableSlotNodeId(nodeId);
     setVariableSlot({ overlayNodeId: nodeId, width: overlayNode.width, height: overlayNode.height });
+  }
+
+  function handleToggleVariableSlot(nodeId: NodeId) {
+    const node = editorState.state.nodes.find((n) => n.id === nodeId);
+    if (!node || !isOverlayNode(node)) return;
+
+    if (variableSlotNodeId === nodeId) {
+      if (originalSlotSrcRef.current !== null) {
+        editorState.updateOverlayNode(nodeId, { src: originalSlotSrcRef.current });
+      }
+      originalSlotSrcRef.current = null;
+      setVariableSlotNodeId(null);
+      setVariableSlot(null);
+      return;
+    }
+
+    setVariableSlotForNode(nodeId);
   }
 
   function handleDeleteOverlayNode(nodeId: NodeId) {

@@ -27,11 +27,10 @@ export function useEditorState(initial?: EditorState) {
     });
   }
 
-  function addOverlayNode(partial?: Partial<Omit<OverlayNode, "id">>) {
-    setState((s) => {
-      const node = createOverlayNode({ zIndex: nextZIndex(s.nodes), ...partial });
-      return { ...s, nodes: [...s.nodes, node] };
-    });
+  function addOverlayNode(partial?: Partial<Omit<OverlayNode, "id">>): NodeId {
+    const node = createOverlayNode({ zIndex: nextZIndex(state.nodes), ...partial });
+    setState((s) => ({ ...s, nodes: [...s.nodes, node] }));
+    return node.id;
   }
 
   function addBorderNode(partial?: Partial<Omit<BorderOverlay, "id">>) {

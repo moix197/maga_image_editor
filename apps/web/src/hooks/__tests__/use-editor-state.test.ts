@@ -33,3 +33,18 @@ describe("useEditorState – addTextNode zIndex", () => {
     expect(new Set(allZIndices).size).toBe(allZIndices.length);
   });
 });
+
+describe("useEditorState – addOverlayNode return value", () => {
+  it("returns the id of the node it appends", () => {
+    const { result } = renderHook(() => useEditorState());
+
+    let returnedId: string | undefined;
+    act(() => {
+      returnedId = result.current.addOverlayNode({ src: "blob://x", x: 0, y: 0 });
+    });
+
+    expect(returnedId).toBeTruthy();
+    expect(result.current.state.nodes).toHaveLength(1);
+    expect(result.current.state.nodes[0]!.id).toBe(returnedId);
+  });
+});
