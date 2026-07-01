@@ -231,9 +231,6 @@ function BatchWorkspaceInner() {
   }
 
   function handleToggleVariableSlot(nodeId: NodeId) {
-    const node = editorState.state.nodes.find((n) => n.id === nodeId);
-    if (!node || !isOverlayNode(node)) return;
-
     if (variableSlotNodeId === nodeId) {
       if (originalSlotSrcRef.current !== null) {
         editorState.updateOverlayNode(nodeId, { src: originalSlotSrcRef.current });

@@ -28,9 +28,13 @@ export function useEditorState(initial?: EditorState) {
   }
 
   function addOverlayNode(partial?: Partial<Omit<OverlayNode, "id">>): NodeId {
-    const node = createOverlayNode({ zIndex: nextZIndex(state.nodes), ...partial });
-    setState((s) => ({ ...s, nodes: [...s.nodes, node] }));
-    return node.id;
+    let newId!: NodeId;
+    setState((s) => {
+      const node = createOverlayNode({ zIndex: nextZIndex(s.nodes), ...partial });
+      newId = node.id;
+      return { ...s, nodes: [...s.nodes, node] };
+    });
+    return newId;
   }
 
   function addBorderNode(partial?: Partial<Omit<BorderOverlay, "id">>) {
