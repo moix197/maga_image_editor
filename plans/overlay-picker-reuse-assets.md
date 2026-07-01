@@ -222,12 +222,12 @@ Dependencies & Risks.
 
 ### Steps
 
-- [ ] Lift/confirm props so `BatchRightPanel` gets `overlays`, `onAddOverlayFromAssets`, and the existing upload trigger
-- [ ] Button branches on `overlays.length`; render `OverlayPickerDialog`; wire `onConfirm` → `handleAddOverlayFromAssets`, `onUploadNew` → existing file-input click
-- [ ] Implement `handleAddOverlayFromAssets` (1 vs 2+) reusing `setVariableSlotForNode`; **do not** touch `activeOverlayId`
-- [ ] Order the 2+ path so the reconcile effect can't clobber `selectedVariantIds` (set selection after node creation; active overlay unchanged)
-- [ ] Fix the stray `await` diagnostic at `BatchRightPanel.tsx:123`
-- [ ] Update `.ai/` (behavior: picker + 2+→auto variable slot; decision doc)
+- [x] Lift/confirm props so `BatchRightPanel` gets `overlays`, `onAddOverlayFromAssets`, and the existing upload trigger
+- [x] Button branches on `overlays.length`; render `OverlayPickerDialog`; wire `onConfirm` → `handleAddOverlayFromAssets`, `onUploadNew` → existing file-input click
+- [x] Implement `handleAddOverlayFromAssets` (1 vs 2+) reusing `setVariableSlotForNode`; **do not** touch `activeOverlayId`
+- [x] Order the 2+ path so the reconcile effect can't clobber `selectedVariantIds` (set selection after node creation; active overlay unchanged)
+- [x] Fix the stray `await` diagnostic at `BatchRightPanel.tsx:123`
+- [x] Update `.ai/` (behavior: picker + 2+→auto variable slot; decision doc)
 
 ### Tests
 
@@ -238,19 +238,19 @@ Dependencies & Risks.
 
 ### Verification
 
-- [ ] `pnpm --filter @maga/web test` exits 0
-- [ ] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
+- [x] `pnpm --filter @maga/web test` exits 0
+- [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
 - [ ] Manual: 1 pick → node with that image; 2+ picks → one node, slot on, outputs cycle the picked overlays _(deferred to Phase 4 manual)_
 - [ ] Manual: upload-new still works; zero-asset case opens the OS dialog directly _(deferred to Phase 4 manual)_
 - [ ] Manual: active overlay/variant preview not disrupted by the auto-selection _(deferred to Phase 4 manual)_
 
 **Phase review:**
 
-- [ ] All Steps/Verification ticked
-- [ ] Code-reviewer agent verified this phase
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Changes committed
+- [x] All Steps/Verification ticked
+- [x] Code-reviewer agent verified this phase
+- [x] Tests written and passing
+- [x] Documentation updated
+- [x] Changes committed
 
 ---
 
