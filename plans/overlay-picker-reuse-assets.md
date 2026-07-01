@@ -3,7 +3,7 @@
 **Created:** 2026-07-01
 **Branch:** feat/overlay-picker-from-assets
 **Shape:** Sequential
-**Status:** draft
+**Status:** done
 
 ## Context
 
@@ -269,23 +269,23 @@ Dependencies & Risks.
 
 **Steps:**
 
-- [ ] Confirm every preceding phase's checkboxes are ticked
-- [ ] Run all gates:
+- [x] Confirm every preceding phase's checkboxes are ticked
+- [x] Run all gates:
   ```
   pnpm --filter @maga/web test
   pnpm --filter @maga/web exec tsc --noEmit
   pnpm --filter @maga/web build
   ```
-- [ ] Manual happy path: pick 1, pick 2+, upload-new, zero-asset direct dialog
-- [ ] Manual regression: existing variable-slot checkbox toggle; variant strip selection; saved-project overlays render unchanged
-- [ ] Verify `.ai/` updates from Phases 1–3 are present and consistent
+- [x] Manual happy path: pick 1, pick 2+, upload-new, zero-asset direct dialog
+- [x] Manual regression: existing variable-slot checkbox toggle; variant strip selection; saved-project overlays render unchanged
+- [x] Verify `.ai/` updates from Phases 1–3 are present and consistent
 
 **Verification:**
 
-- [ ] All gates exit 0
-- [ ] `.ai/` KB synced
-- [ ] No CLAUDE.md invariants violated (pnpm, thin entry points, reuse, `.ai/` synced, callbacks-only generic component)
-- [ ] Overall success criteria met
+- [x] All gates exit 0
+- [x] `.ai/` KB synced
+- [x] No CLAUDE.md invariants violated (pnpm, thin entry points, reuse, `.ai/` synced, callbacks-only generic component)
+- [x] Overall success criteria met
 
 ---
 
