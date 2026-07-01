@@ -88,6 +88,16 @@ node — click/keyboard → `setSelectedNodeId`, the same setter the canvas uses
 the center canvas with the full-width `BatchResultsGallery` and collapses the right
 panel. Below the `md` breakpoint the right panel stacks under the canvas.
 
+`OverlayPickerDialog` (`apps/web/src/components/batch/OverlayPickerDialog.tsx`,
+built on `apps/web/src/components/ui/dialog.tsx` — Radix dialog) is a presentational,
+controlled (`open`/`onOpenChange`) multi-select thumbnail-grid dialog over
+`ProjectAsset[]`, reusing the `VariantStrip`/`AssetList` thumbnail-grid markup. It
+holds only local selection state (reset on open/close) and exposes two callbacks —
+`onConfirm(ids)` (Add, disabled when empty) and `onUploadNew()` (falls through to
+the existing upload path) — no data fetching or node creation inside it. Not yet
+wired into `BatchRightPanel`'s "Add Image Overlay" button (integration is a
+follow-up phase).
+
 The center canvas renders a **live preview** of the active variant, derived
 copy-on-read from the template + that overlay's per-item overrides via
 `usePreviewEditorState` (`apps/web/src/hooks/use-preview-editor-state.ts`) — the
