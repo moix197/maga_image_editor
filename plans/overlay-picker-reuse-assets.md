@@ -177,11 +177,11 @@ Dependencies & Risks.
 
 ### Steps
 
-- [ ] Build `OverlayPickerDialog` reusing the existing thumbnail-grid markup/classes
-- [ ] Local `useState<Set<string>>` for in-dialog selection; toggle per thumbnail; reset on open/close
-- [ ] "Upload new file" button calls `onUploadNew()` and closes the dialog
-- [ ] "Add" calls `onConfirm([...selected])` and closes; disabled when selection empty
-- [ ] Update `.ai/` (new component in the batch-workspace architecture doc + index row)
+- [x] Build `OverlayPickerDialog` reusing the existing thumbnail-grid markup/classes
+- [x] Local `useState<Set<string>>` for in-dialog selection; toggle per thumbnail; reset on open/close
+- [x] "Upload new file" button calls `onUploadNew()` and closes the dialog
+- [x] "Add" calls `onConfirm([...selected])` and closes; disabled when selection empty
+- [x] Update `.ai/` (new component in the batch-workspace architecture doc + index row)
 
 ### Tests
 
@@ -191,16 +191,16 @@ Dependencies & Risks.
 
 ### Verification
 
-- [ ] `pnpm --filter @maga/web test` exits 0
-- [ ] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
+- [x] `pnpm --filter @maga/web test` exits 0
+- [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
 
 **Phase review:**
 
-- [ ] All Steps/Verification ticked
-- [ ] Code-reviewer agent verified this phase
-- [ ] Tests written and passing
-- [ ] Documentation updated
-- [ ] Changes committed
+- [x] All Steps/Verification ticked
+- [x] Code-reviewer agent verified this phase
+- [x] Tests written and passing
+- [x] Documentation updated
+- [x] Changes committed
 
 ---
 
