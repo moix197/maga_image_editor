@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -37,7 +38,7 @@ export function OverlayPickerDialog({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!open) setSelectedIds(new Set());
+    setSelectedIds(new Set());
   }, [open]);
 
   function handleCheckboxChange(id: string, checked: boolean) {
@@ -65,6 +66,9 @@ export function OverlayPickerDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Choose an overlay image</DialogTitle>
+          <DialogDescription>
+            Select one or more images to add as an overlay.
+          </DialogDescription>
         </DialogHeader>
 
         <div
