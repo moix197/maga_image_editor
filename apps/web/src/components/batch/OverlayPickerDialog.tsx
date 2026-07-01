@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ProjectAsset } from "@maga/projects";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,9 +37,14 @@ export function OverlayPickerDialog({
 }: OverlayPickerDialogProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
+  // Reset the selection on every open/close transition. Adjusted during
+  // render (React's "reset state when a prop changes" pattern) rather than
+  // in an effect, to avoid the extra render pass a useEffect setState causes.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     setSelectedIds(new Set());
-  }, [open]);
+  }
 
   function handleCheckboxChange(id: string, checked: boolean) {
     const next = new Set(selectedIds);

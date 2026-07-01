@@ -136,6 +136,36 @@ function BatchWorkspaceInner() {
   // designates the slot once the node actually appears.
   const pendingVariableSlotNodeIdRef = useRef<NodeId | null>(null);
 
+  // Designates `nodeId` as the (single) variable slot: clears any prior slot
+  // via the same mutual-exclusion path (restoring its stashed `src`), then
+  // stashes this node's `src` and swaps in a placeholder. Shared by the
+  // checkbox toggle and (in later phases) the overlay picker's 2+ selection.
+  const setVariableSlotForNode = useCallback(
+    (nodeId: NodeId) => {
+      const node = editorState.state.nodes.find((n) => n.id === nodeId);
+      if (!node || !isOverlayNode(node)) return;
+
+      if (variableSlotNodeId !== null) {
+        const prevNode = editorState.state.nodes.find((n) => n.id === variableSlotNodeId);
+        if (prevNode && isOverlayNode(prevNode) && originalSlotSrcRef.current !== null) {
+          editorState.updateOverlayNode(variableSlotNodeId, { src: originalSlotSrcRef.current });
+        }
+      }
+
+      const overlayNode = node as OverlayNode;
+      originalSlotSrcRef.current = overlayNode.src;
+      // Use the active overlay as the placeholder so the slot reflects the
+      // currently previewed variant, not always the first one.
+      const placeholderSrc = activeOverlay?.blobKey ?? overlays[0]?.blobKey;
+      if (placeholderSrc) {
+        editorState.updateOverlayNode(nodeId, { src: placeholderSrc });
+      }
+      setVariableSlotNodeId(nodeId);
+      setVariableSlot({ overlayNodeId: nodeId, width: overlayNode.width, height: overlayNode.height });
+    },
+    [editorState, variableSlotNodeId, activeOverlay, overlays, setVariableSlot],
+  );
+
   useEffect(() => {
     setEditorTemplate(editorState.state);
   }, [editorState.state, setEditorTemplate]);
@@ -159,7 +189,6 @@ function BatchWorkspaceInner() {
     if (!pendingId) return;
     if (editorState.state.nodes.some((n) => n.id === pendingId)) {
       pendingVariableSlotNodeIdRef.current = null;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVariableSlotForNode(pendingId);
     }
   }, [editorState.state.nodes, setVariableSlotForNode]);
@@ -239,33 +268,6 @@ function BatchWorkspaceInner() {
     // (selected variants only, active always included) — never the shared
     // template.
     fanOut.handleSetNodeOverride(activeOverlayId ?? "", id, size);
-  }
-
-  // Designates `nodeId` as the (single) variable slot: clears any prior slot
-  // via the same mutual-exclusion path (restoring its stashed `src`), then
-  // stashes this node's `src` and swaps in a placeholder. Shared by the
-  // checkbox toggle and (in later phases) the overlay picker's 2+ selection.
-  function setVariableSlotForNode(nodeId: NodeId) {
-    const node = editorState.state.nodes.find((n) => n.id === nodeId);
-    if (!node || !isOverlayNode(node)) return;
-
-    if (variableSlotNodeId !== null) {
-      const prevNode = editorState.state.nodes.find((n) => n.id === variableSlotNodeId);
-      if (prevNode && isOverlayNode(prevNode) && originalSlotSrcRef.current !== null) {
-        editorState.updateOverlayNode(variableSlotNodeId, { src: originalSlotSrcRef.current });
-      }
-    }
-
-    const overlayNode = node as OverlayNode;
-    originalSlotSrcRef.current = overlayNode.src;
-    // Use the active overlay as the placeholder so the slot reflects the
-    // currently previewed variant, not always the first one.
-    const placeholderSrc = activeOverlay?.blobKey ?? overlays[0]?.blobKey;
-    if (placeholderSrc) {
-      editorState.updateOverlayNode(nodeId, { src: placeholderSrc });
-    }
-    setVariableSlotNodeId(nodeId);
-    setVariableSlot({ overlayNodeId: nodeId, width: overlayNode.width, height: overlayNode.height });
   }
 
   function handleToggleVariableSlot(nodeId: NodeId) {
