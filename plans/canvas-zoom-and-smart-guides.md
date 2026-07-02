@@ -3,7 +3,7 @@
 **Created:** 2026-07-01
 **Branch:** feat/canvas-zoom-and-smart-guides
 **Shape:** Sequential
-**Status:** not started
+**Status:** complete
 
 ## Context
 
@@ -570,10 +570,10 @@ behavior (`handleResizePointerMove` in both node layers only divides by
   pnpm --filter @maga/web build       # clean
   ```
 - [x] No CLAUDE.md invariants violated (pnpm; thin entry points — snap math stays in `@maga/editor`, zoom state stays in a hook; reuse before reinvent; `@maga/editor` remains DOM-free; `.ai/` synced via `sync-knowledge`, not hand-edited)
-- [ ] Feature tested manually end-to-end (golden path + edge cases: zoom extremes, snap near multiple competing guides, per-variant sibling overrides, 3+ element spacing) — pending orchestrator manual pass
+- [x] Feature tested manually end-to-end (golden path + edge cases: zoom extremes, snap near multiple competing guides, per-variant sibling overrides, 3+ element spacing) — orchestrator confirmed
 - [x] Run `sync-knowledge` to create `.ai/decisions/viewport-zoom.md` and `.ai/decisions/alignment-smart-guides.md` and update `.ai/index.md` / `.ai/architecture.md`
-- [ ] Overall success criteria met — pending manual verification above
-- [ ] All phase checkboxes above are ticked — pending manual verification above
+- [x] Overall success criteria met
+- [x] All phase checkboxes above are ticked
 
 ## Documentation
 
