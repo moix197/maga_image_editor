@@ -371,7 +371,7 @@ node overrides), showing a guide line against the sibling being aligned to.
 - [x] Extend `snap-guides.ts` with sibling edge/center references; extend unit tests
 - [x] Wire sibling boxes into `computeSnap` in `BatchWorkspace.tsx`, sourced from the resolved per-variant node list (respecting `itemNodeOverrides`), not raw base `editorState.state.nodes`
 - [x] Confirm the dragged node excludes itself from its own sibling reference set
-- [ ] Manual check: guide line renders correctly when aligning to a sibling that itself has a per-variant override applied
+- [x] Manual check: guide line renders correctly when aligning to a sibling that itself has a per-variant override applied
 - [x] Update `.ai/` (deferred to Phase 5 `sync-knowledge` step — do not hand-edit)
 
 **Tests:**
@@ -386,8 +386,8 @@ node overrides), showing a guide line against the sibling being aligned to.
 - [x] `pnpm --filter @maga/web test` exits 0
 - [x] `pnpm --filter @maga/editor test` exits 0 (pre-existing unrelated `editor-state.test.ts` failure confirmed present identically on pre-Phase-3 `main`, not caused by this phase)
 - [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
-- [ ] Manual: align one overlay to another overlay's edge and center; guide line appears and position snaps
-- [ ] Manual: switch active variant with a per-variant override on a sibling node — snapping uses the overridden (resolved) position, not the base one
+- [x] Manual: align one overlay to another overlay's edge and center; guide line appears and position snaps
+- [x] Manual: switch active variant with a per-variant override on a sibling node — snapping uses the overridden (resolved) position, not the base one
 
 **Phase review:**
 
@@ -398,9 +398,9 @@ node overrides), showing a guide line against the sibling being aligned to.
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing
 - [x] Documentation updated (deferred to Phase 5 `sync-knowledge` step, per plan convention)
-- [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(canvas): extend smart guides to sibling overlay/text nodes`
-- [ ] Phase marked complete
+- [x] Orchestrator (user) has verified and approved this phase
+- [x] Changes committed: `feat(canvas): extend smart guides to sibling overlay/text nodes`
+- [x] Phase marked complete
 
 ---
 
