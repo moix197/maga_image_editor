@@ -167,18 +167,26 @@ ephemeral visibility must never overlap an export call.
   actually renders for the active variant), not raw base `editorState.state.nodes`,
   or guides would snap to positions that aren't actually on screen for that
   variant.
-- **Known limitation (Phase 3, non-blocking): auto-sized sibling TextNode box
-  collapse.** `siblingSnapBox` in `BatchWorkspace.tsx` has no DOM ref map to
-  siblings' rendered elements (only the actively-dragged node gets a live
-  `getBoundingClientRect()` measurement, per Phase 2 scope), so a sibling
-  TextNode with no stored `width`/`height` (auto-sized) collapses to a
-  zero-size box at its top-left anchor. Left/top-edge snapping against such a
-  sibling stays accurate; center and right/bottom-edge snapping degrade to
-  duplicate the top-left point. Documented in-code and covered by a test that
-  demonstrates the collapse rather than hiding it (code-reviewer verdict:
-  green, accept for v1). Proper fix needs a sibling DOM ref map — real
-  architectural scope, deferred. Capture in
-  `.ai/decisions/alignment-smart-guides.md` during Phase 5.
+- **RESOLVED (during Phase 4 manual verification): auto-sized sibling TextNode
+  box collapse.** Originally documented (Phase 3) as a non-blocking limitation
+  — `siblingSnapBox` in `BatchWorkspace.tsx` had no DOM ref map to siblings'
+  rendered elements, so an auto-sized TextNode sibling (no stored
+  `width`/`height` — true of every default text node, per
+  `packages/editor/src/defaults.ts` `DEFAULT_TEXT_NODE`) collapsed to a
+  zero-size box. This turned out to be **fatal, not narrow**: Phase 4's
+  `resolveEqualSpacingSnap` cross-axis-overlap check needs genuinely
+  overlapping ranges, so equal-spacing detection almost never fired against
+  default text nodes — confirmed via manual browser test (no purple spacing
+  guide ever appeared). Fixed by adding a `nodeElementsRef` DOM ref registry
+  (`registerNodeElement`, mirrors the existing `liveCanvasCallbackRef`
+  pattern) in `BatchWorkspace.tsx`, threaded through `text-overlay-canvas.tsx`
+  into `TextNodeLayer` only (`OverlayNode` width/height are required, never
+  needs this); `siblingSnapBox` now live-measures an auto-sized TextNode
+  sibling via this registry instead of falling back to zero. Regression test
+  in `apps/web/src/__tests__/text-node-snap.test.tsx` proves three fully
+  auto-sized siblings now correctly trigger the spacing guide. Code-reviewer
+  verdict: green. Capture in `.ai/decisions/alignment-smart-guides.md` during
+  Phase 5 (supersedes the original "known limitation" note).
 - **Test co-location is inconsistent in this codebase** (some component tests
   in `apps/web/src/__tests__/`, some hook tests in
   `apps/web/src/hooks/__tests__/`). This plan places: pure snap-math tests in
@@ -422,6 +430,7 @@ snaps to the equal-gap position.
 | modify | `packages/editor/src/index.ts` | Re-export the new function/types |
 | modify | `apps/web/src/components/batch/BatchWorkspace.tsx` | Extend `computeSnap` to also try equal-spacing resolution (per axis) alongside edge/center/sibling snapping from Phases 2–3; define and document precedence when multiple snaps compete (edge/center wins over spacing) |
 | modify | `apps/web/src/components/text-overlay-canvas.tsx` | Extend guide rendering to a distinct visual treatment for spacing guides (e.g. tick marks) vs. edge/center lines |
+| modify (post-review fix) | `apps/web/src/components/batch/BatchWorkspace.tsx`, `apps/web/src/components/text-overlay-canvas.tsx`, `apps/web/src/components/text-node-layer.tsx` | Discovered during manual verification: default text nodes (no stored width/height) never triggered the spacing guide. Added a `nodeElementsRef`/`registerNodeElement` DOM ref registry so `siblingSnapBox` can live-measure auto-sized TextNode siblings instead of collapsing to a zero-size box — see "Dependencies & Risks" RESOLVED note |
 
 **Steps:**
 

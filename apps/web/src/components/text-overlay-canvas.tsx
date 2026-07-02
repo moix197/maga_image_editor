@@ -33,6 +33,13 @@ interface TextOverlayCanvasProps {
   onGuidesChange?: (guides: SnapGuide[]) => void;
   /** Guide lines to render inside the stage; empty = none (never present at export). */
   activeGuides?: SnapGuide[];
+  /**
+   * Registers/unregisters a node's root DOM element so BatchWorkspace can
+   * live-measure it as a SNAP SIBLING (see siblingSnapBox). Only threaded
+   * into TextNodeLayer — OverlayNode's width/height are always defined, so
+   * it never needs DOM measurement.
+   */
+  registerNodeElement?: (id: NodeId, el: HTMLElement | null) => void;
 }
 
 /**
@@ -87,6 +94,7 @@ export function TextOverlayCanvas({
   computeSnap,
   onGuidesChange,
   activeGuides,
+  registerNodeElement,
 }: TextOverlayCanvasProps) {
   const sortedNodes = [...state.nodes].sort((a, b) => a.zIndex - b.zIndex);
 
@@ -117,6 +125,7 @@ export function TextOverlayCanvas({
               zoomScale={zoomScale}
               computeSnap={computeSnap}
               onGuidesChange={onGuidesChange}
+              registerNodeElement={registerNodeElement}
             />
           );
         }

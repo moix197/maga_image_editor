@@ -1,7 +1,7 @@
 "use client";
 
-import type { SnapBox, SnapGuide, TextNode, TextBackground } from "@maga/editor";
-import { useRef, useState, useEffect, type PointerEvent as ReactPointerEvent } from "react";
+import type { NodeId, SnapBox, SnapGuide, TextNode, TextBackground } from "@maga/editor";
+import { useRef, useState, useEffect, useCallback, type PointerEvent as ReactPointerEvent } from "react";
 
 /** Resolves a dragged node's snapped position + active guide lines; injected by BatchWorkspace. */
 type ComputeSnap = (
@@ -23,6 +23,14 @@ interface TextNodeLayerProps {
   computeSnap?: ComputeSnap;
   /** Reports the guide lines to render during this drag (empty on release). */
   onGuidesChange?: (guides: SnapGuide[]) => void;
+  /**
+   * Registers this node's root DOM element with BatchWorkspace so it can be
+   * live-measured as a SNAP SIBLING when this node isn't the one being
+   * dragged (see BatchWorkspace.tsx's siblingSnapBox/nodeElementsRef). Distinct
+   * from — and unrelated to — this component's own handlePointerMove
+   * measurement of the DRAGGED node's box, which is unchanged.
+   */
+  registerNodeElement?: (id: NodeId, el: HTMLElement | null) => void;
 }
 
 /** Maps FONT_FAMILIES names to their CSS variable so next/font loads them. */
@@ -82,9 +90,26 @@ export function TextNodeLayer({
   zoomScale = 1,
   computeSnap,
   onGuidesChange,
+  registerNodeElement,
 }: TextNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  // Combined ref: keeps containerRef working exactly as before (resize-start
+  // reads containerRef.current?.offsetWidth/Height), and additionally
+  // registers/unregisters this node as a live-measurable SNAP SIBLING for
+  // BatchWorkspace (see registerNodeElement doc above). React 19 cleanup-
+  // function ref form; stable across renders as long as node.id and
+  // registerNodeElement don't change.
+  const registerContainerRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      containerRef.current = el;
+      registerNodeElement?.(node.id, el);
+      return () => {
+        registerNodeElement?.(node.id, null);
+      };
+    },
+    [node.id, registerNodeElement],
+  );
   const resizeStart = useRef<{ clientX: number; clientY: number; width: number; height: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const editableRef = useRef<HTMLDivElement>(null);
@@ -236,7 +261,7 @@ export function TextNodeLayer({
 
   return (
     <div
-      ref={containerRef}
+      ref={registerContainerRef}
       role="button"
       tabIndex={0}
       aria-label={`Text node: ${node.content}`}

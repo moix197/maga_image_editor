@@ -216,6 +216,20 @@ function BatchWorkspaceInner() {
   const liveCanvasRef = useRef<HTMLDivElement | null>(null);
   const liveCanvasCallbackRef = useCallback((el: HTMLDivElement | null) => { liveCanvasRef.current = el; }, []);
 
+  // Live DOM registry for sibling nodes (never the dragged node itself, which
+  // already measures its own rect inline — see text-node-layer.tsx
+  // handlePointerMove). Lets siblingSnapBox below measure an auto-sized
+  // TextNode sibling's real rendered box instead of collapsing to a
+  // zero-size point, which was silently breaking Phase 4 equal-spacing
+  // detection (crossAxisOverlaps needs a genuine range, not a point) for the
+  // app's default text nodes (no stored width/height). Populated by
+  // TextNodeLayer via TextOverlayCanvas's registerNodeElement prop.
+  const nodeElementsRef = useRef(new Map<NodeId, HTMLElement>());
+  const registerNodeElement = useCallback((id: NodeId, el: HTMLElement | null) => {
+    if (el) nodeElementsRef.current.set(id, el);
+    else nodeElementsRef.current.delete(id);
+  }, []);
+
   // Ephemeral viewport zoom (never persisted — see use-canvas-zoom.ts). The
   // single `zoom` value returned here is threaded both into the CSS scale
   // transform wrapper below and into TextOverlayCanvasProps.zoomScale, so the
@@ -233,21 +247,32 @@ function BatchWorkspaceInner() {
 
   // Converts a resolved node's stored percent x/y (+ px width/height, where
   // known) into a canvas-space SnapBox for sibling-snap reference building.
-  // TextNode width/height are optional (auto-sized) — siblings without a
-  // stored size fall back to a zero-size point box (edge === center), since
-  // only the DRAGGED node's own box is live-measured from the DOM (see plan
-  // "TextNode auto-size box measurement" — that measurement happens in
-  // text-node-layer.tsx, out of this file's scope). OverlayNode width/height
-  // are always defined.
+  // TextNode width/height are optional (auto-sized) — for those, we measure
+  // the sibling's own live-rendered box via nodeElementsRef (registered by
+  // TextNodeLayer, see registerNodeElement above) instead of collapsing to a
+  // zero-size point, which used to silently disable Phase 4 equal-spacing
+  // detection for the app's default (auto-sized) text nodes. If the element
+  // isn't registered yet (should be rare — a node must be rendered to be
+  // draggable), fall back to the old zero-size behavior rather than crashing.
+  // OverlayNode width/height are always defined, so it never needs this path.
   function siblingSnapBox(
     node: TextNode | OverlayNode,
     canvasSize: { width: number; height: number },
   ): SnapBox {
+    const x = (node.x / 100) * canvasSize.width;
+    const y = (node.y / 100) * canvasSize.height;
+    if (!isTextNode(node)) {
+      return { x, y, width: node.width, height: node.height };
+    }
+    if (node.width !== undefined && node.height !== undefined) {
+      return { x, y, width: node.width, height: node.height };
+    }
+    const rect = nodeElementsRef.current.get(node.id)?.getBoundingClientRect();
     return {
-      x: (node.x / 100) * canvasSize.width,
-      y: (node.y / 100) * canvasSize.height,
-      width: isTextNode(node) ? (node.width ?? 0) : node.width,
-      height: isTextNode(node) ? (node.height ?? 0) : node.height,
+      x,
+      y,
+      width: node.width ?? (rect ? rect.width / zoom.zoom : 0),
+      height: node.height ?? (rect ? rect.height / zoom.zoom : 0),
     };
   }
 
@@ -662,6 +687,7 @@ function BatchWorkspaceInner() {
                     computeSnap={computeSnap}
                     onGuidesChange={setActiveGuides}
                     activeGuides={activeGuides}
+                    registerNodeElement={registerNodeElement}
                   />
                 </div>
               </div>

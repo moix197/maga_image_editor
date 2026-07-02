@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { TextOverlayCanvas } from "@/components/text-overlay-canvas";
 import {
   computeContainerSnapTargets,
@@ -196,6 +196,99 @@ function MultiNodeHarness({ initial }: { initial: TextNode[] }) {
       computeSnap={computeSnapWithSiblings}
       onGuidesChange={setGuides}
       activeGuides={guides}
+    />
+  );
+}
+
+/**
+ * Regression harness for the "no purple line with default text nodes" bug
+ * (plan "canvas-zoom-and-smart-guides" Phase 4 bugfix): mirrors
+ * BatchWorkspace.tsx's FIXED siblingSnapBox — an auto-sized TextNode sibling
+ * (no stored width/height) is measured from its own live DOM element via a
+ * `nodeElementsRef` registry populated through `registerNodeElement`
+ * (threaded down to TextNodeLayer), instead of collapsing to a zero-size
+ * point box. Deliberately does NOT set width/height on any node, unlike
+ * MultiNodeHarness above (which still uses the pre-fix zero-size fallback
+ * and relies on siblings having an explicit `height` to get cross-axis
+ * overlap) — that's the whole point of this regression test.
+ */
+function LiveMeasuredMultiNodeHarness({ initial }: { initial: TextNode[] }) {
+  const [nodes, setNodes] = useState(initial);
+  const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
+  const [guides, setGuides] = useState<SnapGuide[]>([]);
+  const state: EditorState = { nodes };
+  const nodeElementsRef = useRef(new Map<NodeId, HTMLElement>());
+  const registerNodeElement = (id: NodeId, el: HTMLElement | null) => {
+    if (el) nodeElementsRef.current.set(id, el);
+    else nodeElementsRef.current.delete(id);
+  };
+
+  function siblingSnapBox(node: TextNode, canvasSize: { width: number; height: number }): SnapBox {
+    const x = (node.x / 100) * canvasSize.width;
+    const y = (node.y / 100) * canvasSize.height;
+    if (node.width !== undefined && node.height !== undefined) {
+      return { x, y, width: node.width, height: node.height };
+    }
+    const rect = nodeElementsRef.current.get(node.id)?.getBoundingClientRect();
+    return {
+      x,
+      y,
+      width: node.width ?? (rect ? rect.width : 0),
+      height: node.height ?? (rect ? rect.height : 0),
+    };
+  }
+
+  function computeSnapWithSiblings(
+    box: SnapBox,
+    canvasSize: { width: number; height: number },
+  ): { x: number; y: number; guides: SnapGuide[] } {
+    const siblingBoxes = nodes
+      .filter((n) => n.id !== selectedNodeId)
+      .map((n) => siblingSnapBox(n, canvasSize));
+    const references = [
+      ...computeContainerSnapTargets(canvasSize),
+      ...computeSiblingSnapTargets(siblingBoxes),
+    ];
+    const edgeCenterResult = resolveSnap(box, references, SNAP_THRESHOLD_PX, 1);
+
+    let x = edgeCenterResult.x;
+    let y = edgeCenterResult.y;
+    const guides = [...edgeCenterResult.guides];
+
+    if (!edgeCenterResult.guides.some((g) => g.axis === "vertical")) {
+      const spacingX = resolveEqualSpacingSnap(box, siblingBoxes, "vertical", SNAP_THRESHOLD_PX, 1);
+      if (spacingX) {
+        x = spacingX.position;
+        guides.push(spacingX.guide);
+      }
+    }
+    if (!edgeCenterResult.guides.some((g) => g.axis === "horizontal")) {
+      const spacingY = resolveEqualSpacingSnap(box, siblingBoxes, "horizontal", SNAP_THRESHOLD_PX, 1);
+      if (spacingY) {
+        y = spacingY.position;
+        guides.push(spacingY.guide);
+      }
+    }
+
+    return { x, y, guides };
+  }
+
+  return (
+    <TextOverlayCanvas
+      state={state}
+      onNodeMove={(id, x, y) => setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, x, y } : n)))}
+      onNodeResize={vi.fn()}
+      onNodeTextResize={vi.fn()}
+      onNodeTextHeightResize={vi.fn()}
+      onNodeContentChange={vi.fn()}
+      onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
+      selectedNodeId={selectedNodeId}
+      canvasCallbackRef={() => {}}
+      imageSrc="data:image/png;base64,x"
+      computeSnap={computeSnapWithSiblings}
+      onGuidesChange={setGuides}
+      activeGuides={guides}
+      registerNodeElement={registerNodeElement}
     />
   );
 }
@@ -394,5 +487,51 @@ describe("text node smart-guide snap — sibling nodes (Phase 3)", () => {
     expect(document.querySelectorAll("[data-guide-line]").length).toBe(0);
     expect(parseFloat(nodeDiv.style.left)).toBeCloseTo(32, 5);
     expect(parseFloat(nodeDiv.style.top)).toBeCloseTo(31, 5);
+  });
+});
+
+describe("text node smart-guide snap — equal spacing with auto-sized siblings (bugfix regression)", () => {
+  // Regression test for: "no purple dashed spacing guide ever appears with
+  // default text nodes." Root cause: siblingSnapBox used to fall back to a
+  // ZERO-size box for any TextNode sibling without a stored width/height
+  // (the app's default), so resolveEqualSpacingSnap's crossAxisOverlaps
+  // check (which needs a genuine cross-axis RANGE, not a point) almost never
+  // passed. The fix live-measures an auto-sized sibling's own rendered DOM
+  // box via nodeElementsRef/registerNodeElement (LiveMeasuredMultiNodeHarness
+  // above), the same mechanism the DRAGGED node already used for itself
+  // (Phase 2, text-node-layer.tsx handlePointerMove — untouched by this fix).
+  //
+  // ALL THREE nodes here (Left, Right, Dragged) are fully auto-sized: no
+  // `width`, no `height` on any of them. mockRects gives every non-canvas
+  // element a fixed live-measured box of LIVE_NODE_WIDTH x LIVE_NODE_HEIGHT
+  // (40x20), so:
+  //  - Left:  canvas-space box x=[40,80],  y=[40,60] (10%/13.3333% of 400x300)
+  //  - Right: canvas-space box x=[280,320], y=[40,60] (70%/13.3333%)
+  //  - Dragged (before this move): y=[30,50] (10%) — offset 10px from the
+  //    siblings' y-range, which is enough to keep every edge/center pairing
+  //    >8px apart (no incidental Y-axis edge/center snap) while still
+  //    satisfying the cross-axis overlap the spacing check requires.
+  // Equalizing gap on X: beforeEnd = 80, afterStart = 280, dragged width 40
+  // (its own live box) -> gap = (280 - 80 - 40) / 2 = 80 -> target x = 160
+  // (40% of 400). The drag lands 4px off that target (156), within the 8px
+  // threshold.
+  it("dragging a node between two auto-sized siblings (no stored width/height) triggers the spacing guide", () => {
+    const left = makeTextNode({ id: "node-2" as NodeId, content: "Left", x: 10, y: 40 / 3 });
+    const right = makeTextNode({ id: "node-3" as NodeId, content: "Right", x: 70, y: 40 / 3 });
+    const dragged = makeTextNode({ content: "Dragged", x: 5, y: 10 });
+    render(<LiveMeasuredMultiNodeHarness initial={[dragged, left, right]} />);
+    mockRects(getCanvasDiv());
+
+    const nodeDiv = getNodeDiv("Dragged");
+    dragNode(nodeDiv, { x: 5, y: 10 }, { x: 39, y: 10 });
+
+    expect(document.querySelectorAll("[data-guide-line]").length).toBe(1);
+    expect(document.querySelectorAll('[data-guide-kind="spacing"]').length).toBe(1);
+    expect(parseFloat(nodeDiv.style.left)).toBeCloseTo(40, 5); // 160/400*100
+    expect(parseFloat(nodeDiv.style.top)).toBeCloseTo(10, 5); // unaffected
+
+    fireEvent.pointerUp(nodeDiv, { pointerId: 1 });
+    expect(document.querySelectorAll("[data-guide-line]").length).toBe(0);
+    expect(parseFloat(nodeDiv.style.left)).toBeCloseTo(40, 5);
   });
 });
