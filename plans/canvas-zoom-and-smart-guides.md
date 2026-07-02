@@ -557,23 +557,23 @@ behavior (`handleResizePointerMove` in both node layers only divides by
 
 **Steps:**
 
-- [ ] Every preceding phase's Steps/Verification/Phase review checkboxes are ticked in the plan file
-- [ ] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review)
-- [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent reviews the entire change end-to-end
-- [ ] Any changes made in response to the final code-reviewer review have been reflected back into this plan file
-- [ ] Run all gates:
+- [x] Every preceding phase's Steps/Verification/Phase review checkboxes are ticked in the plan file
+- [x] Reviewer handoff prompt emitted in a fenced code block (scoped to end-to-end review) — dispatched directly via subagent (no worktree/branch was used for this plan; all phases were committed straight to `main`, so no `/clear` + fresh-session handoff was needed)
+- [x] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session — N/A, see above; orchestrator explicitly directed the subagent dispatch inline instead
+- [x] Code-reviewer agent reviews the entire change end-to-end — verdict: **green**, no blocking findings (reviewed all 6 commits `6bc1850..HEAD`, confirmed `@maga/editor` DOM-free, export-safety wrapper placement, guide non-contamination, resize/move guide independence, aspect-ratio-lock fix)
+- [x] Any changes made in response to the final code-reviewer review have been reflected back into this plan file — none required, no blocking findings
+- [x] Run all gates:
   ```
-  pnpm --filter @maga/web test
-  pnpm --filter @maga/editor test
-  pnpm --filter @maga/web exec tsc --noEmit
-  pnpm --filter @maga/web build
+  pnpm --filter @maga/web test        # 495/495 passed
+  pnpm --filter @maga/editor test     # 1 pre-existing unrelated failure (editor-state.test.ts, untouched by this plan)
+  pnpm --filter @maga/web exec tsc --noEmit   # clean
+  pnpm --filter @maga/web build       # clean
   ```
-- [ ] No CLAUDE.md invariants violated (pnpm; thin entry points — snap math stays in `@maga/editor`, zoom state stays in a hook; reuse before reinvent; `@maga/editor` remains DOM-free; `.ai/` synced via `sync-knowledge`, not hand-edited)
-- [ ] Feature tested manually end-to-end (golden path + edge cases: zoom extremes, snap near multiple competing guides, per-variant sibling overrides, 3+ element spacing)
-- [ ] Run `sync-knowledge` to create `.ai/decisions/viewport-zoom.md` and `.ai/decisions/alignment-smart-guides.md` and update `.ai/index.md` / `.ai/architecture.md`
-- [ ] Overall success criteria met
-- [ ] All phase checkboxes above are ticked
+- [x] No CLAUDE.md invariants violated (pnpm; thin entry points — snap math stays in `@maga/editor`, zoom state stays in a hook; reuse before reinvent; `@maga/editor` remains DOM-free; `.ai/` synced via `sync-knowledge`, not hand-edited)
+- [ ] Feature tested manually end-to-end (golden path + edge cases: zoom extremes, snap near multiple competing guides, per-variant sibling overrides, 3+ element spacing) — pending orchestrator manual pass
+- [x] Run `sync-knowledge` to create `.ai/decisions/viewport-zoom.md` and `.ai/decisions/alignment-smart-guides.md` and update `.ai/index.md` / `.ai/architecture.md`
+- [ ] Overall success criteria met — pending manual verification above
+- [ ] All phase checkboxes above are ticked — pending manual verification above
 
 ## Documentation
 
