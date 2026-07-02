@@ -200,6 +200,48 @@ describe("TextNodeLayer resize handle", () => {
     expect(onResize).not.toHaveBeenCalled();
   });
 
+  it("divides the raw pixel-delta width resize by zoomScale=2 (drag delta halved)", () => {
+    const onResize = vi.fn();
+    const node = makeNode({ width: 100 });
+    render(
+      <TextNodeLayer
+        node={node}
+        onMove={vi.fn()}
+        onSelect={vi.fn()}
+        isSelected={true}
+        onResize={onResize}
+        zoomScale={2}
+      />,
+    );
+
+    const handle = screen.getByLabelText(/resize handle/i);
+
+    // Screen-pixel dw=50 at zoomScale=2 -> canvas-space dw=25 -> newWidth=125
+    fireEvent.pointerDown(handle, { clientX: 200, buttons: 1, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 250, buttons: 1 });
+    expect(onResize).toHaveBeenCalledWith(125);
+  });
+
+  it("defaults to zoomScale=1 (no division) when the prop is omitted", () => {
+    const onResize = vi.fn();
+    const node = makeNode({ width: 100 });
+    render(
+      <TextNodeLayer
+        node={node}
+        onMove={vi.fn()}
+        onSelect={vi.fn()}
+        isSelected={true}
+        onResize={onResize}
+      />,
+    );
+
+    const handle = screen.getByLabelText(/resize handle/i);
+
+    fireEvent.pointerDown(handle, { clientX: 200, buttons: 1, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 250, buttons: 1 });
+    expect(onResize).toHaveBeenCalledWith(150);
+  });
+
   it("does not set height style when node.height is undefined", () => {
     const node = makeNode({ height: undefined });
     const { container } = render(
@@ -355,6 +397,31 @@ describe("TextNodeLayer corner resize handle (height + combined)", () => {
 
     fireEvent.pointerMove(handle, { clientY: 250, buttons: 0 });
     expect(onHeightResize).not.toHaveBeenCalled();
+  });
+
+  it("divides diagonal drag width+height deltas by zoomScale=4", () => {
+    const onResize = vi.fn();
+    const onHeightResize = vi.fn();
+    const node = makeNode({ width: 100, height: 100 });
+    render(
+      <TextNodeLayer
+        node={node}
+        onMove={vi.fn()}
+        onSelect={vi.fn()}
+        isSelected={true}
+        onResize={onResize}
+        onHeightResize={onHeightResize}
+        zoomScale={4}
+      />,
+    );
+
+    const handle = screen.getByLabelText(/resize handle/i);
+
+    // dx=40 -> canvas-space 10 -> width 110; dy=80 -> canvas-space 20 -> height 120
+    fireEvent.pointerDown(handle, { clientX: 200, clientY: 200, buttons: 1, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 240, clientY: 280, buttons: 1 });
+    expect(onResize).toHaveBeenCalledWith(110);
+    expect(onHeightResize).toHaveBeenCalledWith(120);
   });
 
   it("clearing the Height panel input fires onChange with undefined (not 0 or NaN)", () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { Maximize2, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface WorkspaceActionsBarProps {
@@ -11,6 +12,12 @@ export interface WorkspaceActionsBarProps {
   onImportZip: () => void;
   onExportZip: () => void;
   onClearProject: () => void;
+  // Zoom actions (optional — omitted entirely when the host doesn't wire zoom)
+  zoomPercent?: number;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onZoomReset?: () => void;
+  onZoomFit?: () => void;
   // Disabled states
   generatePreviewDisabled?: boolean;
   generateAllDisabled?: boolean;
@@ -30,6 +37,11 @@ export function WorkspaceActionsBar({
   onImportZip,
   onExportZip,
   onClearProject,
+  zoomPercent,
+  onZoomIn,
+  onZoomOut,
+  onZoomReset,
+  onZoomFit,
   generatePreviewDisabled = false,
   generateAllDisabled = false,
   cancelDisabled = false,
@@ -39,6 +51,7 @@ export function WorkspaceActionsBar({
   generatePreviewTitle,
   generateAllTitle,
 }: WorkspaceActionsBarProps) {
+  const showZoomControls = zoomPercent !== undefined;
   return (
     <div
       role="toolbar"
@@ -110,6 +123,53 @@ export function WorkspaceActionsBar({
           Clear Project
         </Button>
       </div>
+
+      {showZoomControls && (
+        <>
+          <div className="h-6 w-px bg-border" aria-hidden="true" />
+
+          {/* Zoom group */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onZoomOut}
+              aria-label="Zoom out"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className="min-w-12 text-center text-xs tabular-nums text-muted-foreground">
+              {Math.round(zoomPercent!)}%
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onZoomIn}
+              aria-label="Zoom in"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onZoomFit}
+              aria-label="Fit to screen"
+            >
+              <Maximize2 className="h-4 w-4" />
+              Fit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onZoomReset}
+              aria-label="Reset zoom"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

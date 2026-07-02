@@ -222,16 +222,16 @@ zoom level.
 
 **Steps:**
 
-- [ ] Implement `use-canvas-zoom.ts` (zoom state + `zoomIn`/`zoomOut`/`resetZoom`/`fitToViewport`, clamped 25–400%)
-- [ ] Add the scale-transform wrapper in `BatchWorkspace.tsx`, confirmed to sit **outside** the `canvasCallbackRef` div (verify via DOM inspection, not assumption)
-- [ ] Thread `zoomScale` through `TextOverlayCanvasProps` → `TextNodeLayer`/`OverlayNodeLayer`
-- [ ] Fix `text-node-layer.tsx:168-175` resize math to divide by `zoomScale`
-- [ ] Fix `overlay-node-layer.tsx:156-167` resize math to divide by `zoomScale`
-- [ ] Add `imgRef`/natural-size plumbing for `fitToViewport`
-- [ ] Add zoom controls to `WorkspaceActionsBar.tsx` (+/-, %, Fit, Reset) as flat props, no registry
+- [x] Implement `use-canvas-zoom.ts` (zoom state + `zoomIn`/`zoomOut`/`resetZoom`/`fitToViewport`, clamped 25–400%)
+- [x] Add the scale-transform wrapper in `BatchWorkspace.tsx`, confirmed to sit **outside** the `canvasCallbackRef` div (verify via DOM inspection, not assumption)
+- [x] Thread `zoomScale` through `TextOverlayCanvasProps` → `TextNodeLayer`/`OverlayNodeLayer`
+- [x] Fix `text-node-layer.tsx:168-175` resize math to divide by `zoomScale`
+- [x] Fix `overlay-node-layer.tsx:156-167` resize math to divide by `zoomScale`
+- [x] Add `imgRef`/natural-size plumbing for `fitToViewport`
+- [x] Add zoom controls to `WorkspaceActionsBar.tsx` (+/-, %, Fit, Reset) as flat props, no registry
 - [ ] Confirm percent-based MOVE math (`getBoundingClientRect`-driven, `text-node-layer.tsx:135-138` / `overlay-node-layer.tsx:137-143`) needs **no change** — verify manually at 50%, 100%, 200% zoom
 - [ ] Manually verify `export-helpers.ts` output (`compositeFromElement`/`exportCanvasElement`) is identical regardless of current zoom value
-- [ ] Add `canvas-zoom-export-isolation.test.tsx` proving the scale transform structurally cannot enter the captured div's own style, at any zoom value (automated counterpart to the manual export check above)
+- [x] Add `canvas-zoom-export-isolation.test.tsx` proving the scale transform structurally cannot enter the captured div's own style, at any zoom value (automated counterpart to the manual export check above)
 - [ ] Update `.ai/` (deferred to Phase 5 `sync-knowledge` step — do not hand-edit)
 
 **Tests:**
@@ -245,8 +245,8 @@ zoom level.
 
 **Verification:**
 
-- [ ] `pnpm --filter @maga/web test` exits 0 (includes `canvas-zoom-export-isolation.test.tsx`)
-- [ ] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
+- [x] `pnpm --filter @maga/web test` exits 0 (includes `canvas-zoom-export-isolation.test.tsx`)
+- [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
 - [ ] Manual: zoom in/out buttons change the visible canvas size and % readout; Fit-to-screen shows a full large image; Reset returns to 100%
 - [ ] Manual: drag and resize a text node and an overlay node at 50%, 100%, and 200% zoom — positions/sizes land exactly where the pointer indicates
 - [ ] Manual: generate a preview/export while zoomed to something other than 100% — output pixel dimensions/content match an export taken at 100% zoom (spot-check corroborating the automated structural test)
@@ -256,12 +256,12 @@ zoom level.
 - [ ] All Steps and Verification checkboxes above ticked in the plan file
 - [ ] Reviewer handoff prompt emitted in a fenced code block as the final message of this turn
 - [ ] Orchestrator cleared context (`/clear`) and pasted the handoff prompt into a fresh session
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
+- [x] Code-reviewer agent has verified this phase (verdict: green; nit 1 padding-aware fit applied)
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
 - [ ] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(canvas): add viewport zoom (scale transform, controls, scale-aware resize)`
+- [x] Changes committed: `feat(canvas): add viewport zoom (scale transform, controls, scale-aware resize)`
 - [ ] Phase marked complete
 
 ---

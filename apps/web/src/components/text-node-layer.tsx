@@ -11,6 +11,8 @@ interface TextNodeLayerProps {
   onResize?: (width: number) => void;
   onHeightResize?: (height: number) => void;
   onContentChange?: (content: string) => void;
+  /** Current viewport zoom scale (1 = 100%); raw pixel-delta resize math divides by this. */
+  zoomScale?: number;
 }
 
 /** Maps FONT_FAMILIES names to their CSS variable so next/font loads them. */
@@ -67,6 +69,7 @@ export function TextNodeLayer({
   onResize,
   onHeightResize,
   onContentChange,
+  zoomScale = 1,
 }: TextNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -168,8 +171,11 @@ export function TextNodeLayer({
   function handleResizePointerMove(e: ReactPointerEvent<HTMLSpanElement>) {
     if (!resizeStart.current || e.buttons === 0) return;
     e.stopPropagation(); // keep the move handler from also firing during resize
-    const dw = e.clientX - resizeStart.current.clientX;
-    const dh = e.clientY - resizeStart.current.clientY;
+    // Raw client-pixel deltas must be converted to canvas-space by dividing by
+    // the current zoom scale — the box being resized lives inside the scaled
+    // stage, so a screen-pixel drag maps to a larger/smaller canvas-pixel delta.
+    const dw = (e.clientX - resizeStart.current.clientX) / zoomScale;
+    const dh = (e.clientY - resizeStart.current.clientY) / zoomScale;
     onResize?.(Math.max(20, resizeStart.current.width + dw));
     onHeightResize?.(Math.max(0, resizeStart.current.height + dh));
   }

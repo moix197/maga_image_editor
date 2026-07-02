@@ -10,6 +10,8 @@ interface OverlayNodeLayerProps {
   onResize: (width: number, height: number) => void;
   onSelect: () => void;
   isSelected: boolean;
+  /** Current viewport zoom scale (1 = 100%); raw pixel-delta resize math divides by this. */
+  zoomScale?: number;
 }
 
 /**
@@ -118,6 +120,7 @@ export function OverlayNodeLayer({
   onResize,
   onSelect,
   isSelected,
+  zoomScale = 1,
 }: OverlayNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
   const resizing = useRef(false);
@@ -155,8 +158,10 @@ export function OverlayNodeLayer({
 
   function handleResizePointerMove(e: ReactPointerEvent<HTMLSpanElement>) {
     if (!resizing.current || e.buttons === 0) return;
-    const dw = e.clientX - resizeStart.current.clientX;
-    const dh = e.clientY - resizeStart.current.clientY;
+    // Raw client-pixel deltas must be converted to canvas-space by dividing by
+    // the current zoom scale — see text-node-layer.tsx's handleResizePointerMove.
+    const dw = (e.clientX - resizeStart.current.clientX) / zoomScale;
+    const dh = (e.clientY - resizeStart.current.clientY) / zoomScale;
     const ratio = node.aspectRatioLocked ? getIntrinsicRatio(node.id) : undefined;
     const { width, height } = constrainResizeToRatio(
       resizeStart.current.width + dw,

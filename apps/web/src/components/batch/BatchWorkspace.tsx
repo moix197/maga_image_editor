@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useBatchProject } from "@/hooks/use-batch-project";
+import { useCanvasZoom } from "@/hooks/use-canvas-zoom";
 import { useEditorState } from "@/hooks/use-editor-state";
 import { useItemText } from "@/hooks/use-item-text";
 import { usePreviewEditorState } from "@/hooks/use-preview-editor-state";
@@ -200,6 +201,16 @@ function BatchWorkspaceInner() {
 
   const liveCanvasRef = useRef<HTMLDivElement | null>(null);
   const liveCanvasCallbackRef = useCallback((el: HTMLDivElement | null) => { liveCanvasRef.current = el; }, []);
+
+  // Ephemeral viewport zoom (never persisted — see use-canvas-zoom.ts). The
+  // single `zoom` value returned here is threaded both into the CSS scale
+  // transform wrapper below and into TextOverlayCanvasProps.zoomScale, so the
+  // resize-math fix always reads the same source (see plan "Single scale
+  // source of truth").
+  const zoom = useCanvasZoom();
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const canvasImageRef = useRef<HTMLImageElement | null>(null);
+  const canvasImageCallbackRef = useCallback((el: HTMLImageElement | null) => { canvasImageRef.current = el; }, []);
 
   const batchRender = useBatchRender(
     overlays,
@@ -416,6 +427,11 @@ function BatchWorkspaceInner() {
         onImportZip={() => zipInputRef.current?.click()}
         onExportZip={() => void handleExportZip()}
         onClearProject={() => void handleClearProject()}
+        zoomPercent={Math.round(zoom.zoom * 100)}
+        onZoomIn={zoom.zoomIn}
+        onZoomOut={zoom.zoomOut}
+        onZoomReset={zoom.resetZoom}
+        onZoomFit={() => zoom.fitToViewport(scrollContainerRef.current, canvasImageRef.current)}
         generatePreviewDisabled={!canGeneratePreview || isRendering}
         generateAllDisabled={!canGenerate || batchRender.isRunning}
         generatePreviewTitle={!canGeneratePreview ? DISABLED_GENERATE_HINT : undefined}
@@ -491,26 +507,45 @@ function BatchWorkspaceInner() {
           {activeSection !== "results" ? (
             <>
               <div
+                ref={scrollContainerRef}
                 className="relative flex-1 overflow-auto p-4"
                 onPointerDown={() => setSelectedNodeId(null)}
               >
-                <TextOverlayCanvas
-                  // LOAD-BEARING — do not change. During batch render the loop
-                  // mutates editorState per overlay (updateTextNode) and captures
-                  // the live DOM. previewEditorState re-pins text to the active
-                  // variant, so it must be bypassed here or every captured frame
-                  // shows the selected variant's text.
-                  state={batchRender.isRunning ? editorState.state : previewEditorState}
-                  imageSrc={background?.blobKey ?? ""}
-                  selectedNodeId={selectedNodeId}
-                  onNodeMove={handleNodeMove}
-                  onNodeResize={handleNodeResize}
-                  onNodeTextResize={handleNodeTextResize}
-                  onNodeTextHeightResize={handleNodeTextHeightResize}
-                  onNodeContentChange={handleNodeContentChange}
-                  onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
-                  canvasCallbackRef={liveCanvasCallbackRef}
-                />
+                {/*
+                  Scale-transform wrapper: a strict ANCESTOR of the
+                  canvasCallbackRef div (never the same element as it), so the
+                  zoom transform can never enter export geometry — html-to-image
+                  rasterizes exactly the div TextOverlayCanvas binds
+                  canvasCallbackRef to, one level below this wrapper. See plan
+                  "Dependencies & Risks -> export non-contamination (a)".
+                */}
+                <div
+                  style={{
+                    display: "inline-block",
+                    transform: `scale(${zoom.zoom})`,
+                    transformOrigin: "top left",
+                  }}
+                >
+                  <TextOverlayCanvas
+                    // LOAD-BEARING — do not change. During batch render the loop
+                    // mutates editorState per overlay (updateTextNode) and captures
+                    // the live DOM. previewEditorState re-pins text to the active
+                    // variant, so it must be bypassed here or every captured frame
+                    // shows the selected variant's text.
+                    state={batchRender.isRunning ? editorState.state : previewEditorState}
+                    imageSrc={background?.blobKey ?? ""}
+                    selectedNodeId={selectedNodeId}
+                    onNodeMove={handleNodeMove}
+                    onNodeResize={handleNodeResize}
+                    onNodeTextResize={handleNodeTextResize}
+                    onNodeTextHeightResize={handleNodeTextHeightResize}
+                    onNodeContentChange={handleNodeContentChange}
+                    onNodeSelect={(id) => setSelectedNodeId(id as NodeId)}
+                    canvasCallbackRef={liveCanvasCallbackRef}
+                    zoomScale={zoom.zoom}
+                    imageCallbackRef={canvasImageCallbackRef}
+                  />
+                </div>
               </div>
               {overlays.length > 0 && (
                 <div className="shrink-0 border-t border-border p-2">

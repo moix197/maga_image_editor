@@ -17,6 +17,10 @@ interface TextOverlayCanvasProps {
   selectedNodeId: NodeId | null;
   canvasCallbackRef: RefCallback<HTMLDivElement>;
   imageSrc: string;
+  /** Current viewport zoom scale (1 = 100%); threaded to node layers for scale-aware resize math. */
+  zoomScale?: number;
+  /** Exposes the base image's naturalWidth/naturalHeight for fit-to-viewport. */
+  imageCallbackRef?: RefCallback<HTMLImageElement>;
 }
 
 export function TextOverlayCanvas({
@@ -30,6 +34,8 @@ export function TextOverlayCanvas({
   selectedNodeId,
   canvasCallbackRef,
   imageSrc,
+  zoomScale = 1,
+  imageCallbackRef,
 }: TextOverlayCanvasProps) {
   const sortedNodes = [...state.nodes].sort((a, b) => a.zIndex - b.zIndex);
 
@@ -40,6 +46,7 @@ export function TextOverlayCanvas({
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imageCallbackRef}
         src={imageSrc}
         alt="Editor canvas"
         style={{ display: "block", maxWidth: "100%", height: "auto" }}
@@ -56,6 +63,7 @@ export function TextOverlayCanvas({
               onContentChange={(content) => onNodeContentChange(node.id, content)}
               onSelect={() => onNodeSelect(node.id)}
               isSelected={node.id === selectedNodeId}
+              zoomScale={zoomScale}
             />
           );
         }
@@ -68,6 +76,7 @@ export function TextOverlayCanvas({
               onResize={(w, h) => onNodeResize(node.id, w, h)}
               onSelect={() => onNodeSelect(node.id)}
               isSelected={node.id === selectedNodeId}
+              zoomScale={zoomScale}
             />
           );
         }

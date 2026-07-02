@@ -168,3 +168,46 @@ describe("OverlayNodeLayer — corner-drag resize with aspect lock", () => {
     expect(onResize).toHaveBeenCalledWith(180, 110);
   });
 });
+
+describe("OverlayNodeLayer — corner-drag resize divides by zoomScale", () => {
+  function dragResizeHandle(getByLabelText: (label: string) => HTMLElement, dx: number, dy: number) {
+    const handle = getByLabelText("Resize handle");
+    handle.setPointerCapture = vi.fn();
+    handle.releasePointerCapture = vi.fn();
+    fireEvent.pointerDown(handle, { clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(handle, { clientX: dx, clientY: dy, buttons: 1 });
+  }
+
+  it("unlocked: screen-pixel drag deltas are divided by zoomScale=2 before resizing", () => {
+    const node: OverlayNode = { ...baseImageNode, id: "overlay-zoom-2x" as NodeId, aspectRatioLocked: false };
+    const onResize = vi.fn();
+    const { getByLabelText } = render(
+      <OverlayNodeLayer node={node} onMove={noop} onResize={onResize} onSelect={noop} isSelected={true} zoomScale={2} />
+    );
+    // Screen-pixel dx=30 -> canvas-space 15 -> width 165; dy=10 -> canvas-space 5 -> height 105
+    dragResizeHandle(getByLabelText, 30, 10);
+    expect(onResize).toHaveBeenCalledWith(165, 105);
+  });
+
+  it("locked: intrinsic-ratio-derived height still uses the zoom-divided width", () => {
+    const node: OverlayNode = { ...baseImageNode, id: "overlay-zoom-locked" as NodeId, aspectRatioLocked: true };
+    recordIntrinsicRatio(node.id, 300, 100); // intrinsic 3:1
+    const onResize = vi.fn();
+    const { getByLabelText } = render(
+      <OverlayNodeLayer node={node} onMove={noop} onResize={onResize} onSelect={noop} isSelected={true} zoomScale={2} />
+    );
+    // Screen-pixel dx=60 -> canvas-space 30 -> width 180 -> height = 180 / 3 = 60
+    dragResizeHandle(getByLabelText, 60, 999);
+    expect(onResize).toHaveBeenCalledWith(180, 60);
+  });
+
+  it("defaults to zoomScale=1 (no division) when the prop is omitted", () => {
+    const node: OverlayNode = { ...baseImageNode, id: "overlay-zoom-default" as NodeId, aspectRatioLocked: false };
+    const onResize = vi.fn();
+    const { getByLabelText } = render(
+      <OverlayNodeLayer node={node} onMove={noop} onResize={onResize} onSelect={noop} isSelected={true} />
+    );
+    dragResizeHandle(getByLabelText, 30, 10);
+    expect(onResize).toHaveBeenCalledWith(180, 110);
+  });
+});
