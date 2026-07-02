@@ -23,7 +23,14 @@ import { WorkspaceActionsBar } from "./WorkspaceActionsBar";
 import { WorkspaceSideNav } from "./WorkspaceSideNav";
 import { BatchRightPanel } from "./BatchRightPanel";
 import { SCHEMA_VERSION, type BatchProject, type GeneratedOutput, type ProjectAsset } from "@maga/projects";
-import { isTextNode, isOverlayNode, computeContainerSnapTargets, computeSiblingSnapTargets, resolveSnap } from "@maga/editor";
+import {
+  isTextNode,
+  isOverlayNode,
+  computeContainerSnapTargets,
+  computeSiblingSnapTargets,
+  resolveSnap,
+  resolveEqualSpacingSnap,
+} from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode, SnapBox, SnapGuide } from "@maga/editor";
 import { getIntrinsicRatio, constrainResizeToRatio } from "@/components/overlay-node-layer";
 import { resolveSection } from "./workspace-sections";
@@ -270,6 +277,41 @@ function BatchWorkspaceInner() {
   // signature, which would require also editing text-node-layer.tsx /
   // overlay-node-layer.tsx (both out of scope for this phase) to pass the
   // node's own id through.
+  // Phase 4 (equal-spacing): tried per axis, and only when that axis wasn't
+  // already snapped by resolveSnap above — edge/center alignment against the
+  // image/canvas/siblings always takes PRECEDENCE over equal-spacing when
+  // both are within threshold on the same axis (LOCKED precedence rule, see
+  // plan Phase 4).
+  function applyEqualSpacingSnap(
+    box: SnapBox,
+    siblingBoxes: SnapBox[],
+    edgeCenterResult: { x: number; y: number; guides: SnapGuide[] },
+  ): { x: number; y: number; guides: SnapGuide[] } {
+    let x = edgeCenterResult.x;
+    let y = edgeCenterResult.y;
+    const guides = [...edgeCenterResult.guides];
+
+    const xSnappedByEdgeOrCenter = edgeCenterResult.guides.some((g) => g.axis === "vertical");
+    if (!xSnappedByEdgeOrCenter) {
+      const spacingX = resolveEqualSpacingSnap(box, siblingBoxes, "vertical", SNAP_THRESHOLD_PX, zoom.zoom);
+      if (spacingX) {
+        x = spacingX.position;
+        guides.push(spacingX.guide);
+      }
+    }
+
+    const ySnappedByEdgeOrCenter = edgeCenterResult.guides.some((g) => g.axis === "horizontal");
+    if (!ySnappedByEdgeOrCenter) {
+      const spacingY = resolveEqualSpacingSnap(box, siblingBoxes, "horizontal", SNAP_THRESHOLD_PX, zoom.zoom);
+      if (spacingY) {
+        y = spacingY.position;
+        guides.push(spacingY.guide);
+      }
+    }
+
+    return { x, y, guides };
+  }
+
   function computeSnap(
     box: SnapBox,
     canvasSize: { width: number; height: number },
@@ -281,7 +323,8 @@ function BatchWorkspaceInner() {
       ...computeContainerSnapTargets(canvasSize),
       ...computeSiblingSnapTargets(siblingBoxes),
     ];
-    return resolveSnap(box, references, SNAP_THRESHOLD_PX, zoom.zoom);
+    const edgeCenterResult = resolveSnap(box, references, SNAP_THRESHOLD_PX, zoom.zoom);
+    return applyEqualSpacingSnap(box, siblingBoxes, edgeCenterResult);
   }
 
   const batchRender = useBatchRender(

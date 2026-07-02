@@ -25,8 +25,13 @@ export interface SnapBox {
 /** Line orientation: "vertical" constrains a box's X; "horizontal" constrains Y. */
 export type SnapAxis = "vertical" | "horizontal";
 
-/** Whether a line originates from a bound's edge or its center. */
-export type SnapKind = "edge" | "center";
+/**
+ * Whether a line originates from a bound's edge or its center, or represents
+ * an equalized gap between neighbors ("spacing", Phase 4 distribution guide).
+ * Additive: existing edge/center rendering switches only on `axis`/`position`
+ * and is unaffected by this new variant.
+ */
+export type SnapKind = "edge" | "center" | "spacing";
 
 /** A candidate alignment line derived from a reference bound (canvas/image/sibling). */
 export interface SnapReference {
@@ -99,7 +104,12 @@ export function computeSiblingSnapTargets(boxes: SnapBox[]): SnapReference[] {
   return references;
 }
 
-/** Box anchors tested against a reference: center-to-center, or both edges. */
+/**
+ * Box anchors tested against a reference: center-to-center, or both edges.
+ * Only ever called with "edge"/"center" kinds — `SnapReference`s built by
+ * `computeContainerSnapTargets`/`computeSiblingSnapTargets` never carry
+ * `kind: "spacing"`, so the `!== "center"` branch below covers "edge" only.
+ */
 function anchorsFor(kind: SnapKind, start: number, size: number): number[] {
   return kind === "center" ? [start + size / 2] : [start, start + size];
 }
@@ -157,4 +167,86 @@ export function resolveSnap(
   }
 
   return { x, y, guides };
+}
+
+/** Top-left coordinate of `box` along `axis` (x for "vertical", y for "horizontal"). */
+function axisStart(box: SnapBox, axis: SnapAxis): number {
+  return axis === "vertical" ? box.x : box.y;
+}
+
+/** Size of `box` along `axis` (width for "vertical", height for "horizontal"). */
+function axisSize(box: SnapBox, axis: SnapAxis): number {
+  return axis === "vertical" ? box.width : box.height;
+}
+
+/** Whether `a` and `b` overlap on the axis perpendicular to `axis` (required to treat `b` as a same-row/column neighbor). */
+function crossAxisOverlaps(a: SnapBox, b: SnapBox, axis: SnapAxis): boolean {
+  const crossAxis: SnapAxis = axis === "vertical" ? "horizontal" : "vertical";
+  const aStart = axisStart(a, crossAxis);
+  const aEnd = aStart + axisSize(a, crossAxis);
+  const bStart = axisStart(b, crossAxis);
+  const bEnd = bStart + axisSize(b, crossAxis);
+  return aStart < bEnd && bStart < aEnd;
+}
+
+export interface EqualSpacingSnapResult {
+  /** Snapped top-left coordinate along `axis`, canvas-space px. */
+  position: number;
+  /** Distribution guide to render alongside the snap. */
+  guide: SnapGuide;
+}
+
+/**
+ * Detects when moving `dragBox` along `axis` would equalize the gap between
+ * its nearest neighbor on each side, among `otherBoxes` that overlap
+ * `dragBox` on the cross axis (non-overlapping boxes aren't in the same
+ * row/column and would produce false positives). Requires a qualifying
+ * neighbor on BOTH sides (2+ of `otherBoxes`, i.e. 3+ elements total
+ * including the dragged one) — with 0 or 1 neighbor there is nothing, or
+ * only one gap, to equalize against. Returns `null` when there's no neighbor
+ * on each side, or the equalized position falls outside `thresholdPx`
+ * (screen-space, converted to canvas-space via `thresholdPx / scale`, same
+ * convention as `resolveSnap`).
+ */
+export function resolveEqualSpacingSnap(
+  dragBox: SnapBox,
+  otherBoxes: SnapBox[],
+  axis: SnapAxis,
+  thresholdPx: number,
+  scale: number,
+): EqualSpacingSnapResult | null {
+  const threshold = thresholdPx / scale;
+  const qualifying = otherBoxes.filter((box) => crossAxisOverlaps(dragBox, box, axis));
+  if (qualifying.length < 2) return null;
+
+  const dragCenter = axisStart(dragBox, axis) + axisSize(dragBox, axis) / 2;
+  let before: SnapBox | null = null;
+  let after: SnapBox | null = null;
+  for (const box of qualifying) {
+    const center = axisStart(box, axis) + axisSize(box, axis) / 2;
+    // Exact-center ties resolve to `before` (arbitrary but deterministic) —
+    // only affects which side "wins" a tie, never the equalization math itself.
+    if (center <= dragCenter) {
+      if (!before || axisStart(box, axis) + axisSize(box, axis) > axisStart(before, axis) + axisSize(before, axis)) {
+        before = box;
+      }
+    } else if (!after || axisStart(box, axis) < axisStart(after, axis)) {
+      after = box;
+    }
+  }
+  if (!before || !after) return null;
+
+  const beforeEnd = axisStart(before, axis) + axisSize(before, axis);
+  const afterStart = axisStart(after, axis);
+  const gap = (afterStart - beforeEnd - axisSize(dragBox, axis)) / 2;
+  const targetStart = beforeEnd + gap;
+
+  const delta = targetStart - axisStart(dragBox, axis);
+  if (Math.abs(delta) > threshold) return null;
+
+  const targetCenter = targetStart + axisSize(dragBox, axis) / 2;
+  return {
+    position: targetStart,
+    guide: { axis, position: targetCenter, kind: "spacing" },
+  };
 }

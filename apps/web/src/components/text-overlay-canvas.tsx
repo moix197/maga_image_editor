@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefCallback } from "react";
+import type { CSSProperties, RefCallback } from "react";
 import { isTextNode, isOverlayNode } from "@maga/editor";
 import type { EditorState, NodeId, SnapBox, SnapGuide } from "@maga/editor";
 import { TextNodeLayer } from "@/components/text-node-layer";
@@ -33,6 +33,42 @@ interface TextOverlayCanvasProps {
   onGuidesChange?: (guides: SnapGuide[]) => void;
   /** Guide lines to render inside the stage; empty = none (never present at export). */
   activeGuides?: SnapGuide[];
+}
+
+/**
+ * Style for one guide line. "spacing" (equal-spacing/distribution, Phase 4)
+ * renders as a dashed line distinct from the solid edge/center lines
+ * (Phase 2/3) — purely additive, the edge/center branch is unchanged.
+ */
+function guideLineStyle(guide: SnapGuide): CSSProperties {
+  const isSpacing = guide.kind === "spacing";
+  const base: CSSProperties = {
+    position: "absolute",
+    pointerEvents: "none",
+    zIndex: 9999,
+  };
+  if (guide.axis === "vertical") {
+    return {
+      ...base,
+      left: guide.position,
+      top: 0,
+      height: "100%",
+      // `border` (not `background`) is used for spacing guides because CSS
+      // dashed patterns only render on borders, not on solid backgrounds.
+      width: isSpacing ? 0 : 1,
+      borderLeft: isSpacing ? "2px dashed #A855F7" : undefined,
+      background: isSpacing ? undefined : "#F43F5E",
+    };
+  }
+  return {
+    ...base,
+    top: guide.position,
+    left: 0,
+    width: "100%",
+    height: isSpacing ? 0 : 1,
+    borderTop: isSpacing ? "2px dashed #A855F7" : undefined,
+    background: isSpacing ? undefined : "#F43F5E",
+  };
 }
 
 export function TextOverlayCanvas({
@@ -112,30 +148,9 @@ export function TextOverlayCanvas({
         <div
           key={`${guide.axis}-${guide.position}-${i}`}
           data-guide-line
+          data-guide-kind={guide.kind}
           aria-hidden
-          style={
-            guide.axis === "vertical"
-              ? {
-                  position: "absolute",
-                  left: guide.position,
-                  top: 0,
-                  width: 1,
-                  height: "100%",
-                  background: "#F43F5E",
-                  pointerEvents: "none",
-                  zIndex: 9999,
-                }
-              : {
-                  position: "absolute",
-                  top: guide.position,
-                  left: 0,
-                  height: 1,
-                  width: "100%",
-                  background: "#F43F5E",
-                  pointerEvents: "none",
-                  zIndex: 9999,
-                }
-          }
+          style={guideLineStyle(guide)}
         />
       ))}
     </div>

@@ -13,7 +13,12 @@ import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { useState } from "react";
 import { TextOverlayCanvas } from "@/components/text-overlay-canvas";
-import { computeContainerSnapTargets, computeSiblingSnapTargets, resolveSnap } from "@maga/editor";
+import {
+  computeContainerSnapTargets,
+  computeSiblingSnapTargets,
+  resolveSnap,
+  resolveEqualSpacingSnap,
+} from "@maga/editor";
 import type { EditorState, SnapBox, SnapGuide, TextNode, NodeId } from "@maga/editor";
 
 beforeAll(() => {
@@ -138,6 +143,9 @@ function MultiNodeHarness({ initial }: { initial: TextNode[] }) {
     };
   }
 
+  // Phase 4: equal-spacing tried per axis, only when that axis wasn't already
+  // snapped by edge/center above — mirrors BatchWorkspace.tsx's precedence
+  // rule (edge/center wins over spacing when both are in range).
   function computeSnapWithSiblings(
     box: SnapBox,
     canvasSize: { width: number; height: number },
@@ -149,7 +157,28 @@ function MultiNodeHarness({ initial }: { initial: TextNode[] }) {
       ...computeContainerSnapTargets(canvasSize),
       ...computeSiblingSnapTargets(siblingBoxes),
     ];
-    return resolveSnap(box, references, SNAP_THRESHOLD_PX, 1);
+    const edgeCenterResult = resolveSnap(box, references, SNAP_THRESHOLD_PX, 1);
+
+    let x = edgeCenterResult.x;
+    let y = edgeCenterResult.y;
+    const guides = [...edgeCenterResult.guides];
+
+    if (!edgeCenterResult.guides.some((g) => g.axis === "vertical")) {
+      const spacingX = resolveEqualSpacingSnap(box, siblingBoxes, "vertical", SNAP_THRESHOLD_PX, 1);
+      if (spacingX) {
+        x = spacingX.position;
+        guides.push(spacingX.guide);
+      }
+    }
+    if (!edgeCenterResult.guides.some((g) => g.axis === "horizontal")) {
+      const spacingY = resolveEqualSpacingSnap(box, siblingBoxes, "horizontal", SNAP_THRESHOLD_PX, 1);
+      if (spacingY) {
+        y = spacingY.position;
+        guides.push(spacingY.guide);
+      }
+    }
+
+    return { x, y, guides };
   }
 
   return (
@@ -238,6 +267,60 @@ describe("text node smart-guide snap (auto-sized TextNode, no stored width/heigh
     expect(document.querySelectorAll("[data-guide-line]").length).toBe(2);
     expect(parseFloat(nodeDiv.style.left)).toBeCloseTo(45, 5);
     expect(parseFloat(nodeDiv.style.top)).toBeCloseTo(46.666666666666664, 5);
+  });
+});
+
+describe("text node smart-guide snap — equal spacing (Phase 4)", () => {
+  // Left/Right span canvas-space y=[0,100] (explicit height, not auto-sized)
+  // so they overlap the dragged node's live-measured y-range [30,50] on the
+  // cross axis (required for equal-spacing detection) while their own
+  // horizontal edge/center references (0, 50, 100) stay a safe >8px away
+  // from the dragged box's y-anchors (30, 40, 50) — avoiding an incidental
+  // edge/center match on the Y axis that isn't the point of this test.
+  // Their x (auto-sized, no stored width) sits at canvas-space 40 and 280
+  // (10%/70% of the 400-wide mocked canvas) — the axis under test.
+  it("dragging a node into the equal-gap position between two neighbors triggers the spacing guide and snap", () => {
+    // With the dragged node's own live-measured width (40), the equalized
+    // x position is 140 (35%): gap = (280 - 40 - 40) / 2 = 100 on each side.
+    const left = makeTextNode({ id: "node-2" as NodeId, content: "Left", x: 10, y: 0, height: 100 });
+    const right = makeTextNode({ id: "node-3" as NodeId, content: "Right", x: 70, y: 0, height: 100 });
+    const dragged = makeTextNode({ content: "Dragged", x: 5, y: 10 });
+    render(<MultiNodeHarness initial={[dragged, left, right]} />);
+    mockRects(getCanvasDiv());
+
+    const nodeDiv = getNodeDiv("Dragged");
+    // Target raw box lands 4px off the equalized position (136 vs 140) —
+    // within the 8px threshold, and far from any container/sibling
+    // edge/center reference, so only the spacing snap applies.
+    dragNode(nodeDiv, { x: 5, y: 10 }, { x: 34, y: 10 });
+
+    expect(document.querySelectorAll("[data-guide-line]").length).toBe(1);
+    expect(document.querySelectorAll('[data-guide-kind="spacing"]').length).toBe(1);
+    expect(parseFloat(nodeDiv.style.left)).toBeCloseTo(35, 5); // 140/400*100
+    expect(parseFloat(nodeDiv.style.top)).toBeCloseTo(10, 5); // unaffected
+
+    fireEvent.pointerUp(nodeDiv, { pointerId: 1 });
+    expect(document.querySelectorAll("[data-guide-line]").length).toBe(0);
+    expect(parseFloat(nodeDiv.style.left)).toBeCloseTo(35, 5);
+  });
+
+  it("edge/center snap takes precedence over the equal-spacing snap on the same axis", () => {
+    // Right moves out to canvas x=370 so the equalized spacing position is
+    // far from the drag target, while the canvas center (200) is exactly on
+    // it — isolating the edge/center branch and confirming the winning
+    // guide is "center", never "spacing", per the LOCKED precedence rule.
+    const left = makeTextNode({ id: "node-2" as NodeId, content: "Left", x: 10, y: 0, height: 100 });
+    const right = makeTextNode({ id: "node-3" as NodeId, content: "Right", x: 92.5, y: 0, height: 100 }); // canvas x=370
+    const dragged = makeTextNode({ content: "Dragged", x: 5, y: 10 });
+    render(<MultiNodeHarness initial={[dragged, left, right]} />);
+    mockRects(getCanvasDiv());
+
+    const nodeDiv = getNodeDiv("Dragged");
+    dragNode(nodeDiv, { x: 5, y: 10 }, { x: 45, y: 10 }); // raw box x=180, center=200 (canvas center)
+
+    expect(document.querySelectorAll('[data-guide-kind="center"]').length).toBe(1);
+    expect(document.querySelectorAll('[data-guide-kind="spacing"]').length).toBe(0);
+    expect(parseFloat(nodeDiv.style.left)).toBeCloseTo(45, 5); // 180/400*100, already centered
   });
 });
 

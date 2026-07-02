@@ -3,6 +3,7 @@ import {
   computeContainerSnapTargets,
   computeSiblingSnapTargets,
   resolveSnap,
+  resolveEqualSpacingSnap,
   type SnapBox,
   type SnapReference,
 } from "../snap-guides";
@@ -131,6 +132,59 @@ describe("computeSiblingSnapTargets", () => {
     expect(noSelfSnap.guides).toHaveLength(0);
     expect(noSelfSnap.x).toBe(dragBox.x);
     expect(noSelfSnap.y).toBe(dragBox.y);
+  });
+});
+
+describe("resolveEqualSpacingSnap", () => {
+  it("returns null with only 1 other box (2 elements total) — nothing to space against", () => {
+    const dragBox: SnapBox = { x: 50, y: 0, width: 20, height: 20 };
+    const other: SnapBox = { x: 0, y: 0, width: 20, height: 20 };
+    expect(resolveEqualSpacingSnap(dragBox, [other], "vertical", 8, 1)).toBeNull();
+  });
+
+  it("detects equal spacing among 3+ evenly-spaced elements", () => {
+    const before: SnapBox = { x: 0, y: 0, width: 20, height: 20 };
+    const after: SnapBox = { x: 100, y: 0, width: 20, height: 20 };
+    // Gap on each side of dragBox is 30 (already evenly spaced) -> delta 0.
+    const dragBox: SnapBox = { x: 50, y: 0, width: 20, height: 20 };
+    const result = resolveEqualSpacingSnap(dragBox, [before, after], "vertical", 8, 1);
+    expect(result).not.toBeNull();
+    expect(result?.position).toBe(50);
+    expect(result?.guide).toEqual({ axis: "vertical", position: 60, kind: "spacing" });
+  });
+
+  it("snaps to the equalized position when a near-miss is within threshold", () => {
+    const before: SnapBox = { x: 0, y: 0, width: 20, height: 20 };
+    const after: SnapBox = { x: 100, y: 0, width: 20, height: 20 };
+    // Equalized position is x=50; dragBox is 4px off, within the 8px threshold.
+    const dragBox: SnapBox = { x: 46, y: 0, width: 20, height: 20 };
+    const result = resolveEqualSpacingSnap(dragBox, [before, after], "vertical", 8, 1);
+    expect(result?.position).toBe(50);
+  });
+
+  it("returns null when the equalized position is outside threshold", () => {
+    const before: SnapBox = { x: 0, y: 0, width: 20, height: 20 };
+    const after: SnapBox = { x: 100, y: 0, width: 20, height: 20 };
+    // Equalized position is x=50; dragBox is 20px off, past the 8px threshold.
+    const dragBox: SnapBox = { x: 30, y: 0, width: 20, height: 20 };
+    expect(resolveEqualSpacingSnap(dragBox, [before, after], "vertical", 8, 1)).toBeNull();
+  });
+
+  it("ignores boxes that don't overlap on the cross axis (no false positive)", () => {
+    const before: SnapBox = { x: 0, y: 0, width: 20, height: 20 };
+    // Far away on y (the cross axis for a "vertical" snap) — not a same-row neighbor.
+    const farOnCrossAxis: SnapBox = { x: 100, y: 200, width: 20, height: 20 };
+    const dragBox: SnapBox = { x: 50, y: 0, width: 20, height: 20 };
+    expect(resolveEqualSpacingSnap(dragBox, [before, farOnCrossAxis], "vertical", 8, 1)).toBeNull();
+  });
+
+  it("is axis-agnostic — detects equal spacing along the horizontal (y) axis", () => {
+    const before: SnapBox = { x: 0, y: 0, width: 20, height: 20 };
+    const after: SnapBox = { x: 0, y: 100, width: 20, height: 20 };
+    const dragBox: SnapBox = { x: 0, y: 50, width: 20, height: 20 };
+    const result = resolveEqualSpacingSnap(dragBox, [before, after], "horizontal", 8, 1);
+    expect(result?.position).toBe(50);
+    expect(result?.guide).toEqual({ axis: "horizontal", position: 60, kind: "spacing" });
   });
 });
 
