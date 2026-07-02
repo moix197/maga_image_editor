@@ -9,6 +9,12 @@ type ComputeSnap = (
   canvasSize: { width: number; height: number },
 ) => { x: number; y: number; guides: SnapGuide[] };
 
+/** Resolves a resized node's snapped width/height + active guide lines; injected by BatchWorkspace. */
+type ComputeResizeSnap = (
+  dragSize: { width: number; height: number },
+  canvasSize: { width: number; height: number },
+) => { width: number; height: number; guides: SnapGuide[] };
+
 interface TextNodeLayerProps {
   node: TextNode;
   onMove: (x: number, y: number) => void;
@@ -21,7 +27,9 @@ interface TextNodeLayerProps {
   zoomScale?: number;
   /** Snap resolver (image/canvas edges + centers); absent = no snapping. */
   computeSnap?: ComputeSnap;
-  /** Reports the guide lines to render during this drag (empty on release). */
+  /** Resize snap resolver (sibling size-match); absent = no resize snapping. */
+  computeResizeSnap?: ComputeResizeSnap;
+  /** Reports the guide lines to render during this drag (move or resize; empty on release). */
   onGuidesChange?: (guides: SnapGuide[]) => void;
   /**
    * Registers this node's root DOM element with BatchWorkspace so it can be
@@ -89,6 +97,7 @@ export function TextNodeLayer({
   onContentChange,
   zoomScale = 1,
   computeSnap,
+  computeResizeSnap,
   onGuidesChange,
   registerNodeElement,
 }: TextNodeLayerProps) {
@@ -236,14 +245,32 @@ export function TextNodeLayer({
     // stage, so a screen-pixel drag maps to a larger/smaller canvas-pixel delta.
     const dw = (e.clientX - resizeStart.current.clientX) / zoomScale;
     const dh = (e.clientY - resizeStart.current.clientY) / zoomScale;
-    onResize?.(Math.max(20, resizeStart.current.width + dw));
-    onHeightResize?.(Math.max(0, resizeStart.current.height + dh));
+    const candidateWidth = Math.max(20, resizeStart.current.width + dw);
+    const candidateHeight = Math.max(0, resizeStart.current.height + dh);
+
+    if (!computeResizeSnap) {
+      onResize?.(candidateWidth);
+      onHeightResize?.(candidateHeight);
+      return;
+    }
+    // Same "canvas-space via parent rect / zoomScale" convention as
+    // handlePointerMove's move-snap box above — a SEPARATE, ADDITIVE resize
+    // snap path that does not touch move's edge/center/spacing resolution.
+    const parentRect = containerRef.current?.parentElement?.getBoundingClientRect();
+    const canvasSize = parentRect
+      ? { width: parentRect.width / zoomScale, height: parentRect.height / zoomScale }
+      : { width: candidateWidth, height: candidateHeight };
+    const snapped = computeResizeSnap({ width: candidateWidth, height: candidateHeight }, canvasSize);
+    onGuidesChange?.(snapped.guides);
+    onResize?.(snapped.width);
+    onHeightResize?.(snapped.height);
   }
 
   function handleResizePointerUp(e: ReactPointerEvent<HTMLSpanElement>) {
     e.stopPropagation();
     resizeStart.current = null;
     e.currentTarget.releasePointerCapture(e.pointerId);
+    onGuidesChange?.([]);
   }
 
   const bg = node.textBackground;

@@ -30,6 +30,7 @@ import {
   computeSiblingSnapTargets,
   resolveSnap,
   resolveEqualSpacingSnap,
+  resolveSizeMatchSnap,
 } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode, SnapBox, SnapGuide } from "@maga/editor";
 import { getIntrinsicRatio, constrainResizeToRatio } from "@/components/overlay-node-layer";
@@ -350,6 +351,46 @@ function BatchWorkspaceInner() {
     ];
     const edgeCenterResult = resolveSnap(box, references, SNAP_THRESHOLD_PX, zoom.zoom);
     return applyEqualSpacingSnap(box, siblingBoxes, edgeCenterResult);
+  }
+
+  // Resolves a resized node's snapped width/height + active guides against
+  // sibling nodes' sizes (Phase 4.5). Mirrors `computeSnap` above: sibling
+  // sizes are sourced from the already-resolved, override-applied node list
+  // for the active variant (`previewEditorState.nodes`), excluding the
+  // resizing node via `selectedNodeId` (same self-exclusion convention as
+  // `computeSnap`'s sibling boxes), reusing `siblingSnapBox` so auto-sized
+  // TextNode siblings are live-measured via `nodeElementsRef` instead of
+  // collapsing to zero (same Phase 4 fix, reused rather than duplicated).
+  //
+  // `resolveSizeMatchSnap` is DOM/position-free, so a matched guide's
+  // `position` defaults to the matched dimension value itself (as if the box
+  // sat at the origin) — remapped here to the resizing node's actual
+  // canvas-space origin (fixed during a resize drag; only width/height
+  // change) so the rendered line lands on its real right/bottom edge.
+  //
+  // This is a SEPARATE, ADDITIVE code path from `computeSnap` (move
+  // snapping) above — it shares only the `SnapGuide` type and the
+  // `siblingSnapBox` helper, and does not touch move's edge/center/spacing
+  // resolution.
+  function computeResizeSnap(
+    dragSize: { width: number; height: number },
+    canvasSize: { width: number; height: number },
+  ): { width: number; height: number; guides: SnapGuide[] } {
+    const resizingNode = previewEditorState.nodes.find((n) => n.id === selectedNodeId);
+    const siblingSizes = previewEditorState.nodes
+      .filter((n) => n.id !== selectedNodeId)
+      .map((n) => siblingSnapBox(n, canvasSize));
+    const result = resolveSizeMatchSnap(dragSize, siblingSizes, SNAP_THRESHOLD_PX, zoom.zoom);
+    if (!resizingNode || result.guides.length === 0) return result;
+
+    const originX = (resizingNode.x / 100) * canvasSize.width;
+    const originY = (resizingNode.y / 100) * canvasSize.height;
+    const guides = result.guides.map((g) =>
+      g.axis === "vertical"
+        ? { ...g, position: originX + result.width }
+        : { ...g, position: originY + result.height },
+    );
+    return { ...result, guides };
   }
 
   const batchRender = useBatchRender(
@@ -685,6 +726,7 @@ function BatchWorkspaceInner() {
                     zoomScale={zoom.zoom}
                     imageCallbackRef={canvasImageCallbackRef}
                     computeSnap={computeSnap}
+                    computeResizeSnap={computeResizeSnap}
                     onGuidesChange={setActiveGuides}
                     activeGuides={activeGuides}
                     registerNodeElement={registerNodeElement}

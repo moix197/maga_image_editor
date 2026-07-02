@@ -26,12 +26,13 @@ export interface SnapBox {
 export type SnapAxis = "vertical" | "horizontal";
 
 /**
- * Whether a line originates from a bound's edge or its center, or represents
- * an equalized gap between neighbors ("spacing", Phase 4 distribution guide).
- * Additive: existing edge/center rendering switches only on `axis`/`position`
- * and is unaffected by this new variant.
+ * Whether a line originates from a bound's edge or its center, represents an
+ * equalized gap between neighbors ("spacing", Phase 4 distribution guide), or
+ * a resize matching a sibling's width/height exactly ("size", Phase 4.5).
+ * Additive: existing edge/center/spacing rendering switches only on
+ * `axis`/`position` and is unaffected by this new variant.
  */
-export type SnapKind = "edge" | "center" | "spacing";
+export type SnapKind = "edge" | "center" | "spacing" | "size";
 
 /** A candidate alignment line derived from a reference bound (canvas/image/sibling). */
 export interface SnapReference {
@@ -249,4 +250,66 @@ export function resolveEqualSpacingSnap(
     position: targetStart,
     guide: { axis, position: targetCenter, kind: "spacing" },
   };
+}
+
+export interface SizeMatchSnapResult {
+  /** Snapped width in canvas-space px (unchanged when width had no match). */
+  width: number;
+  /** Snapped height in canvas-space px (unchanged when height had no match). */
+  height: number;
+  /** Size-match guides produced (0, 1, or 2 entries — one per matched axis). */
+  guides: SnapGuide[];
+}
+
+/** Closest value in `values` to `target` within `threshold`; `null` if none qualify. */
+function pickClosestSize(values: number[], target: number, threshold: number): number | null {
+  let best: number | null = null;
+  let bestDelta = Infinity;
+  for (const value of values) {
+    const delta = Math.abs(value - target);
+    if (delta > threshold) continue;
+    if (delta < bestDelta) {
+      bestDelta = delta;
+      best = value;
+    }
+  }
+  return best;
+}
+
+/**
+ * For `width` and `height` INDEPENDENTLY, finds the closest sibling dimension
+ * in `siblingSizes` within `thresholdPx / scale` and snaps `dragSize` to match
+ * it exactly, same threshold/scale convention as `resolveSnap`/
+ * `resolveEqualSpacingSnap`. Pure/DOM-free — no self-exclusion logic (the
+ * caller excludes the resizing node's own size from `siblingSizes` first, same
+ * convention as `computeSiblingSnapTargets`).
+ *
+ * This module carries no box position, so a matched axis's guide `position`
+ * defaults to the matched dimension value itself (as if the box sat at the
+ * origin) — a caller with real box placement (e.g. `@maga/web`, which knows
+ * the resizing node's x/y) is expected to remap it to the node's actual
+ * canvas-space edge before rendering.
+ */
+export function resolveSizeMatchSnap(
+  dragSize: Size,
+  siblingSizes: Size[],
+  thresholdPx: number,
+  scale: number,
+): SizeMatchSnapResult {
+  const threshold = thresholdPx / scale;
+  const guides: SnapGuide[] = [];
+
+  const matchedWidth = pickClosestSize(siblingSizes.map((s) => s.width), dragSize.width, threshold);
+  const width = matchedWidth !== null ? matchedWidth : dragSize.width;
+  if (matchedWidth !== null) {
+    guides.push({ axis: "vertical", position: matchedWidth, kind: "size" });
+  }
+
+  const matchedHeight = pickClosestSize(siblingSizes.map((s) => s.height), dragSize.height, threshold);
+  const height = matchedHeight !== null ? matchedHeight : dragSize.height;
+  if (matchedHeight !== null) {
+    guides.push({ axis: "horizontal", position: matchedHeight, kind: "size" });
+  }
+
+  return { width, height, guides };
 }

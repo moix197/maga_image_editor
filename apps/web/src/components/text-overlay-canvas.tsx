@@ -12,6 +12,12 @@ type ComputeSnap = (
   canvasSize: { width: number; height: number },
 ) => { x: number; y: number; guides: SnapGuide[] };
 
+/** Resolves a resized node's snapped width/height + active guide lines; injected by BatchWorkspace. */
+type ComputeResizeSnap = (
+  dragSize: { width: number; height: number },
+  canvasSize: { width: number; height: number },
+) => { width: number; height: number; guides: SnapGuide[] };
+
 interface TextOverlayCanvasProps {
   state: EditorState;
   onNodeMove: (id: string, x: number, y: number) => void;
@@ -29,7 +35,9 @@ interface TextOverlayCanvasProps {
   imageCallbackRef?: RefCallback<HTMLImageElement>;
   /** Snap resolver threaded into the node layers; absent = no snapping. */
   computeSnap?: ComputeSnap;
-  /** Reports active guide lines during a drag (empty on release). */
+  /** Resize snap resolver (sibling size-match) threaded into the node layers; absent = no resize snapping. */
+  computeResizeSnap?: ComputeResizeSnap;
+  /** Reports active guide lines during a drag (empty on release). Shared by move and resize — a node is never both at once. */
   onGuidesChange?: (guides: SnapGuide[]) => void;
   /** Guide lines to render inside the stage; empty = none (never present at export). */
   activeGuides?: SnapGuide[];
@@ -42,13 +50,20 @@ interface TextOverlayCanvasProps {
   registerNodeElement?: (id: NodeId, el: HTMLElement | null) => void;
 }
 
+/** Dashed-line color per non-solid guide kind: "spacing" (Phase 4) vs. "size" (Phase 4.5). */
+const DASHED_GUIDE_COLOR: Record<"spacing" | "size", string> = {
+  spacing: "#A855F7",
+  size: "#0EA5E9",
+};
+
 /**
  * Style for one guide line. "spacing" (equal-spacing/distribution, Phase 4)
- * renders as a dashed line distinct from the solid edge/center lines
- * (Phase 2/3) — purely additive, the edge/center branch is unchanged.
+ * and "size" (resize sibling size-match, Phase 4.5) render as dashed lines,
+ * each in a distinct color, vs. the solid edge/center lines (Phase 2/3) —
+ * purely additive, the edge/center branch is unchanged.
  */
 function guideLineStyle(guide: SnapGuide): CSSProperties {
-  const isSpacing = guide.kind === "spacing";
+  const dashedColor = guide.kind === "spacing" || guide.kind === "size" ? DASHED_GUIDE_COLOR[guide.kind] : undefined;
   const base: CSSProperties = {
     position: "absolute",
     pointerEvents: "none",
@@ -60,11 +75,11 @@ function guideLineStyle(guide: SnapGuide): CSSProperties {
       left: guide.position,
       top: 0,
       height: "100%",
-      // `border` (not `background`) is used for spacing guides because CSS
+      // `border` (not `background`) is used for dashed guides because CSS
       // dashed patterns only render on borders, not on solid backgrounds.
-      width: isSpacing ? 0 : 1,
-      borderLeft: isSpacing ? "2px dashed #A855F7" : undefined,
-      background: isSpacing ? undefined : "#F43F5E",
+      width: dashedColor ? 0 : 1,
+      borderLeft: dashedColor ? `2px dashed ${dashedColor}` : undefined,
+      background: dashedColor ? undefined : "#F43F5E",
     };
   }
   return {
@@ -72,9 +87,9 @@ function guideLineStyle(guide: SnapGuide): CSSProperties {
     top: guide.position,
     left: 0,
     width: "100%",
-    height: isSpacing ? 0 : 1,
-    borderTop: isSpacing ? "2px dashed #A855F7" : undefined,
-    background: isSpacing ? undefined : "#F43F5E",
+    height: dashedColor ? 0 : 1,
+    borderTop: dashedColor ? `2px dashed ${dashedColor}` : undefined,
+    background: dashedColor ? undefined : "#F43F5E",
   };
 }
 
@@ -92,6 +107,7 @@ export function TextOverlayCanvas({
   zoomScale = 1,
   imageCallbackRef,
   computeSnap,
+  computeResizeSnap,
   onGuidesChange,
   activeGuides,
   registerNodeElement,
@@ -124,6 +140,7 @@ export function TextOverlayCanvas({
               isSelected={node.id === selectedNodeId}
               zoomScale={zoomScale}
               computeSnap={computeSnap}
+              computeResizeSnap={computeResizeSnap}
               onGuidesChange={onGuidesChange}
               registerNodeElement={registerNodeElement}
             />
@@ -140,6 +157,7 @@ export function TextOverlayCanvas({
               isSelected={node.id === selectedNodeId}
               zoomScale={zoomScale}
               computeSnap={computeSnap}
+              computeResizeSnap={computeResizeSnap}
               onGuidesChange={onGuidesChange}
             />
           );

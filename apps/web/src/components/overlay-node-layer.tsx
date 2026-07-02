@@ -10,6 +10,12 @@ type ComputeSnap = (
   canvasSize: { width: number; height: number },
 ) => { x: number; y: number; guides: SnapGuide[] };
 
+/** Resolves a resized node's snapped width/height + active guide lines; injected by BatchWorkspace. */
+type ComputeResizeSnap = (
+  dragSize: { width: number; height: number },
+  canvasSize: { width: number; height: number },
+) => { width: number; height: number; guides: SnapGuide[] };
+
 interface OverlayNodeLayerProps {
   node: OverlayNode;
   onMove: (x: number, y: number) => void;
@@ -20,7 +26,9 @@ interface OverlayNodeLayerProps {
   zoomScale?: number;
   /** Snap resolver (image/canvas edges + centers); absent = no snapping. */
   computeSnap?: ComputeSnap;
-  /** Reports the guide lines to render during this drag (empty on release). */
+  /** Resize snap resolver (sibling size-match); absent = no resize snapping. */
+  computeResizeSnap?: ComputeResizeSnap;
+  /** Reports the guide lines to render during this drag (move or resize; empty on release). */
   onGuidesChange?: (guides: SnapGuide[]) => void;
 }
 
@@ -132,11 +140,19 @@ export function OverlayNodeLayer({
   isSelected,
   zoomScale = 1,
   computeSnap,
+  computeResizeSnap,
   onGuidesChange,
 }: OverlayNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
   const resizing = useRef(false);
   const resizeStart = useRef({ clientX: 0, clientY: 0, width: 0, height: 0 });
+  // Root-element ref, used only to read the shared canvas-stage parent's rect
+  // at resize time (canvasSize for computeResizeSnap) — mirrors the
+  // parent-rect reads already used in handlePointerDown/handlePointerMove
+  // above, just captured via a ref instead of e.currentTarget since the
+  // resize handle span (not this root div) is what receives the pointer
+  // events during a resize drag.
+  const containerRef = useRef<HTMLDivElement>(null);
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (resizing.current) return;
@@ -195,23 +211,52 @@ export function OverlayNodeLayer({
     const dw = (e.clientX - resizeStart.current.clientX) / zoomScale;
     const dh = (e.clientY - resizeStart.current.clientY) / zoomScale;
     const ratio = node.aspectRatioLocked ? getIntrinsicRatio(node.id) : undefined;
-    const { width, height } = constrainResizeToRatio(
+    const { width: candidateWidth, height: candidateHeight } = constrainResizeToRatio(
       resizeStart.current.width + dw,
       resizeStart.current.height + dh,
       ratio,
     );
-    onResize(width, height);
+
+    if (!computeResizeSnap) {
+      onResize(candidateWidth, candidateHeight);
+      return;
+    }
+    // Same "canvas-space via parent rect / zoomScale" convention as
+    // handlePointerMove's move-snap box above — a SEPARATE, ADDITIVE resize
+    // snap path that does not touch move's edge/center/spacing resolution.
+    const parentRect = containerRef.current?.parentElement?.getBoundingClientRect();
+    const canvasSize = parentRect
+      ? { width: parentRect.width / zoomScale, height: parentRect.height / zoomScale }
+      : { width: candidateWidth, height: candidateHeight };
+    const snapped = computeResizeSnap({ width: candidateWidth, height: candidateHeight }, canvasSize);
+    // Aspect-ratio lock takes precedence over a size-match snap: re-constrain
+    // so a locked overlay's intrinsic ratio is never violated by the snap.
+    // `constrainResizeToRatio` always re-derives height as `width / ratio`
+    // when locked (width-drives-height contract) — so a height-axis "size"
+    // guide would claim a match the final rendered height doesn't actually
+    // have. Drop it before reporting so the guide never lies about the
+    // final size.
+    const finalSize =
+      ratio !== undefined ? constrainResizeToRatio(snapped.width, snapped.height, ratio) : snapped;
+    const guides =
+      ratio !== undefined
+        ? snapped.guides.filter((g) => !(g.kind === "size" && g.axis === "horizontal"))
+        : snapped.guides;
+    onGuidesChange?.(guides);
+    onResize(finalSize.width, finalSize.height);
   }
 
   function handleResizePointerUp(e: ReactPointerEvent<HTMLSpanElement>) {
     resizing.current = false;
     e.currentTarget.releasePointerCapture(e.pointerId);
+    onGuidesChange?.([]);
   }
 
   const isImage = node.overlayType === "image";
 
   return (
     <div
+      ref={containerRef}
       role="button"
       tabIndex={0}
       aria-label={isImage ? "Image overlay" : "Border overlay"}

@@ -4,6 +4,7 @@ import {
   computeSiblingSnapTargets,
   resolveSnap,
   resolveEqualSpacingSnap,
+  resolveSizeMatchSnap,
   type SnapBox,
   type SnapReference,
 } from "../snap-guides";
@@ -185,6 +186,54 @@ describe("resolveEqualSpacingSnap", () => {
     const result = resolveEqualSpacingSnap(dragBox, [before, after], "horizontal", 8, 1);
     expect(result?.position).toBe(50);
     expect(result?.guide).toEqual({ axis: "horizontal", position: 60, kind: "spacing" });
+  });
+});
+
+describe("resolveSizeMatchSnap", () => {
+  it("matches width only when height has no qualifying sibling", () => {
+    const siblingSizes = [{ width: 104, height: 500 }];
+    const result = resolveSizeMatchSnap({ width: 100, height: 50 }, siblingSizes, 8, 1);
+    expect(result.width).toBe(104);
+    expect(result.height).toBe(50); // unchanged — 500 is way outside threshold
+    expect(result.guides).toEqual([{ axis: "vertical", position: 104, kind: "size" }]);
+  });
+
+  it("matches height only when width has no qualifying sibling", () => {
+    const siblingSizes = [{ width: 500, height: 54 }];
+    const result = resolveSizeMatchSnap({ width: 100, height: 50 }, siblingSizes, 8, 1);
+    expect(result.width).toBe(100); // unchanged
+    expect(result.height).toBe(54);
+    expect(result.guides).toEqual([{ axis: "horizontal", position: 54, kind: "size" }]);
+  });
+
+  it("matches width and height independently against different siblings", () => {
+    const siblingSizes = [
+      { width: 103, height: 999 },
+      { width: 999, height: 47 },
+    ];
+    const result = resolveSizeMatchSnap({ width: 100, height: 50 }, siblingSizes, 8, 1);
+    expect(result.width).toBe(103);
+    expect(result.height).toBe(47);
+    expect(result.guides).toHaveLength(2);
+    expect(result.guides).toContainEqual({ axis: "vertical", position: 103, kind: "size" });
+    expect(result.guides).toContainEqual({ axis: "horizontal", position: 47, kind: "size" });
+  });
+
+  it("does not snap when every sibling dimension is outside the threshold", () => {
+    const siblingSizes = [{ width: 200, height: 200 }];
+    const result = resolveSizeMatchSnap({ width: 100, height: 50 }, siblingSizes, 8, 1);
+    expect(result).toEqual({ width: 100, height: 50, guides: [] });
+  });
+
+  it("returns no match when there are no siblings", () => {
+    const result = resolveSizeMatchSnap({ width: 100, height: 50 }, [], 8, 1);
+    expect(result).toEqual({ width: 100, height: 50, guides: [] });
+  });
+
+  it("converts the threshold to canvas-space via / scale", () => {
+    const siblingSizes = [{ width: 108, height: 999 }]; // width 8px off at scale 1; height far outside any scale
+    expect(resolveSizeMatchSnap({ width: 100, height: 50 }, siblingSizes, 8, 2).guides).toHaveLength(0);
+    expect(resolveSizeMatchSnap({ width: 100, height: 50 }, siblingSizes, 8, 0.5).width).toBe(108);
   });
 });
 

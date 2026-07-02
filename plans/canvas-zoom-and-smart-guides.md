@@ -498,39 +498,40 @@ behavior (`handleResizePointerMove` in both node layers only divides by
 | modify | `apps/web/src/components/text-node-layer.tsx` | `handleResizePointerMove`: after computing `dw`/`dh` ÷ `zoomScale`, call `computeResizeSnap` with the candidate new size; if a match is returned, use the matched size instead of the raw computed one and report the guide; clear the guide in `handleResizePointerUp` |
 | modify | `apps/web/src/components/overlay-node-layer.tsx` | Same wiring in `handleResizePointerMove`/`handleResizePointerUp` |
 | create | `apps/web/src/__tests__/resize-snap.test.tsx` | Simulated resize drag near a sibling's width/height snaps to match it and shows the size-match guide; resizing away from any sibling size produces no snap/guide |
+| fix (post-review) | `apps/web/src/components/overlay-node-layer.tsx` | `constrainResizeToRatio` always re-derives height as `width / ratio` when the overlay's aspect ratio is locked, discarding any snapped height — so a height-axis `"size"` guide would claim a match the final rendered height doesn't actually have. Fixed by dropping the horizontal-axis `"size"` guide before reporting whenever `ratio !== undefined`. Regression test added. |
 
 **Steps:**
 
-- [ ] Implement `resolveSizeMatchSnap` in `snap-guides.ts` (independent width/height matching, threshold+scale conversion matching `resolveSnap`/`resolveEqualSpacingSnap` conventions); extend unit tests
-- [ ] Export from `packages/editor/src/index.ts`
-- [ ] Add `computeResizeSnap` closure in `BatchWorkspace.tsx`, reusing `previewEditorState.nodes` + `nodeElementsRef` for TextNode live-measurement (no new ref infra — reuse Phase 4's fix)
-- [ ] Wire `computeResizeSnap` into both node layers' `handleResizePointerMove`; matched size drives both the live resize preview and the persisted `onResize`/`onHeightResize` value
-- [ ] Extend guide rendering for the new `"size"` kind's dashed-line visual, distinct from `"spacing"`'s color
-- [ ] Confirm move-guide snapping (Phases 2–4) is completely unaffected — resize and move guides are independent code paths sharing only the `SnapGuide` type and rendering function
-- [ ] Update `.ai/` (deferred to Phase 6 `sync-knowledge` step — do not hand-edit)
+- [x] Implement `resolveSizeMatchSnap` in `snap-guides.ts` (independent width/height matching, threshold+scale conversion matching `resolveSnap`/`resolveEqualSpacingSnap` conventions); extend unit tests
+- [x] Export from `packages/editor/src/index.ts`
+- [x] Add `computeResizeSnap` closure in `BatchWorkspace.tsx`, reusing `previewEditorState.nodes` + `nodeElementsRef` for TextNode live-measurement (no new ref infra — reuse Phase 4's fix)
+- [x] Wire `computeResizeSnap` into both node layers' `handleResizePointerMove`; matched size drives both the live resize preview and the persisted `onResize`/`onHeightResize` value
+- [x] Extend guide rendering for the new `"size"` kind's dashed-line visual, distinct from `"spacing"`'s color
+- [x] Confirm move-guide snapping (Phases 2–4) is completely unaffected — resize and move guides are independent code paths sharing only the `SnapGuide` type and rendering function
+- [x] Update `.ai/` (deferred to Phase 6 `sync-knowledge` step — do not hand-edit)
 
 **Tests:**
 
 | Action | File | What it covers |
 |---|---|---|
 | modify | `packages/editor/src/__tests__/snap-guides.test.ts` | `resolveSizeMatchSnap`: width-only match, height-only match, independent axis matching, no match outside threshold, no siblings → no match |
-| create | `apps/web/src/__tests__/resize-snap.test.tsx` | Resize-to-match-sibling-size behavior + guide rendering; no-snap-when-far case |
+| create | `apps/web/src/__tests__/resize-snap.test.tsx` | Resize-to-match-sibling-size behavior + guide rendering; no-snap-when-far case; aspect-ratio-lock takes precedence (width-match case); aspect-ratio-lock height-axis guide never lies about the final size (post-review regression test) |
 
 **Verification:**
 
-- [ ] `pnpm --filter @maga/web test` exits 0
-- [ ] `pnpm --filter @maga/editor test` exits 0 (pre-existing unrelated `editor-state.test.ts` failure expected)
-- [ ] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
+- [x] `pnpm --filter @maga/web test` exits 0
+- [x] `pnpm --filter @maga/editor test` exits 0 (pre-existing unrelated `editor-state.test.ts` failure expected)
+- [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
 - [ ] Manual: resize a node until its width/height nears a sibling's — dashed guide appears, size snaps to match exactly
 - [ ] Manual: move-guide (position) snapping from Phases 2–4 still works unchanged after this phase
 
 **Phase review:**
 
-- [ ] All Steps and Verification checkboxes above ticked in the plan file
-- [ ] Code-reviewer agent has verified this phase
-- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
-- [ ] Tests for this phase written and passing
-- [ ] Documentation updated (see Documentation section)
+- [x] All Steps and Verification checkboxes above ticked in the plan file
+- [x] Code-reviewer agent has verified this phase (verdict: yellow → fixed → green; guide-position remap and aspect-ratio-lock reconciliation both scrutinized; one real bug found — misleading height-axis guide under ratio lock — fixed with a regression test)
+- [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [x] Tests for this phase written and passing
+- [x] Documentation updated (deferred to Phase 6 `sync-knowledge` step, per plan convention)
 - [ ] Orchestrator (user) has verified and approved this phase
 - [ ] Changes committed: `feat(canvas): add resize smart guides (sibling size-match snap)`
 - [ ] Phase marked complete
