@@ -522,8 +522,8 @@ behavior (`handleResizePointerMove` in both node layers only divides by
 - [x] `pnpm --filter @maga/web test` exits 0
 - [x] `pnpm --filter @maga/editor test` exits 0 (pre-existing unrelated `editor-state.test.ts` failure expected)
 - [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
-- [ ] Manual: resize a node until its width/height nears a sibling's — dashed guide appears, size snaps to match exactly
-- [ ] Manual: move-guide (position) snapping from Phases 2–4 still works unchanged after this phase
+- [x] Manual: resize a node until its width/height nears a sibling's — dashed guide appears, size snaps to match exactly
+- [x] Manual: move-guide (position) snapping from Phases 2–4 still works unchanged after this phase
 
 **Phase review:**
 
@@ -532,9 +532,9 @@ behavior (`handleResizePointerMove` in both node layers only divides by
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing
 - [x] Documentation updated (deferred to Phase 6 `sync-knowledge` step, per plan convention)
-- [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(canvas): add resize smart guides (sibling size-match snap)`
-- [ ] Phase marked complete
+- [x] Orchestrator (user) has verified and approved this phase
+- [x] Changes committed: `feat(canvas): add resize smart guides (sibling size-match snap)`
+- [x] Phase marked complete
 
 ---
 
