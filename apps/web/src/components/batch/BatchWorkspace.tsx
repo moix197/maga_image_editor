@@ -23,13 +23,20 @@ import { WorkspaceActionsBar } from "./WorkspaceActionsBar";
 import { WorkspaceSideNav } from "./WorkspaceSideNav";
 import { BatchRightPanel } from "./BatchRightPanel";
 import { SCHEMA_VERSION, type BatchProject, type GeneratedOutput, type ProjectAsset } from "@maga/projects";
-import { isTextNode, isOverlayNode } from "@maga/editor";
-import type { NodeId, TextNode, OverlayNode } from "@maga/editor";
+import { isTextNode, isOverlayNode, computeContainerSnapTargets, resolveSnap } from "@maga/editor";
+import type { NodeId, TextNode, OverlayNode, SnapBox, SnapGuide } from "@maga/editor";
 import { getIntrinsicRatio, constrainResizeToRatio } from "@/components/overlay-node-layer";
 import { resolveSection } from "./workspace-sections";
 
 const DISABLED_GENERATE_HINT =
   "Select a variable slot and upload at least one overlay image to enable generation.";
+
+/**
+ * Screen-space snap threshold (px). Converted to canvas-space inside
+ * `resolveSnap` via `thresholdPx / scale`, so the pure @maga/editor module
+ * never hardcodes it — see plan "Snap threshold default" LOCKED decision.
+ */
+const SNAP_THRESHOLD_PX = 8;
 
 function BatchWorkspaceInner() {
   const searchParams = useSearchParams();
@@ -211,6 +218,27 @@ function BatchWorkspaceInner() {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const canvasImageRef = useRef<HTMLImageElement | null>(null);
   const canvasImageCallbackRef = useCallback((el: HTMLImageElement | null) => { canvasImageRef.current = el; }, []);
+
+  // Ephemeral guide-line state (not persisted) reported by the node layers
+  // during a drag; cleared to [] on pointer-up (see text-node-layer.tsx /
+  // overlay-node-layer.tsx onGuidesChange calls).
+  const [activeGuides, setActiveGuides] = useState<SnapGuide[]>([]);
+
+  // Resolves a dragged node's snapped position + active guides against the
+  // parent image/canvas edges & center. `canvasSize` is measured by the node
+  // layers themselves from their shared parent container rect — in this
+  // app's current DOM layout the stage wrapper hugs the <img> exactly, so it
+  // already represents both "image bounds" and "canvas bounds" as the same
+  // rect (see plan Phase 2 notes). Reads the SAME `zoom.zoom` value already
+  // threaded into `zoomScale` above — never a second scale source (see plan
+  // "Single scale source of truth").
+  function computeSnap(
+    box: SnapBox,
+    canvasSize: { width: number; height: number },
+  ): { x: number; y: number; guides: SnapGuide[] } {
+    const references = computeContainerSnapTargets(canvasSize);
+    return resolveSnap(box, references, SNAP_THRESHOLD_PX, zoom.zoom);
+  }
 
   const batchRender = useBatchRender(
     overlays,
@@ -544,6 +572,9 @@ function BatchWorkspaceInner() {
                     canvasCallbackRef={liveCanvasCallbackRef}
                     zoomScale={zoom.zoom}
                     imageCallbackRef={canvasImageCallbackRef}
+                    computeSnap={computeSnap}
+                    onGuidesChange={setActiveGuides}
+                    activeGuides={activeGuides}
                   />
                 </div>
               </div>

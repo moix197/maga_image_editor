@@ -1,8 +1,14 @@
 "use client";
 
-import type { OverlayNode, BorderOverlay } from "@maga/editor";
+import type { OverlayNode, BorderOverlay, SnapBox, SnapGuide } from "@maga/editor";
 import { useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { buildFeatherMaskCss, withAlpha } from "@/lib/css-helpers";
+
+/** Resolves a dragged node's snapped position + active guide lines; injected by BatchWorkspace. */
+type ComputeSnap = (
+  box: SnapBox,
+  canvasSize: { width: number; height: number },
+) => { x: number; y: number; guides: SnapGuide[] };
 
 interface OverlayNodeLayerProps {
   node: OverlayNode;
@@ -12,6 +18,10 @@ interface OverlayNodeLayerProps {
   isSelected: boolean;
   /** Current viewport zoom scale (1 = 100%); raw pixel-delta resize math divides by this. */
   zoomScale?: number;
+  /** Snap resolver (image/canvas edges + centers); absent = no snapping. */
+  computeSnap?: ComputeSnap;
+  /** Reports the guide lines to render during this drag (empty on release). */
+  onGuidesChange?: (guides: SnapGuide[]) => void;
 }
 
 /**
@@ -121,6 +131,8 @@ export function OverlayNodeLayer({
   onSelect,
   isSelected,
   zoomScale = 1,
+  computeSnap,
+  onGuidesChange,
 }: OverlayNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
   const resizing = useRef(false);
@@ -140,13 +152,33 @@ export function OverlayNodeLayer({
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.buttons === 0 || resizing.current) return;
     const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
-    const x = ((e.clientX - grabOffset.current.dx - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - grabOffset.current.dy - rect.top) / rect.height) * 100;
-    onMove(Math.max(0, Math.min(100, x)), Math.max(0, Math.min(100, y)));
+    const rawX = Math.max(0, Math.min(100, ((e.clientX - grabOffset.current.dx - rect.left) / rect.width) * 100));
+    const rawY = Math.max(0, Math.min(100, ((e.clientY - grabOffset.current.dy - rect.top) / rect.height) * 100));
+    if (!computeSnap) {
+      onMove(rawX, rawY);
+      return;
+    }
+    // OverlayNode width/height are always defined (canvas-space px), so build the
+    // SnapBox directly from them — no DOM measurement needed (unlike TextNode).
+    const canvasWidth = rect.width / zoomScale;
+    const canvasHeight = rect.height / zoomScale;
+    const box: SnapBox = {
+      x: (rawX / 100) * canvasWidth,
+      y: (rawY / 100) * canvasHeight,
+      width: node.width,
+      height: node.height,
+    };
+    const snapped = computeSnap(box, { width: canvasWidth, height: canvasHeight });
+    onGuidesChange?.(snapped.guides);
+    // resolveSnap returns canvas-space px (same frame as `box`) — convert back
+    // to percent before calling onMove, which everywhere else takes percent
+    // (see the `onMove(rawX, rawY)` fallback above and `node.x`/`node.y`).
+    onMove((snapped.x / canvasWidth) * 100, (snapped.y / canvasHeight) * 100);
   }
 
   function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     e.currentTarget.releasePointerCapture(e.pointerId);
+    onGuidesChange?.([]);
   }
 
   function handleResizePointerDown(e: ReactPointerEvent<HTMLSpanElement>) {

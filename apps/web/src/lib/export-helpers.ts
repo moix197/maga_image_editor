@@ -21,6 +21,24 @@ function collectImageOverlayNodes(el: HTMLElement): OverlayNode[] {
   return nodes;
 }
 
+/**
+ * Removes any transient smart-guide line elements from a capture subtree before
+ * rasterizing. Guide lines are cleared on pointer-up/drag-cancel, so in practice
+ * none are ever present at export time — this is belt-and-suspenders structural
+ * enforcement of the guide non-contamination invariant, independent of the
+ * "export never runs mid-drag" timing assumption (see plan "export
+ * non-contamination (b)"). Always strips; asserts in dev when one is found.
+ */
+export function stripGuideLines(el: HTMLElement): void {
+  const guides = el.querySelectorAll("[data-guide-line]");
+  if (guides.length > 0 && process.env.NODE_ENV !== "production") {
+    console.error(
+      `export-helpers: ${guides.length} [data-guide-line] element(s) present at capture time; stripping.`,
+    );
+  }
+  guides.forEach((node) => node.remove());
+}
+
 /** Hides post-pass overlays during base capture so they are not double-composited. */
 function suppressPostPassNodes(el: HTMLElement): () => void {
   const els = el.querySelectorAll<HTMLElement>('[data-post-pass="true"]');
@@ -43,6 +61,7 @@ export async function compositeFromElement(
   overlayNodes: OverlayNode[],
 ): Promise<string> {
   await document.fonts.ready;
+  stripGuideLines(el);
   const restore = suppressPostPassNodes(el);
   let baseDataUrl: string;
   try {
@@ -64,6 +83,7 @@ export async function exportCanvasElement(
   filename: string,
 ): Promise<void> {
   await document.fonts.ready;
+  stripGuideLines(el);
   const imageOverlayNodes = collectImageOverlayNodes(el);
   const restore = suppressPostPassNodes(el);
   let baseDataUrl: string;

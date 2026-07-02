@@ -2,9 +2,15 @@
 
 import type { RefCallback } from "react";
 import { isTextNode, isOverlayNode } from "@maga/editor";
-import type { EditorState, NodeId } from "@maga/editor";
+import type { EditorState, NodeId, SnapBox, SnapGuide } from "@maga/editor";
 import { TextNodeLayer } from "@/components/text-node-layer";
 import { OverlayNodeLayer } from "@/components/overlay-node-layer";
+
+/** Resolves a dragged node's snapped position + active guide lines; injected by BatchWorkspace. */
+type ComputeSnap = (
+  box: SnapBox,
+  canvasSize: { width: number; height: number },
+) => { x: number; y: number; guides: SnapGuide[] };
 
 interface TextOverlayCanvasProps {
   state: EditorState;
@@ -21,6 +27,12 @@ interface TextOverlayCanvasProps {
   zoomScale?: number;
   /** Exposes the base image's naturalWidth/naturalHeight for fit-to-viewport. */
   imageCallbackRef?: RefCallback<HTMLImageElement>;
+  /** Snap resolver threaded into the node layers; absent = no snapping. */
+  computeSnap?: ComputeSnap;
+  /** Reports active guide lines during a drag (empty on release). */
+  onGuidesChange?: (guides: SnapGuide[]) => void;
+  /** Guide lines to render inside the stage; empty = none (never present at export). */
+  activeGuides?: SnapGuide[];
 }
 
 export function TextOverlayCanvas({
@@ -36,6 +48,9 @@ export function TextOverlayCanvas({
   imageSrc,
   zoomScale = 1,
   imageCallbackRef,
+  computeSnap,
+  onGuidesChange,
+  activeGuides,
 }: TextOverlayCanvasProps) {
   const sortedNodes = [...state.nodes].sort((a, b) => a.zIndex - b.zIndex);
 
@@ -64,6 +79,8 @@ export function TextOverlayCanvas({
               onSelect={() => onNodeSelect(node.id)}
               isSelected={node.id === selectedNodeId}
               zoomScale={zoomScale}
+              computeSnap={computeSnap}
+              onGuidesChange={onGuidesChange}
             />
           );
         }
@@ -77,11 +94,50 @@ export function TextOverlayCanvas({
               onSelect={() => onNodeSelect(node.id)}
               isSelected={node.id === selectedNodeId}
               zoomScale={zoomScale}
+              computeSnap={computeSnap}
+              onGuidesChange={onGuidesChange}
             />
           );
         }
         return null;
       })}
+      {/*
+        Smart-guide lines. Rendered INSIDE the canvasCallbackRef div so they share
+        the node coordinate space; positions are canvas-space px (the scale
+        transform lives on an ancestor). Gated strictly on activeGuides being
+        non-empty and carry data-guide-line so the export guard + isolation test
+        can find/strip them (see plan "export non-contamination (b)").
+      */}
+      {activeGuides?.map((guide, i) => (
+        <div
+          key={`${guide.axis}-${guide.position}-${i}`}
+          data-guide-line
+          aria-hidden
+          style={
+            guide.axis === "vertical"
+              ? {
+                  position: "absolute",
+                  left: guide.position,
+                  top: 0,
+                  width: 1,
+                  height: "100%",
+                  background: "#F43F5E",
+                  pointerEvents: "none",
+                  zIndex: 9999,
+                }
+              : {
+                  position: "absolute",
+                  top: guide.position,
+                  left: 0,
+                  height: 1,
+                  width: "100%",
+                  background: "#F43F5E",
+                  pointerEvents: "none",
+                  zIndex: 9999,
+                }
+          }
+        />
+      ))}
     </div>
   );
 }

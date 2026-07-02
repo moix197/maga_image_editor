@@ -1,7 +1,13 @@
 "use client";
 
-import type { TextNode, TextBackground } from "@maga/editor";
+import type { SnapBox, SnapGuide, TextNode, TextBackground } from "@maga/editor";
 import { useRef, useState, useEffect, type PointerEvent as ReactPointerEvent } from "react";
+
+/** Resolves a dragged node's snapped position + active guide lines; injected by BatchWorkspace. */
+type ComputeSnap = (
+  box: SnapBox,
+  canvasSize: { width: number; height: number },
+) => { x: number; y: number; guides: SnapGuide[] };
 
 interface TextNodeLayerProps {
   node: TextNode;
@@ -13,6 +19,10 @@ interface TextNodeLayerProps {
   onContentChange?: (content: string) => void;
   /** Current viewport zoom scale (1 = 100%); raw pixel-delta resize math divides by this. */
   zoomScale?: number;
+  /** Snap resolver (image/canvas edges + centers); absent = no snapping. */
+  computeSnap?: ComputeSnap;
+  /** Reports the guide lines to render during this drag (empty on release). */
+  onGuidesChange?: (guides: SnapGuide[]) => void;
 }
 
 /** Maps FONT_FAMILIES names to their CSS variable so next/font loads them. */
@@ -70,6 +80,8 @@ export function TextNodeLayer({
   onHeightResize,
   onContentChange,
   zoomScale = 1,
+  computeSnap,
+  onGuidesChange,
 }: TextNodeLayerProps) {
   const grabOffset = useRef({ dx: 0, dy: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -136,13 +148,36 @@ export function TextNodeLayer({
     // bubble up from the resize handle to this root handler.
     if (isEditing || resizeStart.current || e.buttons === 0) return;
     const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
-    const x = ((e.clientX - grabOffset.current.dx - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - grabOffset.current.dy - rect.top) / rect.height) * 100;
-    onMove(Math.max(0, Math.min(100, x)), Math.max(0, Math.min(100, y)));
+    const rawX = Math.max(0, Math.min(100, ((e.clientX - grabOffset.current.dx - rect.left) / rect.width) * 100));
+    const rawY = Math.max(0, Math.min(100, ((e.clientY - grabOffset.current.dy - rect.top) / rect.height) * 100));
+    if (!computeSnap) {
+      onMove(rawX, rawY);
+      return;
+    }
+    // Build the node's SnapBox in canvas-space. TextNode width/height are optional
+    // (auto-sized), so measure the node's OWN live rendered box and divide by the
+    // zoom scale — NEW measurement, distinct from the parent-container rect read
+    // above that drives the percent x/y math (which is unchanged).
+    const canvasWidth = rect.width / zoomScale;
+    const canvasHeight = rect.height / zoomScale;
+    const ownRect = e.currentTarget.getBoundingClientRect();
+    const box: SnapBox = {
+      x: (rawX / 100) * canvasWidth,
+      y: (rawY / 100) * canvasHeight,
+      width: ownRect.width / zoomScale,
+      height: ownRect.height / zoomScale,
+    };
+    const snapped = computeSnap(box, { width: canvasWidth, height: canvasHeight });
+    onGuidesChange?.(snapped.guides);
+    // resolveSnap returns canvas-space px (same frame as `box`) — convert back
+    // to percent before calling onMove, which everywhere else takes percent
+    // (see the `onMove(rawX, rawY)` fallback above and `node.x`/`node.y`).
+    onMove((snapped.x / canvasWidth) * 100, (snapped.y / canvasHeight) * 100);
   }
 
   function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     e.currentTarget.releasePointerCapture(e.pointerId);
+    onGuidesChange?.([]);
   }
 
   // Step 5: Double-click enters edit mode.
