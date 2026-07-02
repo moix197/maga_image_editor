@@ -74,6 +74,31 @@ export function computeContainerSnapTargets(
   ];
 }
 
+/**
+ * Builds edge + center snap references per sibling box (other nodes visible
+ * on the same canvas), in canvas-space px. Pure/DOM-free, mirroring
+ * `computeContainerSnapTargets`. Carries NO self-exclusion logic — the caller
+ * (`@maga/web`) must exclude the dragged node's own box from `boxes` before
+ * calling this, otherwise a box would trivially "snap" to its own edges
+ * (delta 0) (see plan "Sibling-snap staleness").
+ */
+export function computeSiblingSnapTargets(boxes: SnapBox[]): SnapReference[] {
+  const references: SnapReference[] = [];
+  for (const box of boxes) {
+    const centerX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+    references.push(
+      { axis: "vertical", position: box.x, kind: "edge" },
+      { axis: "vertical", position: centerX, kind: "center" },
+      { axis: "vertical", position: box.x + box.width, kind: "edge" },
+      { axis: "horizontal", position: box.y, kind: "edge" },
+      { axis: "horizontal", position: centerY, kind: "center" },
+      { axis: "horizontal", position: box.y + box.height, kind: "edge" },
+    );
+  }
+  return references;
+}
+
 /** Box anchors tested against a reference: center-to-center, or both edges. */
 function anchorsFor(kind: SnapKind, start: number, size: number): number[] {
   return kind === "center" ? [start + size / 2] : [start, start + size];

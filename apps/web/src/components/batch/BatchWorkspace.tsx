@@ -23,7 +23,7 @@ import { WorkspaceActionsBar } from "./WorkspaceActionsBar";
 import { WorkspaceSideNav } from "./WorkspaceSideNav";
 import { BatchRightPanel } from "./BatchRightPanel";
 import { SCHEMA_VERSION, type BatchProject, type GeneratedOutput, type ProjectAsset } from "@maga/projects";
-import { isTextNode, isOverlayNode, computeContainerSnapTargets, resolveSnap } from "@maga/editor";
+import { isTextNode, isOverlayNode, computeContainerSnapTargets, computeSiblingSnapTargets, resolveSnap } from "@maga/editor";
 import type { NodeId, TextNode, OverlayNode, SnapBox, SnapGuide } from "@maga/editor";
 import { getIntrinsicRatio, constrainResizeToRatio } from "@/components/overlay-node-layer";
 import { resolveSection } from "./workspace-sections";
@@ -224,19 +224,63 @@ function BatchWorkspaceInner() {
   // overlay-node-layer.tsx onGuidesChange calls).
   const [activeGuides, setActiveGuides] = useState<SnapGuide[]>([]);
 
+  // Converts a resolved node's stored percent x/y (+ px width/height, where
+  // known) into a canvas-space SnapBox for sibling-snap reference building.
+  // TextNode width/height are optional (auto-sized) — siblings without a
+  // stored size fall back to a zero-size point box (edge === center), since
+  // only the DRAGGED node's own box is live-measured from the DOM (see plan
+  // "TextNode auto-size box measurement" — that measurement happens in
+  // text-node-layer.tsx, out of this file's scope). OverlayNode width/height
+  // are always defined.
+  function siblingSnapBox(
+    node: TextNode | OverlayNode,
+    canvasSize: { width: number; height: number },
+  ): SnapBox {
+    return {
+      x: (node.x / 100) * canvasSize.width,
+      y: (node.y / 100) * canvasSize.height,
+      width: isTextNode(node) ? (node.width ?? 0) : node.width,
+      height: isTextNode(node) ? (node.height ?? 0) : node.height,
+    };
+  }
+
   // Resolves a dragged node's snapped position + active guides against the
-  // parent image/canvas edges & center. `canvasSize` is measured by the node
-  // layers themselves from their shared parent container rect — in this
-  // app's current DOM layout the stage wrapper hugs the <img> exactly, so it
-  // already represents both "image bounds" and "canvas bounds" as the same
-  // rect (see plan Phase 2 notes). Reads the SAME `zoom.zoom` value already
-  // threaded into `zoomScale` above — never a second scale source (see plan
-  // "Single scale source of truth").
+  // parent image/canvas edges & center (Phase 2) and sibling nodes' edges &
+  // centers (Phase 3). `canvasSize` is measured by the node layers themselves
+  // from their shared parent container rect — in this app's current DOM
+  // layout the stage wrapper hugs the <img> exactly, so it already represents
+  // both "image bounds" and "canvas bounds" as the same rect (see plan Phase 2
+  // notes). Reads the SAME `zoom.zoom` value already threaded into
+  // `zoomScale` above — never a second scale source (see plan "Single scale
+  // source of truth").
+  //
+  // Sibling boxes are sourced from `previewEditorState.nodes` — the already-
+  // resolved, override-applied node list for the ACTIVE VARIANT (what the
+  // canvas actually renders, see the LOAD-BEARING comment on the
+  // <TextOverlayCanvas> `state` prop below) — never raw `editorState.state.nodes`,
+  // or guides would snap to positions that aren't actually on screen for this
+  // variant (see plan "Sibling-snap staleness").
+  //
+  // Self-exclusion: the dragged node is excluded via `selectedNodeId`, which
+  // both node layers set synchronously in their pointer-down handler (calling
+  // `onSelect()`/`onNodeSelect`) before any pointer-move can fire for that same
+  // drag gesture — so by the time this closure runs during the move, the node
+  // being dragged always matches `selectedNodeId`. This relies only on state
+  // already read in this file; it avoids extending the `computeSnap` prop
+  // signature, which would require also editing text-node-layer.tsx /
+  // overlay-node-layer.tsx (both out of scope for this phase) to pass the
+  // node's own id through.
   function computeSnap(
     box: SnapBox,
     canvasSize: { width: number; height: number },
   ): { x: number; y: number; guides: SnapGuide[] } {
-    const references = computeContainerSnapTargets(canvasSize);
+    const siblingBoxes = previewEditorState.nodes
+      .filter((n) => n.id !== selectedNodeId)
+      .map((n) => siblingSnapBox(n, canvasSize));
+    const references = [
+      ...computeContainerSnapTargets(canvasSize),
+      ...computeSiblingSnapTargets(siblingBoxes),
+    ];
     return resolveSnap(box, references, SNAP_THRESHOLD_PX, zoom.zoom);
   }
 

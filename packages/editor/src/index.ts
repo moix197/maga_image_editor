@@ -13,4 +13,4 @@ export {
 } from "./editor-state";
 export { isTextNode, isOverlayNode, isBorderOverlay } from "./guards";
 export type { Size, SnapBox, SnapAxis, SnapKind, SnapReference, SnapGuide, SnapResult } from "./snap-guides";
-export { computeContainerSnapTargets, resolveSnap } from "./snap-guides";
+export { computeContainerSnapTargets, computeSiblingSnapTargets, resolveSnap } from "./snap-guides";

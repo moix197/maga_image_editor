@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   computeContainerSnapTargets,
+  computeSiblingSnapTargets,
   resolveSnap,
   type SnapBox,
   type SnapReference,
@@ -86,6 +87,50 @@ describe("resolveSnap — thresholds", () => {
     expect(resolveSnap(box, centerRef, 8, 2).guides).toHaveLength(0);
     // scale 0.5 → canvas threshold 16 > 8 → snaps.
     expect(resolveSnap(box, centerRef, 8, 0.5).x).toBe(40);
+  });
+});
+
+describe("computeSiblingSnapTargets", () => {
+  it("emits edge + center references per sibling box", () => {
+    const boxes: SnapBox[] = [
+      { x: 10, y: 20, width: 30, height: 40 },
+      { x: 100, y: 100, width: 10, height: 10 },
+    ];
+    const refs = computeSiblingSnapTargets(boxes);
+    expect(refs).toHaveLength(12); // 6 per box
+    expect(refs).toContainEqual({ axis: "vertical", position: 10, kind: "edge" });
+    expect(refs).toContainEqual({ axis: "vertical", position: 25, kind: "center" }); // 10 + 30/2
+    expect(refs).toContainEqual({ axis: "vertical", position: 40, kind: "edge" });
+    expect(refs).toContainEqual({ axis: "horizontal", position: 20, kind: "edge" });
+    expect(refs).toContainEqual({ axis: "horizontal", position: 40, kind: "center" }); // 20 + 40/2
+    expect(refs).toContainEqual({ axis: "horizontal", position: 60, kind: "edge" });
+  });
+
+  it("snaps a dragged box to a sibling box's edge and center", () => {
+    const sibling: SnapBox = { x: 100, y: 50, width: 40, height: 20 }; // left 100, center 120, right 140
+    const dragBox: SnapBox = { x: 97, y: 50, width: 20, height: 20 }; // left 97, 3px off sibling's left edge
+    const refs = computeSiblingSnapTargets([sibling]);
+    const result = resolveSnap(dragBox, refs, 8, 1);
+    expect(result.x).toBe(100);
+    expect(result.guides).toContainEqual({ axis: "vertical", position: 100, kind: "edge" });
+  });
+
+  it("does not exclude the dragged box itself — the caller must exclude it before calling", () => {
+    const dragBox: SnapBox = { x: 50, y: 50, width: 20, height: 20 };
+
+    // Misuse: caller forgets to exclude the dragged box from the sibling list
+    // -> it trivially "snaps" to its own edges (delta 0). This module carries
+    // no self-exclusion logic by design (see plan "Sibling-snap staleness").
+    const refsIncludingSelf = computeSiblingSnapTargets([dragBox]);
+    const selfSnap = resolveSnap(dragBox, refsIncludingSelf, 8, 1);
+    expect(selfSnap.guides.length).toBeGreaterThan(0);
+
+    // Correct usage: caller excludes the dragged node's own box first.
+    const refsExcludingSelf = computeSiblingSnapTargets([]);
+    const noSelfSnap = resolveSnap(dragBox, refsExcludingSelf, 8, 1);
+    expect(noSelfSnap.guides).toHaveLength(0);
+    expect(noSelfSnap.x).toBe(dragBox.x);
+    expect(noSelfSnap.y).toBe(dragBox.y);
   });
 });
 
