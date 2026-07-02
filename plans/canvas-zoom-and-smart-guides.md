@@ -452,8 +452,8 @@ snaps to the equal-gap position.
 - [x] `pnpm --filter @maga/web test` exits 0
 - [x] `pnpm --filter @maga/editor test` exits 0 (pre-existing unrelated `editor-state.test.ts` failure confirmed present identically before this phase, not caused by it)
 - [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
-- [ ] Manual: three elements roughly in a row — dragging the third into the equal-gap position shows spacing guides and snaps
-- [ ] Manual: edge/center snap still takes precedence when both are simultaneously in range
+- [x] Manual: three elements roughly in a row — dragging the third into the equal-gap position shows spacing guides and snaps
+- [x] Manual: edge/center snap still takes precedence when both are simultaneously in range
 
 **Phase review:**
 
@@ -464,8 +464,75 @@ snaps to the equal-gap position.
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing
 - [x] Documentation updated (deferred to Phase 5 `sync-knowledge` step, per plan convention)
+- [x] Orchestrator (user) has verified and approved this phase (post-fix: sibling live-measurement bug found + fixed in `4d8c4a5`, then confirmed working in browser)
+- [x] Changes committed: `feat(canvas): add equal-spacing distribution guides`
+- [x] Phase marked complete
+
+---
+
+### Phase 4.5: Resize smart guides (sibling size-match)
+
+**Risk:** medium
+**Mode:** hil
+**Type:** frontend
+**Success criteria:** While resizing a text or overlay node, if the new width
+and/or height lands close to another node's width/height, the resize snaps to
+match that dimension exactly, showing a dashed guide line — reusing the same
+`SnapGuide`/`data-guide-line` rendering system as move guides (Phases 2–4).
+Added after user manual testing of Phase 4 surfaced this as a wanted
+extension; move-guide snapping (position) is unaffected — this is
+resize-guide snapping (size) only, which currently has zero guide/snap
+behavior (`handleResizePointerMove` in both node layers only divides by
+`zoomScale`, per Phase 1).
+**Commit message:** `feat(canvas): add resize smart guides (sibling size-match snap)`
+
+**File changes:**
+
+| Action | File | What changes |
+|---|---|---|
+| modify | `packages/editor/src/snap-guides.ts` | Add `resolveSizeMatchSnap(dragSize: {width, height}, siblingSizes: {width, height}[], thresholdPx, scale)`: for each axis (width, height) independently, find the closest sibling dimension within threshold and return a matched size + a `SnapGuide` (extend `SnapKind` again, additively, e.g. `"size"`); pure/DOM-free, no self-exclusion (caller excludes the resizing node first, same convention as `computeSiblingSnapTargets`) |
+| modify | `packages/editor/src/index.ts` | Re-export `resolveSizeMatchSnap` |
+| modify | `packages/editor/src/__tests__/snap-guides.test.ts` | Extend: width-only match, height-only match, both axes match independently, no match outside threshold, no siblings → no match |
+| modify | `apps/web/src/components/batch/BatchWorkspace.tsx` | Add a `computeResizeSnap(dragSize, canvasSize)` closure (mirrors `computeSnap`), sourcing sibling sizes from `previewEditorState.nodes` (excluding the resizing node via `selectedNodeId`, same self-exclusion convention as Phase 3) — for TextNode siblings without stored width/height, reuse the `nodeElementsRef` live-measurement registry added in the Phase 4 sibling-fix; wire into `TextOverlayCanvas` as a new prop |
+| modify | `apps/web/src/components/text-overlay-canvas.tsx` | Thread `computeResizeSnap`/resize-guide reporting into `TextNodeLayer`/`OverlayNodeLayer`; guide rendering already generic (`guideLineStyle`) — extend only for the new `"size"` kind's visual (reuse the existing dashed-line treatment, distinct color) |
+| modify | `apps/web/src/components/text-node-layer.tsx` | `handleResizePointerMove`: after computing `dw`/`dh` ÷ `zoomScale`, call `computeResizeSnap` with the candidate new size; if a match is returned, use the matched size instead of the raw computed one and report the guide; clear the guide in `handleResizePointerUp` |
+| modify | `apps/web/src/components/overlay-node-layer.tsx` | Same wiring in `handleResizePointerMove`/`handleResizePointerUp` |
+| create | `apps/web/src/__tests__/resize-snap.test.tsx` | Simulated resize drag near a sibling's width/height snaps to match it and shows the size-match guide; resizing away from any sibling size produces no snap/guide |
+
+**Steps:**
+
+- [ ] Implement `resolveSizeMatchSnap` in `snap-guides.ts` (independent width/height matching, threshold+scale conversion matching `resolveSnap`/`resolveEqualSpacingSnap` conventions); extend unit tests
+- [ ] Export from `packages/editor/src/index.ts`
+- [ ] Add `computeResizeSnap` closure in `BatchWorkspace.tsx`, reusing `previewEditorState.nodes` + `nodeElementsRef` for TextNode live-measurement (no new ref infra — reuse Phase 4's fix)
+- [ ] Wire `computeResizeSnap` into both node layers' `handleResizePointerMove`; matched size drives both the live resize preview and the persisted `onResize`/`onHeightResize` value
+- [ ] Extend guide rendering for the new `"size"` kind's dashed-line visual, distinct from `"spacing"`'s color
+- [ ] Confirm move-guide snapping (Phases 2–4) is completely unaffected — resize and move guides are independent code paths sharing only the `SnapGuide` type and rendering function
+- [ ] Update `.ai/` (deferred to Phase 6 `sync-knowledge` step — do not hand-edit)
+
+**Tests:**
+
+| Action | File | What it covers |
+|---|---|---|
+| modify | `packages/editor/src/__tests__/snap-guides.test.ts` | `resolveSizeMatchSnap`: width-only match, height-only match, independent axis matching, no match outside threshold, no siblings → no match |
+| create | `apps/web/src/__tests__/resize-snap.test.tsx` | Resize-to-match-sibling-size behavior + guide rendering; no-snap-when-far case |
+
+**Verification:**
+
+- [ ] `pnpm --filter @maga/web test` exits 0
+- [ ] `pnpm --filter @maga/editor test` exits 0 (pre-existing unrelated `editor-state.test.ts` failure expected)
+- [ ] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
+- [ ] Manual: resize a node until its width/height nears a sibling's — dashed guide appears, size snaps to match exactly
+- [ ] Manual: move-guide (position) snapping from Phases 2–4 still works unchanged after this phase
+
+**Phase review:**
+
+- [ ] All Steps and Verification checkboxes above ticked in the plan file
+- [ ] Code-reviewer agent has verified this phase
+- [ ] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
+- [ ] Tests for this phase written and passing
+- [ ] Documentation updated (see Documentation section)
 - [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(canvas): add equal-spacing distribution guides`
+- [ ] Changes committed: `feat(canvas): add resize smart guides (sibling size-match snap)`
 - [ ] Phase marked complete
 
 ---
