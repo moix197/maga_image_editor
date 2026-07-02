@@ -55,6 +55,32 @@ mutates the array only through the pure transitions in
 [[immutable-state-mutation-functions]]); the DOM overlay reflects the new state,
 it is never the state itself.
 
+### Canvas viewport zoom + alignment smart guides
+
+`BatchWorkspace` wraps `TextOverlayCanvas` in a `div` with `transform:
+scale(zoom)` (`apps/web/src/hooks/use-canvas-zoom.ts`, 25%–400%) that is a
+strict **ancestor** of — never the same element as — the `canvasCallbackRef`
+div `TextOverlayCanvas` binds; export rasterizes exactly that inner div, so
+zoom structurally cannot enter export geometry. `zoom.zoom` is the single
+scale source: it drives both this CSS transform and the pixel-delta ÷ scale
+fix in the resize handlers (`text-node-layer.tsx`, `overlay-node-layer.tsx`),
+and it's the `scale` argument to every snap-threshold call below. See
+[[viewport-zoom]].
+
+Drag/resize on any node consults pure snap math in
+`packages/editor/src/snap-guides.ts` — edge/center targets against the parent
+image, the canvas, and sibling nodes; equal-spacing among 3+ same-row/column
+elements; and (resize only) size-match against a sibling's width/height.
+`BatchWorkspace`'s `computeSnap`/`computeResizeSnap` closures measure the DOM
+(live-measuring auto-sized `TextNode`s that have no stored width/height) and
+call into the package with plain canvas-space boxes; a snap adjusts the
+position/size before the normal `onNodeMove`/`onNodeResize` call, so it
+persists through the existing fan-out path unchanged. Guide-line DOM carries
+`data-guide-line` and is cleared on pointer-up; `export-helpers.ts`'s
+`stripGuideLines` additionally strips any stray `[data-guide-line]` node from
+a capture subtree as a structural second line of defense. See
+[[alignment-smart-guides]].
+
 ### Export fidelity
 
 Export runs in two stages. `html-to-image` rasterizes the editor DOM to a base
