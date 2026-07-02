@@ -316,9 +316,9 @@ persists the snapped position via the normal move/fan-out path.
 - [x] `pnpm --filter @maga/web test` exits 0 (includes `canvas-guide-export-isolation.test.tsx`)
 - [x] `pnpm --filter @maga/editor test` exits 0 (pre-existing unrelated `editor-state.test.ts` failure confirmed present identically on pre-Phase-2 `main`, not caused by this phase)
 - [x] `pnpm --filter @maga/web exec tsc --noEmit` exits 0
-- [ ] Manual: dragging a text node near the parent image's vertical/horizontal center snaps and shows a line; releasing keeps the snapped position
-- [ ] Manual: repeat at 50% and 200% zoom — snap still triggers at a consistent on-screen distance from the guide (confirms scale-aware threshold, same `zoom` source as Phase 1's resize fix)
-- [ ] Manual: exporting/generating a preview mid-feature never shows a guide line baked into the output (spot-check corroborating the automated isolation test + export guard)
+- [x] Manual: dragging a text node near the parent image's vertical/horizontal center snaps and shows a line; releasing keeps the snapped position
+- [x] Manual: repeat at 50% and 200% zoom — snap still triggers at a consistent on-screen distance from the guide (confirms scale-aware threshold, same `zoom` source as Phase 1's resize fix)
+- [x] Manual: exporting/generating a preview mid-feature never shows a guide line baked into the output (spot-check corroborating the automated isolation test + export guard)
 
 **Phase review:**
 
@@ -329,9 +329,9 @@ persists the snapped position via the normal move/fan-out path.
 - [x] Any changes made in response to code-reviewer suggestions have been reflected back into this plan file
 - [x] Tests for this phase written and passing
 - [x] Documentation updated (deferred to Phase 5 `sync-knowledge` step, per plan convention)
-- [ ] Orchestrator (user) has verified and approved this phase
-- [ ] Changes committed: `feat(canvas): add smart guides (image + canvas center/edge snap)`
-- [ ] Phase marked complete
+- [x] Orchestrator (user) has verified and approved this phase
+- [x] Changes committed: `feat(canvas): add smart guides (image + canvas center/edge snap)`
+- [x] Phase marked complete
 
 ---
 
